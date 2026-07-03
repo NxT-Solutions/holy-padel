@@ -32,6 +32,7 @@ function RosterRow({
       paddingVertical={11}
       paddingHorizontal={14}
       pressStyle={{ opacity: 0.85 }}
+      role="button"
       onPress={() => {
         onToggle(entry.id);
       }}
@@ -47,7 +48,7 @@ function RosterRow({
           {entry.name}
         </Body>
         <Body fontSize={10.5} fontWeight="600" color={inkAlpha(0.4)}>
-          {`${String(entry.matchesWithOwner)} matches with you`}
+          {`${String(entry.matchesWithOwner)} ${entry.matchesWithOwner === 1 ? "match" : "matches"} with you`}
         </Body>
       </YStack>
       {picked ? (
@@ -210,6 +211,7 @@ export function PickerSheet({
           alignItems="center"
           justifyContent="center"
           pressStyle={{ opacity: 0.85 }}
+          role="button"
           onPress={onDone}
         >
           <Display fontSize={18} letterSpacing={1.4} color={colors.ink}>
