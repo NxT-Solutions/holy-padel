@@ -55,7 +55,14 @@ function TeamCard({
 }): ReactNode {
   const teamA = team === "A";
   return (
-    <Card borderRadius={20} padding={16} gap={10} pressStyle={{ opacity: 0.92 }} onPress={onPress}>
+    <Card
+      borderRadius={20}
+      padding={16}
+      gap={10}
+      pressStyle={{ opacity: 0.92 }}
+      role="button"
+      onPress={onPress}
+    >
       <Pill
         alignSelf="flex-start"
         backgroundColor={teamA ? colors.lime : colors.teamBlue}
@@ -217,6 +224,7 @@ export default function NewMatchScreen(): ReactNode {
             opacity={ready ? 1 : 0.5}
             boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
             pressStyle={{ opacity: 0.85 }}
+            role="button"
             onPress={startMatch}
           >
             <Display fontSize={21} letterSpacing={1.5} color={colors.ink}>

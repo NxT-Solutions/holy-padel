@@ -32,6 +32,7 @@ export function SegmentedRow<T extends string | number>({
           return (
             <Pressable
               key={String(option.value)}
+              role="button"
               onPress={() => {
                 onChange(option.value);
               }}

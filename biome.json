@@ -84,6 +84,15 @@
       }
     },
     {
+      "includes": ["**/metro.config.js", "**/babel.config.js"],
+      "linter": {
+        "rules": {
+          "style": { "noCommonJs": "off" },
+          "correctness": { "noGlobalDirnameFilename": "off" }
+        }
+      }
+    },
+    {
       "includes": ["**/src/index.ts"],
       "linter": {
         "rules": {

@@ -106,6 +106,7 @@ function LiveCard({
         justifyContent="center"
         gap={9}
         pressStyle={{ opacity: 0.85 }}
+        role="button"
         onPress={() => {
           router.push(`/live/${match.id}`);
         }}
@@ -137,6 +138,7 @@ function RecentRow({
       alignItems="center"
       justifyContent="space-between"
       pressStyle={{ opacity: 0.9 }}
+      role="button"
       onPress={() => {
         router.push(`/match/${match.id}`);
       }}
@@ -236,6 +238,7 @@ export default function HomeScreen(): ReactNode {
           gap={9}
           boxShadow="0 2px 10px rgba(14, 17, 22, 0.06)"
           pressStyle={{ opacity: 0.85 }}
+          role="button"
           onPress={() => {
             router.push("/new-match");
           }}
@@ -255,6 +258,7 @@ export default function HomeScreen(): ReactNode {
           justifyContent="center"
           gap={2}
           pressStyle={{ opacity: 0.7 }}
+          role="button"
           onPress={startRematch}
         >
           <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={inkAlpha(0.5)}>

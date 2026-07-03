@@ -56,6 +56,7 @@ function MatchRow({
       alignItems="center"
       justifyContent="space-between"
       pressStyle={{ opacity: 0.9 }}
+      role="button"
       onPress={() => {
         router.push(live ? `/live/${match.id}` : `/match/${match.id}`);
       }}
@@ -106,6 +107,7 @@ function FilterChip({
       borderWidth={active ? 0 : 1}
       borderColor={inkAlpha(0.16)}
       pressStyle={{ opacity: 0.8 }}
+      role="button"
       onPress={onPress}
     >
       <Body
@@ -173,6 +175,7 @@ export default function MatchesScreen(): ReactNode {
           paddingHorizontal={14}
           gap={6}
           pressStyle={{ opacity: 0.85 }}
+          role="button"
           onPress={() => {
             router.push("/new-match");
           }}
