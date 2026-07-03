@@ -16,9 +16,44 @@
   },
   "linter": {
     "enabled": true,
+    "domains": {
+      "react": "all",
+      "reactNative": "all",
+      "test": "all",
+      "turborepo": "all",
+      "project": "all",
+      "types": "all",
+      "drizzle": "none",
+      "next": "none",
+      "playwright": "none",
+      "qwik": "none",
+      "solid": "none",
+      "svelte": "none",
+      "tailwind": "none",
+      "vue": "none"
+    },
     "rules": {
       "preset": "all",
-      "nursery": "on"
+      "nursery": "on",
+      "style": {
+        "noTernary": "off",
+        "useExportsLast": "off",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "conventions": [
+              {
+                "selector": { "kind": "objectLiteralProperty" },
+                "formats": ["camelCase", "CONSTANT_CASE"]
+              },
+              {
+                "selector": { "kind": "typeProperty" },
+                "formats": ["camelCase", "CONSTANT_CASE"]
+              }
+            ]
+          }
+        }
+      }
     }
   },
   "assist": {
@@ -35,5 +70,32 @@
       "trailingCommas": "all",
       "semicolons": "always"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.config.ts", "**/*.config.js", "**/app/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "style": { "noDefaultExport": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["**/src/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": { "noBarrelFile": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["**/test/**"],
+      "linter": {
+        "rules": {
+          "style": { "noMagicNumbers": "off" },
+          "performance": { "useTopLevelRegex": "off" }
+        }
+      }
+    }
+  ]
 }
