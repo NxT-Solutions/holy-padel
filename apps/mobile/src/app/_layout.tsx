@@ -7,7 +7,7 @@ import {
   Archivo_800ExtraBold,
 } from "@expo-google-fonts/archivo";
 import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
+import { hideAsync, preventAutoHideAsync } from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
@@ -16,9 +16,10 @@ import { DbProvider } from "@/db/provider.tsx";
 import { tamaguiConfig } from "@/tamagui.config.ts";
 import { colors } from "@/theme/colors.ts";
 
-SplashScreen.preventAutoHideAsync();
+void preventAutoHideAsync();
 
 export default function RootLayout(): ReactNode {
+  // biome-ignore-start lint/style/useNamingConvention: Google Fonts registry names
   const [fontsLoaded] = useFonts({
     Anton_400Regular,
     Archivo_400Regular,
@@ -27,10 +28,11 @@ export default function RootLayout(): ReactNode {
     Archivo_700Bold,
     Archivo_800ExtraBold,
   });
+  // biome-ignore-end lint/style/useNamingConvention: Google Fonts registry names
 
   useEffect(() => {
     if (fontsLoaded) {
-      SplashScreen.hideAsync();
+      void hideAsync();
     }
   }, [fontsLoaded]);
 

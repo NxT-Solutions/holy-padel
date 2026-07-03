@@ -1,6 +1,13 @@
 import type { SqlDriver } from "@holy-padel/db";
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import { openAppDatabase } from "./database.ts";
 
 interface DbStore {
@@ -71,7 +78,10 @@ export function useDbQuery<T>(query: (driver: SqlDriver) => T): T {
 /** The write half: `const mutate = useDbMutation(); mutate((db) => ...)`. */
 export function useDbMutation(): (write: (driver: SqlDriver) => void) => void {
   const store = useDbStore();
-  return useCallback((write: (driver: SqlDriver) => void) => {
-    store.mutate(write);
-  }, [store]);
+  return useCallback(
+    (write: (driver: SqlDriver) => void) => {
+      store.mutate(write);
+    },
+    [store],
+  );
 }

@@ -11,7 +11,7 @@ import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
 
 const MINUTE_MS = 60_000;
-const DAY_MS = 24 * 60 * MINUTE_MS;
+const DAY_MS: number = 24 * 60 * MINUTE_MS;
 const SECONDS_PER_POINT = 35;
 
 interface SetPlan {
@@ -120,10 +120,7 @@ const FINISHED: readonly MatchPlan[] = [
     daysAgo: 3,
     partner: "javi",
     opponents: ["marta", "leo"],
-    sets: [
-      { games: [6, 3] },
-      { games: [7, 6], tieBreak: [7, 4] },
-    ],
+    sets: [{ games: [6, 3] }, { games: [7, 6], tieBreak: [7, 4] }],
     court: "Court 4",
   },
   {
@@ -131,10 +128,7 @@ const FINISHED: readonly MatchPlan[] = [
     daysAgo: 6,
     partner: "javi",
     opponents: ["ana", "pablo"],
-    sets: [
-      { games: [4, 6] },
-      { games: [6, 7], tieBreak: [5, 7] },
-    ],
+    sets: [{ games: [4, 6] }, { games: [6, 7], tieBreak: [5, 7] }],
   },
   {
     id: "seed-10",
@@ -181,10 +175,7 @@ const FINISHED: readonly MatchPlan[] = [
     daysAgo: 27,
     partner: "javi",
     opponents: ["marta", "leo"],
-    sets: [
-      { games: [7, 6], tieBreak: [7, 5] },
-      { games: [6, 4] },
-    ],
+    sets: [{ games: [7, 6], tieBreak: [7, 5] }, { games: [6, 4] }],
     court: "Court 4",
   },
   {
@@ -192,10 +183,7 @@ const FINISHED: readonly MatchPlan[] = [
     daysAgo: 31,
     partner: "javi",
     opponents: ["marta", "leo"],
-    sets: [
-      { games: [6, 7], tieBreak: [4, 7] },
-      { games: [5, 7] },
-    ],
+    sets: [{ games: [6, 7], tieBreak: [4, 7] }, { games: [5, 7] }],
   },
   {
     id: "seed-03",
