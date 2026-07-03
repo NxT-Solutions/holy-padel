@@ -62,16 +62,20 @@ const bodyFont = createFont({
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
   animations,
+  settings: {
+    ...defaultConfig.settings,
+    // The screens are built from the design's exact pixel values and rgba
+    // colors, so longhand style props and arbitrary values stay allowed.
+    onlyAllowShorthands: false,
+    allowedStyleValues: false,
+  },
   fonts: {
     heading: headingFont,
     body: bodyFont,
   },
   tokens: {
     ...defaultConfig.tokens,
-    color: {
-      ...defaultConfig.tokens.color,
-      ...colors,
-    },
+    color: colors,
   },
 });
 
