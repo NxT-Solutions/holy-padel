@@ -1,0 +1,15 @@
+diff --git a/web/WorkerChannel.ts b/web/WorkerChannel.ts
+index 7fba380845e3338b7d8d253013fbf73896070cde..88666ff6ae8479856ce70d1477e4207d2335b64d 100644
+--- a/web/WorkerChannel.ts
++++ b/web/WorkerChannel.ts
+@@ -40,7 +40,9 @@ export function sendWorkerResult({
+     const resultJson = error != null ? serialize({ error }) : serialize({ result });
+     const resultBytes = new TextEncoder().encode(resultJson);
+     const length = resultBytes.length;
+-    resultArray.set(new Uint32Array([length]), 0);
++    // Write the length as a real little-endian uint32 (a Uint8Array.set with a
++    // Uint32Array source coerces per element and truncates lengths above 255).
++    new DataView(resultBuffer).setUint32(0, length, true);
+     resultArray.set(resultBytes, 4);
+     Atomics.store(lock, 0, RESOLVED);
+   } else {
