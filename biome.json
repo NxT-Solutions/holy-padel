@@ -35,6 +35,9 @@
     "rules": {
       "preset": "all",
       "nursery": "on",
+      "complexity": {
+        "noVoid": "off"
+      },
       "style": {
         "noTernary": "off",
         "useExportsLast": "off",
@@ -94,6 +97,45 @@
         "rules": {
           "style": { "noMagicNumbers": "off" },
           "performance": { "useTopLevelRegex": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["apps/mobile/**"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": {
+              "level": "error",
+              "options": { "maxLines": 220 }
+            },
+            "noExcessiveCognitiveComplexity": {
+              "level": "error",
+              "options": { "maxAllowedComplexity": 20 }
+            }
+          },
+          "style": {
+            "noMagicNumbers": "off",
+            "useComponentExportOnlyModules": "off",
+            "noJsxLiterals": "off",
+            "noExcessiveLinesPerFile": {
+              "level": "error",
+              "options": { "maxLines": 500 }
+            }
+          },
+          "performance": {
+            "noJsxPropsBind": "off"
+          },
+          "nursery": {
+            "useExplicitType": "off",
+            "useExplicitReturnType": "off",
+            "noReactNativeRawText": {
+              "level": "error",
+              "options": {
+                "skip": ["Display", "Body", "Overline"]
+              }
+            }
+          }
         }
       }
     }
