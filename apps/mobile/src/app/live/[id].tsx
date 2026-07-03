@@ -13,12 +13,12 @@ import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
 import { router, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { Undo } from "@/components/icons.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { confirmDestructive } from "@/lib/confirm.ts";
 import { dayLabel, durationLabel, finalScoreLine, teamNames } from "@/lib/format.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
@@ -122,6 +122,8 @@ function TeamCard({
       justifyContent="space-between"
       boxShadow="0 2px 14px rgba(14, 17, 22, 0.07)"
       pressStyle={{ opacity: 0.9, scale: 0.99 }}
+      role="button"
+      aria-label={`Point ${name}`}
       onPress={onScore}
     >
       <YStack gap={7}>
@@ -271,6 +273,7 @@ function MatchWon({
           alignItems="center"
           justifyContent="center"
           pressStyle={{ opacity: 0.85 }}
+          role="button"
           onPress={() => {
             router.dismissAll();
           }}
@@ -287,6 +290,7 @@ function MatchWon({
           alignItems="center"
           justifyContent="center"
           pressStyle={{ opacity: 0.7 }}
+          role="button"
           onPress={onRematch}
         >
           <Body fontSize={13} fontWeight="800" letterSpacing={1.4} color={colors.white}>
@@ -436,19 +440,17 @@ export default function LiveScreen(): ReactNode {
   };
 
   const endMatch = (): void => {
-    Alert.alert("End match?", "The match is not finished — discard it?", [
-      { text: "Keep scoring", style: "cancel" },
-      {
-        text: "Discard match",
-        style: "destructive",
-        onPress: () => {
-          mutate((driver) => {
-            deleteMatch(driver, id);
-          });
-          router.dismissAll();
-        },
+    confirmDestructive({
+      title: "End match?",
+      message: "The match is not finished — discard it?",
+      confirmLabel: "Discard match",
+      onConfirm: () => {
+        mutate((driver) => {
+          deleteMatch(driver, id);
+        });
+        router.dismissAll();
       },
-    ]);
+    });
   };
 
   const label = statusLabel(snapshot.moment, names);
@@ -530,6 +532,7 @@ export default function LiveScreen(): ReactNode {
           gap={9}
           boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
           pressStyle={{ opacity: 0.85 }}
+          role="button"
           onPress={undoPoint}
         >
           <Undo size={17} color={colors.ink} />
@@ -546,6 +549,7 @@ export default function LiveScreen(): ReactNode {
           alignItems="center"
           justifyContent="center"
           pressStyle={{ opacity: 0.7 }}
+          role="button"
           onPress={endMatch}
         >
           <Body fontSize={13} fontWeight="700" letterSpacing={1.4} color={inkAlpha(0.5)}>

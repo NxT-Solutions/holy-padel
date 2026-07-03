@@ -3,12 +3,13 @@ import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
 import { router, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
-import { Alert, ScrollView, Share } from "react-native";
+import { ScrollView, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ChevronLeft } from "@/components/icons.tsx";
 import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { confirmDestructive } from "@/lib/confirm.ts";
 import { durationLabel, fullDayLabel, pairInitials, teamNames, timeLabel } from "@/lib/format.ts";
 import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
 
@@ -61,19 +62,17 @@ export default function MatchOverviewScreen(): ReactNode {
   const longest = stats.longestGame;
 
   const confirmDelete = (): void => {
-    Alert.alert("Delete match?", "This removes the match and its points from this phone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          mutate((driver) => {
-            deleteMatch(driver, id);
-          });
-          router.back();
-        },
+    confirmDestructive({
+      title: "Delete match?",
+      message: "This removes the match and its points from this phone.",
+      confirmLabel: "Delete",
+      onConfirm: () => {
+        mutate((driver) => {
+          deleteMatch(driver, id);
+        });
+        router.back();
       },
-    ]);
+    });
   };
 
   const exportMatch = (): void => {
@@ -102,6 +101,8 @@ export default function MatchOverviewScreen(): ReactNode {
           justifyContent="center"
           boxShadow="0 2px 8px rgba(14, 17, 22, 0.08)"
           pressStyle={{ opacity: 0.8 }}
+          role="button"
+          aria-label="Back"
           onPress={() => {
             router.back();
           }}
@@ -232,6 +233,7 @@ export default function MatchOverviewScreen(): ReactNode {
           letterSpacing={1.3}
           color={inkAlpha(0.45)}
           pressStyle={{ opacity: 0.6 }}
+          role="button"
           onPress={exportMatch}
         >
           EXPORT
@@ -243,6 +245,7 @@ export default function MatchOverviewScreen(): ReactNode {
           letterSpacing={1.3}
           color={colors.danger}
           pressStyle={{ opacity: 0.6 }}
+          role="button"
           onPress={confirmDelete}
         >
           DELETE MATCH
