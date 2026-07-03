@@ -5,6 +5,7 @@ import {
   createMatch,
   createPlayer,
   finishMatch,
+  inTransaction,
   listPlayers,
 } from "@holy-padel/db";
 import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
@@ -276,21 +277,25 @@ export function seedIfEmpty(driver: SqlDriver): void {
     return;
   }
   const now = Date.now();
-  let createdAt = now - 100 * DAY_MS;
-  createPlayer(driver, {
-    id: "nico",
-    name: "Nico",
-    club: "Club Padel Norte",
-    side: "left",
-    isOwner: true,
-    createdAt,
+  // One transaction: atomic, and orders of magnitude faster than ~900
+  // individually committed inserts (the web OPFS backend pays I/O per commit).
+  inTransaction(driver, () => {
+    let createdAt = now - 100 * DAY_MS;
+    createPlayer(driver, {
+      id: "nico",
+      name: "Nico",
+      club: "Club Padel Norte",
+      side: "left",
+      isOwner: true,
+      createdAt,
+    });
+    for (const entry of ROSTER) {
+      createdAt += MINUTE_MS;
+      createPlayer(driver, { id: entry.id, name: entry.name, createdAt });
+    }
+    for (const plan of FINISHED) {
+      seedFinishedMatch(driver, plan, now);
+    }
+    seedLiveMatch(driver, now);
   });
-  for (const entry of ROSTER) {
-    createdAt += MINUTE_MS;
-    createPlayer(driver, { id: entry.id, name: entry.name, createdAt });
-  }
-  for (const plan of FINISHED) {
-    seedFinishedMatch(driver, plan, now);
-  }
-  seedLiveMatch(driver, now);
 }

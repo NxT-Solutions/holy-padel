@@ -4,8 +4,10 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
 import { openAppDatabase } from "./database.ts";
@@ -21,34 +23,50 @@ interface DbStore {
 const DbContext = createContext<DbStore | undefined>(undefined);
 
 export function DbProvider({ children }: { readonly children: ReactNode }): ReactNode {
-  const driverRef = useRef<SqlDriver | undefined>(undefined);
-  driverRef.current ??= openAppDatabase();
-  const driver = driverRef.current;
+  const [driver, setDriver] = useState<SqlDriver | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    void openAppDatabase().then((opened) => {
+      if (!cancelled) {
+        setDriver(opened);
+      }
+    });
+    return (): void => {
+      cancelled = true;
+    };
+  }, []);
 
   const versionRef = useRef(0);
   const listenersRef = useRef(new Set<() => void>());
 
-  const store = useMemo<DbStore>(
-    () => ({
-      driver,
-      version: () => versionRef.current,
-      subscribe: (listener: () => void) => {
-        listenersRef.current.add(listener);
-        return () => {
-          listenersRef.current.delete(listener);
-        };
-      },
-      mutate: (write: (target: SqlDriver) => void) => {
-        write(driver);
-        versionRef.current += 1;
-        for (const listener of listenersRef.current) {
-          listener();
-        }
-      },
-    }),
+  const store = useMemo<DbStore | undefined>(
+    () =>
+      driver === undefined
+        ? undefined
+        : {
+            driver,
+            version: () => versionRef.current,
+            subscribe: (listener: () => void) => {
+              listenersRef.current.add(listener);
+              return () => {
+                listenersRef.current.delete(listener);
+              };
+            },
+            mutate: (write: (target: SqlDriver) => void) => {
+              write(driver);
+              versionRef.current += 1;
+              for (const listener of listenersRef.current) {
+                listener();
+              }
+            },
+          },
     [driver],
   );
 
+  // Nothing renders until the database is open — the splash screen covers this.
+  if (store === undefined) {
+    return null;
+  }
   return <DbContext.Provider value={store}>{children}</DbContext.Provider>;
 }
 
