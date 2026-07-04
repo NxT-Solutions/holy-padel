@@ -1,128 +1,64 @@
+import {
+  ArrowRight as LucideArrowRight,
+  Check as LucideCheck,
+  ChevronLeft as LucideChevronLeft,
+  ChevronRight as LucideChevronRight,
+  Plus as LucidePlus,
+  Search as LucideSearch,
+  Undo2 as LucideUndo2,
+} from "lucide-react-native";
 import type { ReactNode } from "react";
-import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors.ts";
 
+/**
+ * The app's icons, backed by lucide-react-native. Thin wrappers keep the same
+ * `{ size, color, strokeWidth }` API and the design's slightly bolder default
+ * stroke weights, so call sites and the look are unchanged — only the SVG
+ * paths are no longer hand-maintained.
+ */
 interface IconProps {
   readonly size?: number;
   readonly color?: string;
   readonly strokeWidth?: number;
 }
 
-function strokeProps({ size = 15, color = colors.ink, strokeWidth = 2.8 }: IconProps): {
-  size: number;
-  color: string;
-  strokeWidth: number;
-} {
-  return { size, color, strokeWidth };
+export function ArrowRight({
+  size = 15,
+  color = colors.ink,
+  strokeWidth = 2.8,
+}: IconProps): ReactNode {
+  return <LucideArrowRight size={size} color={color} strokeWidth={strokeWidth} />;
 }
 
-/** → from the design's primary buttons. */
-export function ArrowRight(props: IconProps): ReactNode {
-  const { size, color, strokeWidth } = strokeProps(props);
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M5 12h14"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="m13 6 6 6-6 6"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
+export function Plus({ size = 15, color = colors.ink, strokeWidth = 3 }: IconProps): ReactNode {
+  return <LucidePlus size={size} color={color} strokeWidth={strokeWidth} />;
 }
 
-export function Plus(props: IconProps): ReactNode {
-  const { size, color, strokeWidth } = strokeProps({ strokeWidth: 3, ...props });
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
-    </Svg>
-  );
+/** The curved undo arrow from the live screens (Lucide's undo-2). */
+export function Undo({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucideUndo2 size={size} color={color} strokeWidth={strokeWidth} />;
 }
 
-/** The undo arrow from the live screens. */
-export function Undo(props: IconProps): ReactNode {
-  const { size, color, strokeWidth } = strokeProps({ strokeWidth: 2.6, ...props });
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M3 8h10a6 6 0 1 1-6 10"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M7 4 3 8l4 4"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
+export function ChevronLeft({
+  size = 15,
+  color = colors.ink,
+  strokeWidth = 2.8,
+}: IconProps): ReactNode {
+  return <LucideChevronLeft size={size} color={color} strokeWidth={strokeWidth} />;
 }
 
-export function ChevronLeft(props: IconProps): ReactNode {
-  const { size, color, strokeWidth } = strokeProps(props);
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="m15 6-6 6 6 6"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
+export function ChevronRight({
+  size = 15,
+  color = colors.ink,
+  strokeWidth = 2.6,
+}: IconProps): ReactNode {
+  return <LucideChevronRight size={size} color={color} strokeWidth={strokeWidth} />;
 }
 
-export function ChevronRight(props: IconProps): ReactNode {
-  const { size, color, strokeWidth } = strokeProps({ strokeWidth: 2.6, ...props });
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="m9 6 6 6-6 6"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
+export function Check({ size = 15, color = colors.ink, strokeWidth = 3.4 }: IconProps): ReactNode {
+  return <LucideCheck size={size} color={color} strokeWidth={strokeWidth} />;
 }
 
-/** ✓ in the player picker's selected rows. */
-export function Check(props: IconProps): ReactNode {
-  const { size, color, strokeWidth } = strokeProps({ strokeWidth: 3.4, ...props });
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="m5 12 5 5 9-10"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-export function Search(props: IconProps): ReactNode {
-  const { size, color, strokeWidth } = strokeProps({ strokeWidth: 2.5, ...props });
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx={11} cy={11} r={7} stroke={color} strokeWidth={strokeWidth} />
-      <Path d="m20 20-3.5-3.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
-    </Svg>
-  );
+export function Search({ size = 15, color = colors.ink, strokeWidth = 2.5 }: IconProps): ReactNode {
+  return <LucideSearch size={size} color={color} strokeWidth={strokeWidth} />;
 }
