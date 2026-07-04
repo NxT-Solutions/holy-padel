@@ -18,6 +18,11 @@ import { colors } from "@/theme/colors.ts";
 
 void preventAutoHideAsync();
 
+/** Deep links land with the tab navigator beneath them, so back/dismiss always work. */
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+};
+
 export default function RootLayout(): ReactNode {
   // biome-ignore-start lint/style/useNamingConvention: Google Fonts registry names
   const [fontsLoaded] = useFonts({

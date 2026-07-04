@@ -1,7 +1,7 @@
 import { deleteMatch, getMatch, loadEvents } from "@holy-padel/db";
 import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { ScrollView, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { confirmDestructive } from "@/lib/confirm.ts";
 import { durationLabel, fullDayLabel, pairInitials, teamNames, timeLabel } from "@/lib/format.ts";
+import { goBack } from "@/lib/navigation.ts";
 import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
 
 const DEUCE_LABELS: Record<string, string> = {
@@ -70,7 +71,7 @@ export default function MatchOverviewScreen(): ReactNode {
         mutate((driver) => {
           deleteMatch(driver, id);
         });
-        router.back();
+        goBack();
       },
     });
   };
@@ -104,7 +105,7 @@ export default function MatchOverviewScreen(): ReactNode {
           role="button"
           aria-label="Back"
           onPress={() => {
-            router.back();
+            goBack();
           }}
         >
           <ChevronLeft size={15} color={colors.ink} />

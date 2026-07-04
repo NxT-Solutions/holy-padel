@@ -20,6 +20,7 @@ import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { confirmDestructive } from "@/lib/confirm.ts";
 import { dayLabel, durationLabel, finalScoreLine, teamNames } from "@/lib/format.ts";
+import { goHome } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
 
@@ -275,7 +276,7 @@ function MatchWon({
           pressStyle={{ opacity: 0.85 }}
           role="button"
           onPress={() => {
-            router.dismissAll();
+            goHome();
           }}
         >
           <Display fontSize={19} letterSpacing={1.4} color={colors.ink}>
@@ -448,7 +449,7 @@ export default function LiveScreen(): ReactNode {
         mutate((driver) => {
           deleteMatch(driver, id);
         });
-        router.dismissAll();
+        goHome();
       },
     });
   };
