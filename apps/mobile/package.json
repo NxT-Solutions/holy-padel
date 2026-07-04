@@ -42,6 +42,7 @@
     "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.0",
+    "watch-bridge": "link:./modules/watch-bridge",
     "tamagui": "2.4.0"
   },
   "devDependencies": {
