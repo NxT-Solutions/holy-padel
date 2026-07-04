@@ -72,6 +72,7 @@ jobs:
           disable-animations: true
           script: |
             adb install -r apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+            mkdir -p screenshots
             maestro test apps/mobile/.maestro --format junit --output maestro-report.xml
 
       - name: Upload the Maestro report and screenshots
@@ -79,8 +80,11 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: maestro-report
+          # takeScreenshot writes to ./screenshots (repo root); the report dir
+          # only holds Maestro's own failure captures.
           path: |
             maestro-report.xml
+            screenshots/
             ~/.maestro/tests/
           retention-days: 7
           if-no-files-found: ignore
