@@ -6,13 +6,15 @@ plugins {
 
 android {
     namespace = "com.holypadel.wear"
-    compileSdk = 36
+    // androidx.core 1.19.0 is built against API 37 (Android 17), so we must compile
+    // against 37 or newer or the AAR-metadata check fails.
+    compileSdk = 37
 
     defaultConfig {
         // Must match the phone app's applicationId so the Wearable Data Layer pairs them.
         applicationId = "com.holypadel.app"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
     }
