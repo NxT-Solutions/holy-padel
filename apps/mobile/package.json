@@ -9,7 +9,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "biome check .",
-    "typecheck": "tsc"
+    "typecheck": "tsc && tsc -p e2e",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@expo-google-fonts/anton": "0.4.2",
@@ -39,7 +41,9 @@
     "tamagui": "2.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/react": "~19.2.2",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@types/node": "24.10.9"
   }
 }
