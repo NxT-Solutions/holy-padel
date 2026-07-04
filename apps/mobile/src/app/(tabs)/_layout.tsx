@@ -14,7 +14,9 @@ function TabButton({
   ...props
 }: TabTriggerSlotProps & { readonly label: string }): ReactNode {
   return (
-    <Pressable {...props} style={{ flex: 1 }}>
+    // testID keeps the tab tap unambiguous — "HOME" as text collides with the
+    // Android system navigation bar's Home button.
+    <Pressable {...props} testID={`tab-${label.toLowerCase()}`} style={{ flex: 1 }}>
       <View alignItems="center" gap={3}>
         <Body
           fontSize={11}
