@@ -2,7 +2,7 @@ import type { RosterEntry } from "@holy-padel/db";
 import type { TeamId } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Pressable, TextInput } from "react-native";
+import { ScrollView, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { Check, Plus, Search } from "@/components/icons.tsx";
@@ -145,7 +145,14 @@ export function PickerSheet({
 
   return (
     <View position="absolute" top={0} left={0} right={0} bottom={0}>
-      <Pressable style={{ flex: 1, backgroundColor: inkAlpha(0.45) }} onPress={onDone} />
+      <View
+        testID="picker-backdrop"
+        role="button"
+        aria-label="Close"
+        flex={1}
+        backgroundColor={inkAlpha(0.45)}
+        onPress={onDone}
+      />
       <YStack
         backgroundColor={colors.sheet}
         borderTopLeftRadius={28}
@@ -154,6 +161,7 @@ export function PickerSheet({
         paddingHorizontal={16}
         paddingBottom={insets.bottom + 16}
         gap={12}
+        maxHeight="88%"
         boxShadow="0 -12px 40px rgba(14, 17, 22, 0.25)"
       >
         <View
@@ -192,7 +200,7 @@ export function PickerSheet({
             onChangeText={setQuery}
           />
         </XStack>
-        <YStack gap={7}>
+        <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 7 }}>
           {visible.map((entry) => (
             <RosterRow
               key={entry.id}
@@ -203,7 +211,7 @@ export function PickerSheet({
             />
           ))}
           <NewPlayerRow onCreate={onCreate} />
-        </YStack>
+        </ScrollView>
         <XStack
           height={56}
           backgroundColor={colors.lime}
