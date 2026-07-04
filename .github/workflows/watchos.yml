@@ -58,36 +58,33 @@ jobs:
 
       - name: Prebuild iOS (generates the watch target into ios/)
         working-directory: apps/mobile
-        # Full prebuild (with pod install) so the generated .xcworkspace and the
-        # watch embed wiring are complete — the reliable path for a blind CI build.
-        run: npx expo prebuild -p ios --clean
+        # The watch target is pure Swift with system frameworks only (no pods), so
+        # skip pod install and build straight from the .xcodeproj below. This
+        # sidesteps the CocoaPods workspace, which otherwise tries to compile React
+        # Native for the watchOS SDK when a watch scheme is built through it.
+        run: npx expo prebuild -p ios --clean --no-install
 
       - name: Build the watch app (simulator, unsigned)
         working-directory: apps/mobile
         run: |
           set -x
-          WS=$(ls -d ios/*.xcworkspace 2>/dev/null | head -1)
-          PROJ=$(ls -d ios/*.xcodeproj 2>/dev/null | head -1)
-          if [ -n "$WS" ]; then
-            CONTAINER=(-workspace "$WS")
-          else
-            CONTAINER=(-project "$PROJ")
-          fi
-          echo "container: ${CONTAINER[*]}"
-          xcodebuild "${CONTAINER[@]}" -list
-          SCHEME=$(xcodebuild "${CONTAINER[@]}" -list -json \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); k='workspace' if 'workspace' in d else 'project'; s=d[k]['schemes']; print(next((x for x in s if 'watch' in x.lower()), ''))")
-          echo "watch scheme: '$SCHEME'"
-          if [ -z "$SCHEME" ]; then
-            echo "::error::No watch scheme found in the generated project"
+          PROJ=$(ls -d ios/*.xcodeproj | head -1)
+          echo "project: $PROJ"
+          xcodebuild -project "$PROJ" -list
+          # Build the watch target directly (it has zero dependencies), from the
+          # project — NOT the CocoaPods workspace.
+          TARGET=$(xcodebuild -project "$PROJ" -list -json \
+            | python3 -c "import sys,json; t=json.load(sys.stdin)['project']['targets']; print(next((x for x in t if 'watch' in x.lower()), ''))")
+          echo "watch target: '$TARGET'"
+          if [ -z "$TARGET" ]; then
+            echo "::error::No watch target found in the generated project"
             exit 1
           fi
           xcodebuild \
-            "${CONTAINER[@]}" \
-            -scheme "$SCHEME" \
+            -project "$PROJ" \
+            -target "$TARGET" \
             -sdk watchsimulator \
             -configuration Debug \
-            -destination 'generic/platform=watchOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
