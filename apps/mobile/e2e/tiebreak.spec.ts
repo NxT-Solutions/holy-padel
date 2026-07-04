@@ -97,3 +97,28 @@ test.describe("tie-breaks (FIP rule 1)", () => {
     await expect(page.getByTestId("won-score")).toHaveText("6-0 · 0-6 · 7-6");
   });
 });
+
+test.describe("undo through tie-break boundaries", () => {
+  test("undo steps back out of a tie-break into the 6-6 game", async ({ page }) => {
+    await gotoHome(page);
+    await startNewMatch(page, { bestOf: 1 });
+    await reachSixAll(page);
+    await expect(statusPill(page)).toHaveText("TIE-BREAK — SET 1");
+
+    await score(page, "A", 2);
+    await expectPoints(page, "2", "0");
+    await page.getByRole("button", { name: "UNDO" }).click();
+    await expectPoints(page, "1", "0");
+    await page.getByRole("button", { name: "UNDO" }).click();
+    await expectPoints(page, "0", "0");
+    // One more undo leaves the tie-break: back inside game 12 at 40-0 for B.
+    await page.getByRole("button", { name: "UNDO" }).click();
+    await expect(statusPill(page)).toHaveText("GAME POINT — MARTA & LEO");
+    await expect(page.getByTestId("set-chip-set-1")).toHaveText("6–5");
+
+    // Replaying the point re-enters the tie-break cleanly.
+    await score(page, "B", 1);
+    await expect(statusPill(page)).toHaveText("TIE-BREAK — SET 1");
+    await expectPoints(page, "0", "0");
+  });
+});
