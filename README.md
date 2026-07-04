@@ -29,8 +29,28 @@ tie-break at 6–6, advantage or golden-point deuce, optional super tie-break th
 ```sh
 pnpm install
 pnpm dev        # expo dev server (press i / a, or open the web preview)
-pnpm check      # biome + typecheck + tests, everywhere
+pnpm check      # biome + typecheck + unit/property tests, everywhere
+pnpm --filter @holy-padel/mobile e2e   # 59 Playwright specs against the web build
 ```
+
+## Testing
+
+Four layers, all runnable locally:
+
+- **Engine units** (`packages/scoring/test`) — 62 tests citing FIP rule numbers:
+  game modes, 7-5 sets, tie-break rotation and serve handoff, super tie-break,
+  star point boundaries, plus fast-check **property invariants** over hundreds of
+  random matches (undo is always exact, set scores always legal, no play after
+  the final point).
+- **DB units** (`packages/db/test`) — repositories on `node:sqlite`, including
+  the guard that refuses point events on finished matches.
+- **App units** (`apps/mobile/test`) — the seed replays to the design's exact
+  numbers; formatter contracts.
+- **E2E** (`apps/mobile/e2e`) — 59 Playwright specs, each in a fresh browser
+  context (fresh OPFS ⇒ the exact seeded database): every screen and flow,
+  full matches of every format, undo across game/set/tie-break boundaries,
+  rematch chains, twin live matches, the empty ledger, picker edges,
+  double-tap guards, and the deep-link/reload navigation regressions.
 
 First launch seeds the design's demo ledger (players, twelve finished matches and
 the live one from the home screen) — all stored as real point events and replayed
