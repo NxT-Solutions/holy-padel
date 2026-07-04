@@ -74,6 +74,44 @@ The two platforms carry the identical JSON above; only the wire differs.
   when the phone is asleep. Using the same `{ path, body }` shape as the Wear OS
   paths lets the phone decode both transports with one code path.
 
+## Phone-side pipeline
+
+The phone half of the sync lives in [`apps/mobile/src/watch`](../apps/mobile/src/watch):
+
+1. **`build-state.ts`** — `buildWatchState()` maps the live/finished/absent match to
+   the state payload above, reusing the phone's own formatters (`watchStatusLabel`,
+   `liveScoreLine`, `durationLabel`, …). Pure and unit-tested.
+2. **`apply-intent.ts`** — `applyWatchIntent()` applies a `{ path, body }` intent to
+   the ledger with the same writes the live screen uses (`appendEvent`,
+   `removeLastEvent`, `createMatch`). Pure and unit-tested.
+3. **`use-watch-sync.ts`** — `useWatchSync()` (mounted once under `DbProvider`)
+   rebuilds and pushes the payload on every ledger mutation and a 30 s clock tick,
+   and feeds incoming intents through `applyWatchIntent`.
+4. **`bridge.ts`** — the boundary to the native transport, resolved with
+   `requireOptionalNativeModule("WatchBridge")`. When no native module is linked
+   (web, or a build without it) every call is a no-op, so the phone app is unchanged.
+
+### Native `WatchBridge` module contract
+
+The transport is a native module named **`WatchBridge`** that the JS boundary expects to expose:
+
+- `pushState(json: string): void` — publish the state JSON to the paired watch.
+  - **Android:** `Wearable.getDataClient(context).putDataItem` of a `PutDataMapRequest`
+    at `/holy-padel/state` with `dataMap.putString("json", json)` (bump a timestamp key
+    so identical-looking updates still propagate). This is exactly the `"json"` key at
+    `/holy-padel/state` the Wear app reads (`WatchSync.kt`).
+  - **iOS:** `WCSession.default.updateApplicationContext(["state": json])`, plus
+    `sendMessage(["state": json])` when reachable — the `"state"` key the watch target
+    decodes (`WatchConnectivityManager.swift`).
+- an **`onIntent`** event carrying `{ path, body }` — emitted when the watch sends one.
+  - **Android:** a `MessageClient.OnMessageReceivedListener` → `{ path: event.path,
+    body: String(event.data) }`.
+  - **iOS:** `WCSessionDelegate.session(_:didReceiveMessage:)` /
+    `didReceiveUserInfo` → `{ path, body }`.
+
+Both watch apps already implement their ends of this contract; wiring the native
+`WatchBridge` module and pairing require physical devices to validate end to end.
+
 ## Notes
 
 - The watch UI derives entirely from `phase`: `idle` → quick-start card,
