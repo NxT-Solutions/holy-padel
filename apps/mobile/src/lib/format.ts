@@ -121,6 +121,24 @@ export function finalScoreLine(snapshot: MatchSnapshot): string {
     .join(" · ");
 }
 
+/** The point call for a team — "0/15/30/40/AD" in a game, the number in a tie-break. */
+export function pointDisplay(snapshot: MatchSnapshot, team: TeamId): string {
+  const game = snapshot.currentGame;
+  if (game === undefined) {
+    return "";
+  }
+  return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
+}
+
+/** "SET 2" / "SUPER TB" — the set in play, in the watch header's compact style. */
+export function watchSetLabel(snapshot: MatchSnapshot): string {
+  const game = snapshot.currentGame;
+  if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
+    return "SUPER TB";
+  }
+  return `SET ${String(snapshot.setNumber)}`;
+}
+
 /** "1.2 MB" */
 export function megabytesLabel(bytes: number): string {
   const megabytes = bytes / (1024 * 1024);

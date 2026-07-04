@@ -1,0 +1,87 @@
+import type { TeamPlayers } from "@holy-padel/db";
+import {
+  appendEvent,
+  createMatch,
+  createPlayer,
+  finishMatch,
+  getLiveMatch,
+  loadEvents,
+  migrate,
+} from "@holy-padel/db";
+import type { MatchConfig } from "@holy-padel/scoring";
+import { describe, expect, it } from "vitest";
+import { applyWatchIntent, INTENT_PATHS } from "../src/watch/apply-intent.ts";
+import { memoryDriver } from "./memory-driver.ts";
+
+const config: MatchConfig = {
+  bestOf: 3,
+  deuceMode: "advantage",
+  thirdSet: "superTieBreak",
+  firstServe: "A",
+};
+const players: TeamPlayers = { A: ["nico", "javi"], B: ["marta", "leo"] };
+const ctx = { now: 1000, newMatchId: () => "rematch" };
+
+function freshDb() {
+  const driver = memoryDriver();
+  migrate(driver);
+  // Matches carry foreign keys to players, so the roster must exist first.
+  for (const id of ["nico", "javi", "marta", "leo"]) {
+    createPlayer(driver, { id, name: id, createdAt: 0 });
+  }
+  return driver;
+}
+
+describe("applyWatchIntent", () => {
+  it("scores points on the live match", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "B" }, ctx);
+
+    expect(loadEvents(driver, "m1").map((event) => event.winner)).toEqual(["A", "B"]);
+  });
+
+  it("ignores an invalid score body", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "X" }, ctx);
+
+    expect(loadEvents(driver, "m1")).toHaveLength(0);
+  });
+
+  it("undoes the last point", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    appendEvent(driver, "m1", { winner: "A", at: 0 });
+    appendEvent(driver, "m1", { winner: "B", at: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.undo, body: "" }, ctx);
+
+    expect(loadEvents(driver, "m1").map((event) => event.winner)).toEqual(["A"]);
+  });
+
+  it("rematches the last finished lineup when idle", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0, court: "COURT 4" });
+    finishMatch(driver, "m1", { winner: "A", endedAt: 10, scoreLine: "6-0 · 6-0" });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
+
+    const live = getLiveMatch(driver);
+    expect(live?.id).toBe("rematch");
+    expect(live?.players).toEqual(players);
+    expect(live?.court).toBe("COURT 4");
+  });
+
+  it("does not rematch while a match is already live", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
+
+    expect(getLiveMatch(driver)?.id).toBe("m1");
+  });
+});

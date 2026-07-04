@@ -86,6 +86,9 @@
         "rules": {
           "style": {
             "noDefaultExport": "off"
+          },
+          "correctness": {
+            "noNodejsModules": "off"
           }
         }
       }
