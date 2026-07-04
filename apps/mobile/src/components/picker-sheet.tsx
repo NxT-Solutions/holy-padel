@@ -75,7 +75,13 @@ function RosterRow({
   );
 }
 
-function NewPlayerRow({ onCreate }: { readonly onCreate: (name: string) => void }): ReactNode {
+function NewPlayerRow({
+  onCreate,
+  onCreated,
+}: {
+  readonly onCreate: (name: string) => void;
+  readonly onCreated: () => void;
+}): ReactNode {
   const [newName, setNewName] = useState("");
   return (
     <XStack alignItems="center" gap={10} paddingVertical={11} paddingHorizontal={14}>
@@ -107,6 +113,7 @@ function NewPlayerRow({ onCreate }: { readonly onCreate: (name: string) => void 
           if (newName.trim() !== "") {
             onCreate(newName.trim());
             setNewName("");
+            onCreated();
           }
         }}
         returnKeyType="done"
@@ -210,7 +217,12 @@ export function PickerSheet({
               onToggle={onToggle}
             />
           ))}
-          <NewPlayerRow onCreate={onCreate} />
+          <NewPlayerRow
+            onCreate={onCreate}
+            onCreated={() => {
+              setQuery("");
+            }}
+          />
         </ScrollView>
         <XStack
           height={56}
