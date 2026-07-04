@@ -19,6 +19,7 @@ import { colors } from "@/theme/colors.ts";
 void preventAutoHideAsync();
 
 /** Deep links land with the tab navigator beneath them, so back/dismiss always work. */
+// biome-ignore lint/style/useNamingConvention: expo-router requires this exact export name
 export const unstable_settings = {
   initialRouteName: "(tabs)",
 };

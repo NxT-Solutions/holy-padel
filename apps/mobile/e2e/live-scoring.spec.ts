@@ -84,7 +84,8 @@ test.describe("live scoring (design 1a)", () => {
     await gotoHome(page);
     await startNewMatch(page);
     await page.getByRole("button", { name: "UNDO" }).click();
-    await expectPoints(page, "0", "0");
+    await expect(page.getByTestId("point-A")).toHaveText("0");
+    await expect(page.getByTestId("point-B")).toHaveText("0");
   });
 
   test("set point and match point labels escalate", async ({ page }) => {

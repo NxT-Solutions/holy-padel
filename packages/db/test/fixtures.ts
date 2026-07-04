@@ -16,7 +16,8 @@ let now = 1_700_000_000_000;
 
 export function nextTimestamp(): number {
   now += 60_000;
-  return now;
+  const stamp: number = now;
+  return stamp;
 }
 
 /** A migrated database seeded with the design's six players; nico owns it. */

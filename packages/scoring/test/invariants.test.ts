@@ -108,20 +108,18 @@ describe("engine invariants over random matches", () => {
     fc.assert(
       fc.property(configArbitrary, winnersArbitrary, (config, winners) => {
         const events = playableEvents(config, winners);
-        let previousGames = -1;
-        let previousServer: TeamId | undefined;
+        const gameServers = new Map<number, TeamId>();
         for (let index = 0; index <= events.length; index += 1) {
           const snapshot = computeMatch(config, events.slice(0, index));
-          if (snapshot.finished || snapshot.currentGame?.kind !== "standard") {
-            continue;
+          if (!snapshot.finished && snapshot.currentGame?.kind === "standard") {
+            const games = snapshot.totalGames.A + snapshot.totalGames.B;
+            gameServers.set(games, snapshot.servingTeam);
           }
-          const games = snapshot.totalGames.A + snapshot.totalGames.B;
-          if (games !== previousGames) {
-            if (previousServer !== undefined && games === previousGames + 1) {
-              expect(snapshot.servingTeam).not.toBe(previousServer);
-            }
-            previousGames = games;
-            previousServer = snapshot.servingTeam;
+        }
+        for (const [games, server] of gameServers) {
+          const previous = gameServers.get(games - 1);
+          if (previous !== undefined) {
+            expect(server).not.toBe(previous);
           }
         }
       }),

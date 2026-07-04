@@ -196,14 +196,17 @@ export function appendEvents(
     "SELECT COALESCE(MAX(seq), 0) AS seq FROM match_events WHERE match_id = ?",
     [matchId],
   );
-  let seq = row === undefined ? 0 : expectNumber(row, "seq");
+  const baseSeq = row === undefined ? 0 : expectNumber(row, "seq");
   for (let start = 0; start < events.length; start += APPEND_CHUNK) {
     const chunk = events.slice(start, start + APPEND_CHUNK);
     const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
-    const params = chunk.flatMap((event) => {
-      seq += 1;
-      return [matchId, seq, event.winner, event.at];
-    });
+    const chunkBase = baseSeq + start;
+    const params = chunk.flatMap((event, offset) => [
+      matchId,
+      chunkBase + offset + 1,
+      event.winner,
+      event.at,
+    ]);
     driver.execute(
       `INSERT INTO match_events (match_id, seq, winner, at) VALUES ${placeholders}`,
       params,

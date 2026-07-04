@@ -57,7 +57,8 @@
                 },
                 "formats": ["camelCase", "CONSTANT_CASE"]
               }
-            ]
+            ],
+            "strictCase": false
           }
         }
       }
@@ -124,7 +125,11 @@
             "noAwaitInLoops": "off"
           },
           "nursery": {
-            "useConsistentTestIt": "off"
+            "useConsistentTestIt": "off",
+            "noConditionalExpect": "off"
+          },
+          "complexity": {
+            "noExcessiveLinesPerFunction": "off"
           }
         }
       }
@@ -170,6 +175,20 @@
                 "skip": ["Display", "Body", "Overline"]
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/e2e/**", "**/playwright.config.ts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noNodejsModules": "off"
+          },
+          "style": {
+            "noProcessEnv": "off",
+            "useNamingConvention": "off"
           }
         }
       }
