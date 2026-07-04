@@ -1,5 +1,7 @@
 # Holy Padel
 
+[![CI](https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml/badge.svg)](https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml)
+
 Padel score tracker — every point, game and set on your phone, stored locally.
 
 Implements the **Padel Score Tracker** design (see [`design/`](design)) on top of the
