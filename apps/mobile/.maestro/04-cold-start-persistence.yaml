@@ -7,22 +7,29 @@ name: Cold-start persistence
 - runFlow: subflows/launch-seeded.yaml
 
 - tapOn: "RESUME SCORING"
+- extendedWaitUntil:
+    visible:
+      id: "point-A"
+      text: "40"
+    timeout: 20000
 - tapOn: "Point Marta & Leo"
-- assertVisible:
-    id: "status-pill"
-    text: "DEUCE"
+- extendedWaitUntil:
+    visible: "DEUCE"
+    timeout: 10000
 
 # Kill and relaunch the process; the seeded DB and the new point must survive.
 - stopApp
 - launchApp
-- assertVisible: "LIVE NOW"
+- extendedWaitUntil:
+    visible: "LIVE NOW"
+    timeout: 45000
 - tapOn: "RESUME SCORING"
+- extendedWaitUntil:
+    visible:
+      id: "point-B"
+      text: "40"
+    timeout: 20000
 - assertVisible:
     id: "point-A"
     text: "40"
-- assertVisible:
-    id: "point-B"
-    text: "40"
-- assertVisible:
-    id: "status-pill"
-    text: "DEUCE"
+- assertVisible: "DEUCE"

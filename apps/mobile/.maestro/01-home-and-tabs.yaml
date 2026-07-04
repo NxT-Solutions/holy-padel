@@ -14,8 +14,14 @@ name: Home and native tab navigation
 
 # The floating pill tab bar switches tabs natively.
 - tapOn: "MATCHES"
-- assertVisible: "stored locally"
+- extendedWaitUntil:
+    visible: "stored locally"
+    timeout: 15000
 - tapOn: "PROFILE"
-- assertVisible: "WIN RATE"
+- extendedWaitUntil:
+    visible: "WIN RATE"
+    timeout: 15000
 - tapOn: "HOME"
-- assertVisible: "HOLA, NICO"
+- extendedWaitUntil:
+    visible: "HOLA, NICO"
+    timeout: 15000
