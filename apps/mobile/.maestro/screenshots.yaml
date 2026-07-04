@@ -1,0 +1,70 @@
+# Captures a screenshot of every screen on the emulator. Not an assertion flow —
+# it drives the same navigation the test flows cover and saves device-real PNGs
+# (uploaded by the native-e2e workflow's artifact step).
+appId: com.holypadel.app
+name: Capture screenshots
+---
+- runFlow: subflows/launch-seeded.yaml
+- takeScreenshot: shot-01-home
+
+- tapOn: "RESUME SCORING"
+- extendedWaitUntil:
+    visible:
+      id: "point-A"
+      text: "40"
+    timeout: 20000
+- takeScreenshot: shot-02-live-scoring
+
+# Finish the match (one point wins the game, a love game wins set 2 and the match).
+- repeat:
+    times: 5
+    commands:
+      - tapOn: "Point Nico & Javi"
+- extendedWaitUntil:
+    visible: "MATCH WON"
+    timeout: 20000
+- takeScreenshot: shot-03-match-won
+- tapOn: "SAVE & CLOSE"
+- extendedWaitUntil:
+    visible: "HOLA, NICO"
+    timeout: 20000
+
+# Matches tab, then a finished match's overview.
+- tapOn:
+    id: "tab-matches"
+- extendedWaitUntil:
+    visible: "stored locally"
+    timeout: 15000
+- takeScreenshot: shot-05-matches
+- tapOn: "6-3 · 7-6"
+- extendedWaitUntil:
+    visible: "MATCH TOTALS"
+    timeout: 15000
+- takeScreenshot: shot-04-match-overview
+
+# Profile tab.
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible: "WIN RATE"
+    timeout: 15000
+- takeScreenshot: shot-06-profile
+
+# New match setup and the player picker sheet.
+- tapOn:
+    id: "tab-home"
+- extendedWaitUntil:
+    visible: "HOLA, NICO"
+    timeout: 15000
+- tapOn: "NEW MATCH"
+- extendedWaitUntil:
+    visible: "Doubles · FIP scoring"
+    timeout: 15000
+- takeScreenshot: shot-07-new-match
+- tapOn:
+    text: "Pick a player"
+    index: 0
+- extendedWaitUntil:
+    visible: "PICK TEAM A"
+    timeout: 10000
+- takeScreenshot: shot-08-player-picker
