@@ -48,7 +48,7 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
 extension WatchConnectivityManager: WCSessionDelegate {
     func session(
         _ session: WCSession,
-        activationDidComplete activationState: WCSessionActivationState,
+        activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
     ) {
         // Catch up on whatever state the phone last set while we were away.
