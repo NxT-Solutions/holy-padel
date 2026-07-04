@@ -16,6 +16,12 @@ expo-env.d.ts
 *.mobileprovision
 ios/
 android/
+# ...but local Expo modules ship committed native source; the ios//android/ rules
+# above are meant for generated app projects, not this.
+!apps/mobile/modules/*/ios/
+!apps/mobile/modules/*/ios/**
+!apps/mobile/modules/*/android/
+!apps/mobile/modules/*/android/**
 
 # turbo
 .turbo/
