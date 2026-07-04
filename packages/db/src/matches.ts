@@ -183,6 +183,34 @@ export function appendEvent(driver: SqlDriver, matchId: string, event: PointEven
   );
 }
 
+const APPEND_CHUNK = 100;
+
+/** Append many events in a few multi-row inserts (bulk seeding, imports). */
+export function appendEvents(
+  driver: SqlDriver,
+  matchId: string,
+  events: readonly PointEvent[],
+): void {
+  const row = queryOne(
+    driver,
+    "SELECT COALESCE(MAX(seq), 0) AS seq FROM match_events WHERE match_id = ?",
+    [matchId],
+  );
+  let seq = row === undefined ? 0 : expectNumber(row, "seq");
+  for (let start = 0; start < events.length; start += APPEND_CHUNK) {
+    const chunk = events.slice(start, start + APPEND_CHUNK);
+    const placeholders = chunk.map(() => "(?, ?, ?, ?)").join(", ");
+    const params = chunk.flatMap((event) => {
+      seq += 1;
+      return [matchId, seq, event.winner, event.at];
+    });
+    driver.execute(
+      `INSERT INTO match_events (match_id, seq, winner, at) VALUES ${placeholders}`,
+      params,
+    );
+  }
+}
+
 export function removeLastEvent(driver: SqlDriver, matchId: string): void {
   driver.execute(
     `DELETE FROM match_events

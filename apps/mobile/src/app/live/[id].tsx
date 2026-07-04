@@ -41,6 +41,7 @@ function SetChip({
   readonly score: string;
   readonly state: "done" | "current" | "future";
 }): ReactNode {
+  const testId = `set-chip-${label.toLowerCase().replaceAll(" ", "-")}`;
   if (state === "done") {
     return (
       <YStack
@@ -53,7 +54,7 @@ function SetChip({
         <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={whiteAlpha(0.5)}>
           {label}
         </Body>
-        <Display fontSize={20} color={colors.white} marginTop={2}>
+        <Display fontSize={20} color={colors.white} marginTop={2} testID={testId}>
           {score}
         </Display>
       </YStack>
@@ -74,7 +75,7 @@ function SetChip({
         <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={colors.limeInk}>
           {label}
         </Body>
-        <Display fontSize={20} marginTop={2}>
+        <Display fontSize={20} marginTop={2} testID={testId}>
           {score}
         </Display>
       </YStack>
@@ -92,7 +93,7 @@ function SetChip({
       <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={inkAlpha(0.35)}>
         {label}
       </Body>
-      <Display fontSize={20} color={inkAlpha(0.25)} marginTop={2}>
+      <Display fontSize={20} color={inkAlpha(0.25)} marginTop={2} testID={testId}>
         –
       </Display>
     </YStack>
@@ -104,11 +105,13 @@ function TeamCard({
   point,
   serving,
   onScore,
+  testID,
 }: {
   readonly name: string;
   readonly point: string;
   readonly serving: boolean;
   readonly onScore: () => void;
+  readonly testID: string;
 }): ReactNode {
   return (
     <XStack
@@ -143,7 +146,7 @@ function TeamCard({
           TAP TO SCORE +1
         </Body>
       </YStack>
-      <Display fontSize={112} lineHeight={100}>
+      <Display fontSize={112} lineHeight={100} testID={testID}>
         {point}
       </Display>
     </XStack>
@@ -492,6 +495,7 @@ export default function LiveScreen(): ReactNode {
         <TeamCard
           name={names.A}
           point={pointDisplay(snapshot, "A")}
+          testID="point-A"
           serving={snapshot.servingTeam === "A"}
           onScore={() => {
             scorePoint("A");
@@ -500,6 +504,7 @@ export default function LiveScreen(): ReactNode {
         <TeamCard
           name={names.B}
           point={pointDisplay(snapshot, "B")}
+          testID="point-B"
           serving={snapshot.servingTeam === "B"}
           onScore={() => {
             scorePoint("B");
@@ -513,6 +518,7 @@ export default function LiveScreen(): ReactNode {
           backgroundColor={colors.ink}
           paddingVertical={10}
           paddingHorizontal={22}
+          testID="status-pill"
         >
           <Display fontSize={15} letterSpacing={1.5} color={colors.lime}>
             {label}

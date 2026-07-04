@@ -1,6 +1,6 @@
 import type { SqlDriver, TeamPlayers } from "@holy-padel/db";
 import {
-  appendEvent,
+  appendEvents,
   countMatches,
   createMatch,
   createPlayer,
@@ -226,9 +226,7 @@ function seedFinishedMatch(driver: SqlDriver, plan: MatchPlan, now: number): voi
   };
   createMatch(driver, match);
   const events = planEvents(plan.sets, startedAt);
-  for (const event of events) {
-    appendEvent(driver, plan.id, event);
-  }
+  appendEvents(driver, plan.id, events);
   const snapshot = computeMatch(config, events);
   if (!snapshot.finished || snapshot.winner === undefined) {
     throw new Error(`seed match ${plan.id} did not finish as planned`);
@@ -263,12 +261,14 @@ function seedLiveMatch(driver: SqlDriver, now: number): void {
     "B",
     "A",
   ] as const;
-  winners.forEach((winner, index) => {
-    appendEvent(driver, "seed-live", {
+  appendEvents(
+    driver,
+    "seed-live",
+    winners.map((winner, index) => ({
       winner,
       at: startedAt + index * SECONDS_PER_POINT * 1000,
-    });
-  });
+    })),
+  );
 }
 
 /** First launch: install the owner, the roster and the design's demo ledger. */

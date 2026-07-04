@@ -78,7 +78,7 @@ function LiveCard({
             <Display fontSize={22} color={colors.white} width={64}>
               {pairInitials(match.names.A)}
             </Display>
-            <Display fontSize={40} lineHeight={38} color={colors.lime}>
+            <Display fontSize={40} lineHeight={38} color={colors.lime} testID="home-point-A">
               {pointCallOf(snapshot, "A")}
             </Display>
           </XStack>
@@ -86,14 +86,14 @@ function LiveCard({
             <Display fontSize={22} color={colors.white} width={64}>
               {pairInitials(match.names.B)}
             </Display>
-            <Display fontSize={40} lineHeight={38} color={colors.white}>
+            <Display fontSize={40} lineHeight={38} color={colors.white} testID="home-point-B">
               {pointCallOf(snapshot, "B")}
             </Display>
           </XStack>
         </YStack>
         <YStack alignItems="flex-end">
           <Overline color={whiteAlpha(0.4)}>SETS</Overline>
-          <Display fontSize={26} color={colors.white} marginTop={3}>
+          <Display fontSize={26} color={colors.white} marginTop={3} testID="home-score-line">
             {liveScoreLine(snapshot)}
           </Display>
         </YStack>

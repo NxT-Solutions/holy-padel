@@ -3,6 +3,7 @@ export { inTransaction } from "./driver.ts";
 export type { MatchStatus, MatchSummary, NewMatch, StoredMatch, TeamPlayers } from "./matches.ts";
 export {
   appendEvent,
+  appendEvents,
   countMatches,
   createMatch,
   deleteMatch,
