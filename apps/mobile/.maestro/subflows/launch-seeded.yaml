@@ -1,9 +1,12 @@
 # Cold-launch the app with cleared storage and wait for the seeded home screen.
 # clearState wipes the SQLite database so seedIfEmpty re-installs the exact
-# demo ledger — every flow that runs this starts identical.
+# demo ledger — every flow that runs this starts identical. The first launch
+# also bundles JS and seeds the DB, so the wait is generous.
 appId: com.holypadel.app
 ---
 - launchApp:
     clearState: true
-- assertVisible: "HOLA, NICO"
+- extendedWaitUntil:
+    visible: "HOLA, NICO"
+    timeout: 45000
 - assertVisible: "LIVE NOW"

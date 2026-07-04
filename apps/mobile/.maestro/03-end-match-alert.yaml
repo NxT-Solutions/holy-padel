@@ -6,13 +6,17 @@ name: End match native alert
 - runFlow: subflows/launch-seeded.yaml
 
 - tapOn: "RESUME SCORING"
-- assertVisible:
-    id: "point-A"
-    text: "40"
+- extendedWaitUntil:
+    visible:
+      id: "point-A"
+      text: "40"
+    timeout: 20000
 
 # Cancel first: the OS alert appears, "Keep scoring" dismisses it, score intact.
 - tapOn: "END MATCH"
-- assertVisible: "The match is not finished — discard it?"
+- extendedWaitUntil:
+    visible: "The match is not finished — discard it?"
+    timeout: 10000
 - tapOn: "Keep scoring"
 - assertVisible:
     id: "point-A"
@@ -20,6 +24,11 @@ name: End match native alert
 
 # Now confirm the discard: back to home with no live match.
 - tapOn: "END MATCH"
+- extendedWaitUntil:
+    visible: "Discard match"
+    timeout: 10000
 - tapOn: "Discard match"
-- assertVisible: "HOLA, NICO"
+- extendedWaitUntil:
+    visible: "HOLA, NICO"
+    timeout: 20000
 - assertNotVisible: "LIVE NOW"
