@@ -91,26 +91,29 @@ The phone half of the sync lives in [`apps/mobile/src/watch`](../apps/mobile/src
    `requireOptionalNativeModule("WatchBridge")`. When no native module is linked
    (web, or a build without it) every call is a no-op, so the phone app is unchanged.
 
-### Native `WatchBridge` module contract
+### Native `WatchBridge` module
 
-The transport is a native module named **`WatchBridge`** that the JS boundary expects to expose:
+The transport is a local Expo module named **`WatchBridge`**
+([`apps/mobile/modules/watch-bridge`](../apps/mobile/modules/watch-bridge)) that
+autolinks into the app on `expo prebuild`. It exposes:
 
 - `pushState(json: string): void` — publish the state JSON to the paired watch.
-  - **Android:** `Wearable.getDataClient(context).putDataItem` of a `PutDataMapRequest`
-    at `/holy-padel/state` with `dataMap.putString("json", json)` (bump a timestamp key
-    so identical-looking updates still propagate). This is exactly the `"json"` key at
-    `/holy-padel/state` the Wear app reads (`WatchSync.kt`).
-  - **iOS:** `WCSession.default.updateApplicationContext(["state": json])`, plus
-    `sendMessage(["state": json])` when reachable — the `"state"` key the watch target
-    decodes (`WatchConnectivityManager.swift`).
+  - **Android** (`WatchBridgeModule.kt`): `Wearable.getDataClient(context).putDataItem`
+    of a `PutDataMapRequest` at `/holy-padel/state` with `dataMap.putString("json", json)`
+    (plus a bumped `ts` key so identical-looking updates still propagate) — the exact
+    `"json"` key at `/holy-padel/state` the Wear app reads (`WatchSync.kt`).
+  - **iOS** (`WatchBridgeModule.swift`): `WCSession.updateApplicationContext(["state": json])`,
+    plus `sendMessage(["state": json])` when reachable — the `"state"` key the watch
+    target decodes (`WatchConnectivityManager.swift`).
 - an **`onIntent`** event carrying `{ path, body }` — emitted when the watch sends one.
   - **Android:** a `MessageClient.OnMessageReceivedListener` → `{ path: event.path,
     body: String(event.data) }`.
-  - **iOS:** `WCSessionDelegate.session(_:didReceiveMessage:)` /
-    `didReceiveUserInfo` → `{ path, body }`.
+  - **iOS:** `WCSessionDelegate.session(_:didReceiveMessage:)` / `didReceiveUserInfo`.
 
-Both watch apps already implement their ends of this contract; wiring the native
-`WatchBridge` module and pairing require physical devices to validate end to end.
+Both platforms are compiled on every change by the
+[`watch-bridge`](../.github/workflows/watch-bridge.yml) workflow (Kotlin via Gradle,
+Swift via `xcodebuild`). End-to-end Bluetooth pairing is only exercisable on
+physically paired devices.
 
 ## Notes
 

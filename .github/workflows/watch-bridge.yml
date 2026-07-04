@@ -1,0 +1,80 @@
+name: Watch Bridge
+
+# Compiles the phone-side WatchBridge native module (apps/mobile/modules/watch-bridge)
+# on both platforms — WatchConnectivity (Swift) for Apple Watch, Wearable Data
+# Layer (Kotlin) for Wear OS. The module autolinks into the app during
+# `expo prebuild`, so each job prebuilds then compiles. Runtime pairing needs
+# physical devices; this proves the native code builds. Not a required check.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/modules/watch-bridge/**"
+      - ".github/workflows/watch-bridge.yml"
+  pull_request:
+    paths:
+      - "apps/mobile/modules/watch-bridge/**"
+      - ".github/workflows/watch-bridge.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: watch-bridge-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+
+jobs:
+  compile-android:
+    name: compile-android
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prebuild Android (autolinks the module)
+        working-directory: apps/mobile
+        run: npx expo prebuild -p android --no-install
+      - name: Compile the app + WatchBridge (Kotlin)
+        working-directory: apps/mobile/android
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+  compile-ios:
+    name: compile-ios
+    runs-on: macos-26
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Prebuild iOS (installs pods, incl. the WatchBridge pod)
+        working-directory: apps/mobile
+        run: npx expo prebuild -p ios
+      - name: Compile the WatchBridge pod (Swift)
+        working-directory: apps/mobile
+        run: |
+          set -x
+          xcodebuild -project ios/Pods/Pods.xcodeproj -list
+          xcodebuild \
+            -project ios/Pods/Pods.xcodeproj \
+            -target WatchBridge \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
