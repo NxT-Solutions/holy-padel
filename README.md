@@ -8,6 +8,9 @@ Implements the **Padel Score Tracker** design (see [`design/`](design)) on top o
 official [FIP Rules of Padel](design/FIP_Rules-of-Padel.pdf): sets to 6 games,
 tie-break at 6–6, advantage or golden-point deuce, optional super tie-break third set.
 
+Ships with **Apple Watch and Wear OS companions** that mirror the live match and
+score it from your wrist — see [Watch apps](#watch-apps).
+
 ## Stack
 
 - **Turborepo** + pnpm workspaces
@@ -16,15 +19,20 @@ tie-break at 6–6, advantage or golden-point deuce, optional super tie-break th
 - **Tamagui** for components and styling
 - **SQLite** (`expo-sqlite`) — matches never leave the phone
 - **BiomeJS** for linting and formatting, maximum strictness
+- **Wear OS** companion in [`apps/watch-wear`](apps/watch-wear) — Kotlin + Jetpack Compose
+- **watchOS** companion in [`apps/mobile/targets/watch`](apps/mobile/targets/watch) — SwiftUI, via `@bacons/apple-targets`
 
 ## Layout
 
-| Path               | What                                                    |
-| ------------------ | ------------------------------------------------------- |
-| `apps/mobile`      | Expo app — screens, navigation, SQLite adapter          |
-| `packages/scoring` | Pure FIP-rules match engine (event-sourced, undoable)   |
-| `packages/db`      | Schema, migrations and typed repositories over SQLite   |
-| `design/`          | Source design file + official rules PDF                 |
+| Path                        | What                                                    |
+| --------------------------- | ------------------------------------------------------- |
+| `apps/mobile`               | Expo app — screens, navigation, SQLite adapter          |
+| `apps/mobile/targets/watch` | Apple Watch app — SwiftUI, WatchConnectivity            |
+| `apps/watch-wear`           | Wear OS app — Kotlin + Compose, Wearable Data Layer     |
+| `packages/scoring`          | Pure FIP-rules match engine (event-sourced, undoable)   |
+| `packages/db`               | Schema, migrations and typed repositories over SQLite   |
+| `docs/watch-sync.md`        | Phone ↔ watch sync contract (shared by both watches)    |
+| `design/`                   | Source design file + official rules PDF                 |
 
 ## Commands
 
@@ -87,6 +95,44 @@ that drives the live status pill. Undo removes the last event; resume replays th
 list. `computeStats` derives the overview screen: breaks, service games held,
 longest game, per-set durations.
 
+## Watch apps
+
+The design's watch screens (3g/3h, 1c–1e) ship as **two native companions**, one
+per platform. Both are thin mirrors of the phone: they render the live match and
+send `score` / `undo` / `start-last` intents back, but run **no scoring engine** —
+so the FIP rules keep exactly one implementation, on the phone. The phone stays
+the single source of truth (its SQLite ledger + `@holy-padel/scoring`). The shared
+JSON payload contract is [`docs/watch-sync.md`](docs/watch-sync.md).
+
+| Watch         | Where                            | Stack                     | Transport                                                                   |
+| ------------- | -------------------------------- | ------------------------- | --------------------------------------------------------------------------- |
+| **Wear OS**   | [`apps/watch-wear`](apps/watch-wear)                     | Kotlin + Jetpack Compose  | Wearable Data Layer — `DataClient` (state), `MessageClient` (intents)       |
+| **Apple Watch** | [`apps/mobile/targets/watch`](apps/mobile/targets/watch) | SwiftUI                   | WatchConnectivity — `updateApplicationContext` (state), `sendMessage`/`transferUserInfo` (intents) |
+
+The Apple Watch target is generated into the iOS project by
+[`@bacons/apple-targets`](https://github.com/EvanBacon/expo-apple-targets) during
+`expo prebuild`, so it lives in the monorepo and survives regeneration. Both are
+**compiled on every change in CI** (see [CI](#ci)); live Bluetooth pairing needs
+the phone-side sync bridge and physical devices.
+
+## CI
+
+Six workflows in [`.github/workflows`](.github/workflows), all on GitHub-hosted runners:
+
+| Workflow        | Runs                                                    | Required? |
+| --------------- | ------------------------------------------------------- | --------- |
+| `ci`            | Biome, typecheck, unit + property tests, web build      | ✅ `quality`, `web-build` |
+| `ci` (`e2e`)    | 59 Playwright specs against the Expo web build          | ✅ `e2e`  |
+| `native-e2e`    | Maestro flows on an Android emulator (real device shell)| on demand / `main` / label |
+| `watch-wear`    | Gradle `assembleDebug` of the Wear OS app               | on watch changes |
+| `watchos`       | Unsigned `watchsimulator` build of the Apple Watch app (macos-26) | on watch changes |
+| `dependabot`    | Grouped dependency PRs                                   | —         |
+
+`main` is protected by the `protect-main` ruleset: PRs required, `quality` / `e2e`
+/ `web-build` must pass and be up to date, no force-push or deletion. The heavier
+device/watch builds are kept off the required set so they don't gate every PR;
+promote them if you want them blocking merges.
+
 ## Notes
 
 - `patches/expo-sqlite@57.0.0.patch` fixes an upstream bug in expo-sqlite's web
@@ -95,6 +141,3 @@ longest game, per-set durations.
   "Unexpected end of JSON input". Worth an upstream PR.
 - `apps/mobile/metro.config.js` serves the sqlite wasm asset and sets the
   cross-origin-isolation headers the web build needs.
-- The design's watch screens (3g/3h, 1c–1e) are companion-device surfaces; the
-  phone app implements every phone flow. A watchOS/Wear app is out of scope for
-  Expo and would be a separate target.
