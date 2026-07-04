@@ -12,12 +12,12 @@ name: End match native alert
       text: "40"
     timeout: 20000
 
-# Cancel first: the OS alert appears, "Keep scoring" dismisses it, score intact.
+# Cancel first: the OS alert appears, "Cancel" dismisses it, score intact.
 - tapOn: "END MATCH"
 - extendedWaitUntil:
     visible: "The match is not finished — discard it?"
     timeout: 10000
-- tapOn: "Keep scoring"
+- tapOn: "Cancel"
 - assertVisible:
     id: "point-A"
     text: "40"

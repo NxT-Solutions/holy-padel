@@ -12,16 +12,23 @@ name: Home and native tab navigation
     id: "home-score-line"
     text: "6-4 · 4-3"
 
-# The floating pill tab bar switches tabs natively.
+# The floating pill tab bar switches tabs natively. waitForAnimationToEnd lets
+# the tab transition settle so the assertion reads the committed hierarchy.
 - tapOn: "MATCHES"
+- waitForAnimationToEnd:
+    timeout: 5000
 - extendedWaitUntil:
-    visible: "stored locally"
+    visible: "13 stored locally"
     timeout: 15000
 - tapOn: "PROFILE"
+- waitForAnimationToEnd:
+    timeout: 5000
 - extendedWaitUntil:
     visible: "WIN RATE"
     timeout: 15000
 - tapOn: "HOME"
+- waitForAnimationToEnd:
+    timeout: 5000
 - extendedWaitUntil:
     visible: "HOLA, NICO"
     timeout: 15000
