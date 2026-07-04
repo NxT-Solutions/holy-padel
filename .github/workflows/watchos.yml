@@ -1,0 +1,94 @@
+name: watchOS
+
+# Compiles the Apple Watch (SwiftUI) target. The target is generated into the
+# native iOS project by @bacons/apple-targets during `expo prebuild`, so this
+# job prebuilds first, then builds just the watch scheme for the watchOS
+# simulator with signing disabled — no certificates or provisioning needed.
+#
+# Like the Wear OS and native-e2e jobs, this is intentionally NOT a required
+# status check: it validates that the watch app compiles on every change to the
+# target or the native config.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/targets/**"
+      - "apps/mobile/app.json"
+      - "apps/mobile/package.json"
+      - ".github/workflows/watchos.yml"
+  pull_request:
+    paths:
+      - "apps/mobile/targets/**"
+      - "apps/mobile/app.json"
+      - "apps/mobile/package.json"
+      - ".github/workflows/watchos.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: watchos-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+
+jobs:
+  build-watchos:
+    name: build-watchos
+    # macos-26 ships Xcode 26 with the watchOS simulator runtime preinstalled.
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Toolchain info
+        run: |
+          ls /Applications | grep -i xcode || true
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i watch || true
+
+      - name: Prebuild iOS (generates the watch target into ios/)
+        working-directory: apps/mobile
+        # Full prebuild (with pod install) so the generated .xcworkspace and the
+        # watch embed wiring are complete — the reliable path for a blind CI build.
+        run: npx expo prebuild -p ios --clean
+
+      - name: Build the watch app (simulator, unsigned)
+        working-directory: apps/mobile
+        run: |
+          set -x
+          WS=$(ls -d ios/*.xcworkspace 2>/dev/null | head -1)
+          PROJ=$(ls -d ios/*.xcodeproj 2>/dev/null | head -1)
+          if [ -n "$WS" ]; then
+            CONTAINER=(-workspace "$WS")
+          else
+            CONTAINER=(-project "$PROJ")
+          fi
+          echo "container: ${CONTAINER[*]}"
+          xcodebuild "${CONTAINER[@]}" -list
+          SCHEME=$(xcodebuild "${CONTAINER[@]}" -list -json \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); k='workspace' if 'workspace' in d else 'project'; s=d[k]['schemes']; print(next((x for x in s if 'watch' in x.lower()), ''))")
+          echo "watch scheme: '$SCHEME'"
+          if [ -z "$SCHEME" ]; then
+            echo "::error::No watch scheme found in the generated project"
+            exit 1
+          fi
+          xcodebuild \
+            "${CONTAINER[@]}" \
+            -scheme "$SCHEME" \
+            -sdk watchsimulator \
+            -configuration Debug \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
