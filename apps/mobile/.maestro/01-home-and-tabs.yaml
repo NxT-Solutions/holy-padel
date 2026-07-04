@@ -14,19 +14,22 @@ name: Home and native tab navigation
 
 # The floating pill tab bar switches tabs natively. waitForAnimationToEnd lets
 # the tab transition settle so the assertion reads the committed hierarchy.
-- tapOn: "MATCHES"
+- tapOn:
+    id: "tab-matches"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
     visible: "13 stored locally"
     timeout: 15000
-- tapOn: "PROFILE"
+- tapOn:
+    id: "tab-profile"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
     visible: "WIN RATE"
     timeout: 15000
-- tapOn: "HOME"
+- tapOn:
+    id: "tab-home"
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:

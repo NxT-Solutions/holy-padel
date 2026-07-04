@@ -4,7 +4,8 @@ name: Delete match native alert
 ---
 - runFlow: subflows/launch-seeded.yaml
 
-- tapOn: "MATCHES"
+- tapOn:
+    id: "tab-matches"
 - extendedWaitUntil:
     visible: "13 stored locally"
     timeout: 15000
@@ -27,7 +28,8 @@ name: Delete match native alert
     visible: "Delete"
     timeout: 10000
 - tapOn: "Delete"
-- tapOn: "MATCHES"
+- tapOn:
+    id: "tab-matches"
 - extendedWaitUntil:
     visible: "12 stored locally"
     timeout: 15000

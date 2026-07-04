@@ -58,7 +58,8 @@ name: New match through to match won
 - extendedWaitUntil:
     visible: "HOLA, NICO"
     timeout: 20000
-- tapOn: "MATCHES"
+- tapOn:
+    id: "tab-matches"
 - extendedWaitUntil:
     visible: "14 stored locally"
     timeout: 15000
