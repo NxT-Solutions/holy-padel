@@ -10,6 +10,17 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # These track the Expo SDK and must move together via an SDK upgrade
+      # (`expo install`), not individual bumps — npm "latest" is often ahead of
+      # what the installed SDK's native runtime expects.
+      - dependency-name: expo
+      - dependency-name: expo-*
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: react-native-*
+      - dependency-name: "@expo/*"
 
   - package-ecosystem: github-actions
     directory: /
