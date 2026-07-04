@@ -10,7 +10,7 @@ import {
 } from "@holy-padel/db";
 import type { MatchSnapshot, MatchStats, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,7 +20,7 @@ import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { confirmDestructive } from "@/lib/confirm.ts";
 import { dayLabel, durationLabel, finalScoreLine, teamNames } from "@/lib/format.ts";
-import { goHome } from "@/lib/navigation.ts";
+import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
 
@@ -318,17 +318,18 @@ function usePersistFinish(
   events: readonly PointEvent[],
 ): void {
   const mutate = useDbMutation();
-  const persistedFinish = useRef(false);
+  // Keyed by match id: a rematch replaces the route param without remounting.
+  const persistedFinish = useRef<string | undefined>(undefined);
   useEffect(() => {
     const pending =
       match?.status === "live" &&
       snapshot?.finished === true &&
       snapshot.winner !== undefined &&
-      !persistedFinish.current;
+      persistedFinish.current !== id;
     if (!pending) {
       return;
     }
-    persistedFinish.current = true;
+    persistedFinish.current = id;
     const winner = snapshot.winner ?? "A";
     const lastEvent = events.at(-1);
     mutate((driver) => {
@@ -390,6 +391,10 @@ export default function LiveScreen(): ReactNode {
 
   const match = useDbQuery((driver) => getMatch(driver, id));
   const events = useDbQuery((driver) => loadEvents(driver, id));
+  const rematchStarted = useRef(false);
+  useEffect(() => {
+    rematchStarted.current = false;
+  }, []);
   const snapshot = match === undefined ? undefined : computeMatch(match.config, events);
   const finishedStats =
     match !== undefined && snapshot?.finished === true
@@ -399,7 +404,8 @@ export default function LiveScreen(): ReactNode {
   usePersistFinish(id, match, snapshot, events);
 
   if (match === undefined || snapshot === undefined) {
-    return null;
+    // Deleted or unknown match (stale link, back after discard): recover home.
+    return <Redirect href="/" />;
   }
 
   const names = teamNames(match);
@@ -412,7 +418,11 @@ export default function LiveScreen(): ReactNode {
         stats={finishedStats}
         now={now}
         onRematch={() => {
-          const rematchId = `match-${String(Date.now())}`;
+          if (rematchStarted.current) {
+            return;
+          }
+          rematchStarted.current = true;
+          const rematchId = newMatchId();
           mutate((driver) => {
             createMatch(driver, {
               id: rematchId,
@@ -430,6 +440,10 @@ export default function LiveScreen(): ReactNode {
   }
 
   const scorePoint = (team: TeamId): void => {
+    // A tap that races the match-won swap must not extend the event log.
+    if (snapshot.finished) {
+      return;
+    }
     mutate((driver) => {
       appendEvent(driver, id, { winner: team, at: Date.now() });
     });
