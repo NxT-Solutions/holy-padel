@@ -23,6 +23,12 @@ import { colors, inkAlpha } from "@/theme/colors.ts";
 
 type Filter = "all" | "won" | "lost" | "rivals";
 
+/** A pair's stable identity: the two player ids, order-independent. */
+function opponentKey(match: MatchSummary, ownerTeam: "A" | "B"): string {
+  const ids = ownerTeam === "A" ? match.players.B : match.players.A;
+  return [...ids].sort().join("+");
+}
+
 const FILTER_PREDICATES: Record<
   Filter,
   (match: MatchSummary, ownerTeam: "A" | "B", rivals: string | undefined) => boolean
@@ -30,7 +36,7 @@ const FILTER_PREDICATES: Record<
   all: () => true,
   won: (match, ownerTeam) => match.status === "finished" && match.winner === ownerTeam,
   lost: (match, ownerTeam) => match.status === "finished" && match.winner !== ownerTeam,
-  rivals: (match, ownerTeam, rivals) => pairInitials(opponentsOf(match, ownerTeam)) === rivals,
+  rivals: (match, ownerTeam, rivals) => opponentKey(match, ownerTeam) === rivals,
 };
 
 function liveLine(driver: SqlDriver, match: MatchSummary): string {
@@ -140,17 +146,20 @@ export default function MatchesScreen(): ReactNode {
     const counts = new Map<string, { label: string; count: number }>();
     for (const match of finished) {
       const ownerTeam = ownerTeamOf(match, "nico");
-      const label = pairInitials(opponentsOf(match, ownerTeam));
-      const entry = counts.get(label) ?? { label, count: 0 };
+      const key = opponentKey(match, ownerTeam);
+      const entry = counts.get(key) ?? {
+        label: pairInitials(opponentsOf(match, ownerTeam)),
+        count: 0,
+      };
       entry.count += 1;
-      counts.set(label, entry);
+      counts.set(key, entry);
     }
-    const [top] = [...counts.values()].sort((left, right) => right.count - left.count);
-    return top?.label;
+    const [top] = [...counts.entries()].sort((left, right) => right[1].count - left[1].count);
+    return top === undefined ? undefined : { key: top[0], label: top[1].label };
   });
 
   const visible = rows.filter(({ match }) =>
-    FILTER_PREDICATES[filter](match, ownerTeamOf(match, "nico"), rivals),
+    FILTER_PREDICATES[filter](match, ownerTeamOf(match, "nico"), rivals?.key),
   );
 
   return (
@@ -211,7 +220,7 @@ export default function MatchesScreen(): ReactNode {
         />
         {rivals === undefined ? null : (
           <FilterChip
-            label={`VS ${rivals}`}
+            label={`VS ${rivals.label}`}
             active={filter === "rivals"}
             onPress={() => {
               setFilter("rivals");
