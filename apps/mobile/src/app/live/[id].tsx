@@ -19,18 +19,10 @@ import { Undo } from "@/components/icons.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { confirmDestructive } from "@/lib/confirm.ts";
-import { dayLabel, durationLabel, finalScoreLine, teamNames } from "@/lib/format.ts";
+import { dayLabel, durationLabel, finalScoreLine, pointDisplay, teamNames } from "@/lib/format.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
-
-function pointDisplay(snapshot: MatchSnapshot, team: TeamId): string {
-  const game = snapshot.currentGame;
-  if (game === undefined) {
-    return "";
-  }
-  return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
-}
 
 function SetChip({
   label,

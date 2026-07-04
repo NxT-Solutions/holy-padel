@@ -42,6 +42,10 @@ example
 /ios
 /android
 
+# @bacons/apple-targets regenerates the watch AppIcon/accent from the
+# expo-target.config.js `icon`/`colors` on every prebuild — not source.
+targets/watch/Assets.xcassets/
+
 # playwright
 test-results/
 playwright-report/
