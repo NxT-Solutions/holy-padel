@@ -137,7 +137,13 @@ export default function MatchOverviewScreen(): ReactNode {
         >
           {`DEF. ${names[loser].toUpperCase()}`}
         </Body>
-        <Display fontSize={58} lineHeight={60} color={colors.lime} marginTop={12}>
+        <Display
+          fontSize={58}
+          lineHeight={60}
+          color={colors.lime}
+          marginTop={12}
+          testID="overview-score"
+        >
           {match.scoreLine ?? ""}
         </Display>
         <Body

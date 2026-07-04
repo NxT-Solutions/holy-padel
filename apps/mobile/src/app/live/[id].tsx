@@ -139,6 +139,7 @@ function TeamCard({
             backgroundColor={colors.lime}
             opacity={serving ? 1 : 0}
             boxShadow={serving ? `0 0 0 3px ${limeAlpha(0.3)}` : "unset"}
+            testID={`${testID}-serve${serving ? "-on" : "-off"}`}
           />
           <Display fontSize={23}>{name.toUpperCase()}</Display>
         </XStack>
@@ -204,7 +205,7 @@ function MatchWon({
       >
         {`DEF. ${names[loser].toUpperCase()}`}
       </Body>
-      <Display fontSize={76} lineHeight={78} color={colors.white} marginTop={22}>
+      <Display fontSize={76} lineHeight={78} color={colors.white} marginTop={22} testID="won-score">
         {finalScoreLine(snapshot)}
       </Display>
       <XStack gap={8} marginTop={26} width="100%">
