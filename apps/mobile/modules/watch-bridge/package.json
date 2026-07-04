@@ -1,0 +1,6 @@
+{
+  "name": "watch-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phone-side WatchConnectivity / Wearable Data Layer bridge for Holy Padel"
+}
