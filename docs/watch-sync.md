@@ -52,6 +52,28 @@ pushes fresh state back.
 | `/holy-padel/undo`       | `""`        | Remove the last point event                   |
 | `/holy-padel/start-last` | `""`        | From idle: start a rematch of the last lineup |
 
+## Transport specifics
+
+The two platforms carry the identical JSON above; only the wire differs.
+
+### Wear OS — Wearable Data Layer
+
+- **State:** the phone puts a single `DataItem` at path `/holy-padel/state`
+  holding the state JSON; the watch's `DataClient.OnDataChangedListener` reads it
+  and pulls the existing item on connect. Latest-wins is native to `DataItem`.
+- **Intents:** the watch sends a `MessageClient` message to the path above with
+  the body as the message bytes, to every connected node.
+
+### Apple Watch — WatchConnectivity
+
+- **State:** the phone calls `updateApplicationContext(["state": "<json>"])`
+  (latest-wins, survives relaunch); when the watch is reachable it may also
+  arrive via `sendMessage`. The watch decodes the `"state"` string either way.
+- **Intents:** the watch sends `sendMessage(["path": "/holy-padel/…", "body": …])`
+  when reachable, falling back to `transferUserInfo` (queued, background-tolerant)
+  when the phone is asleep. Using the same `{ path, body }` shape as the Wear OS
+  paths lets the phone decode both transports with one code path.
+
 ## Notes
 
 - The watch UI derives entirely from `phase`: `idle` → quick-start card,

@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!design", "!**/*.gen.ts"]
+    "includes": ["**", "!design", "!**/*.gen.ts", "!apps/mobile/targets"]
   },
   "formatter": {
     "enabled": true,
