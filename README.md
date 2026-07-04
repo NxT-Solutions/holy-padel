@@ -68,9 +68,11 @@ dev build (`npx expo run:android` or `run:ios`) plus
 pnpm --filter @holy-padel/mobile e2e:native
 ```
 
-In CI, the `native-e2e` workflow prebuilds a release APK and runs the flows on
-an Android emulator. It runs on merges to `main`, on demand, and on PRs tagged
-`native-e2e`; it is not a required check until it has gone green in CI.
+In CI, the `native-e2e` workflow prebuilds a release APK and runs all six flows
+on an Android emulator (green in ~3 min of device time). It runs on merges to
+`main`, on demand, and on PRs tagged `native-e2e`. It's kept off the required
+set to spare every PR the ~20-minute Android build; promote `maestro-android`
+to the `protect-main` required checks if you want it gating merges.
 
 First launch seeds the design's demo ledger (players, twelve finished matches and
 the live one from the home screen) — all stored as real point events and replayed
