@@ -1,0 +1,53 @@
+# The full setup flow with the native player-picker sheet and keyboard,
+# played through to the match-won screen and saved to the ledger.
+appId: com.holypadel.app
+name: New match through to match won
+---
+- runFlow: subflows/launch-seeded.yaml
+
+- tapOn: "NEW MATCH"
+- assertVisible: "Doubles · FIP scoring"
+
+# Best of 1 for a short flow.
+- tapOn:
+    text: "1"
+
+# Team A partner via the picker sheet.
+- tapOn:
+    text: "Pick a player"
+    index: 0
+- assertVisible: "PICK TEAM A"
+- tapOn: "Javi"
+- tapOn: "DONE"
+
+# Team B via the picker, with the native search keyboard.
+- tapOn:
+    text: "Pick a player"
+    index: 0
+- assertVisible: "PICK TEAM B"
+- tapOn: "Search players…"
+- inputText: "Mar"
+- tapOn: "Marta"
+- eraseText
+- tapOn: "Leo"
+- tapOn: "DONE"
+
+- tapOn: "START MATCH"
+- assertVisible:
+    id: "point-A"
+    text: "0"
+
+# Win the set 6-0 to take the best-of-1 match.
+- repeat:
+    times: 24
+    commands:
+      - tapOn: "Point Nico & Javi"
+
+- assertVisible: "MATCH WON"
+- assertVisible: "DEF. MARTA & LEO"
+- tapOn: "SAVE & CLOSE"
+
+# The result reached the ledger: the matches tab count grew to 14.
+- assertVisible: "HOLA, NICO"
+- tapOn: "MATCHES"
+- assertVisible: "14 stored locally"

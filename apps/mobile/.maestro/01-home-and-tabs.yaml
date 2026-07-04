@@ -1,0 +1,21 @@
+# Native tab bar navigation and the seeded home card.
+appId: com.holypadel.app
+name: Home and native tab navigation
+---
+- runFlow: subflows/launch-seeded.yaml
+
+# The seeded live match reads exactly as the design's home screen.
+- assertVisible: "CLUB PADEL NORTE"
+- assertVisible: "WATCH PAIRED"
+- assertVisible: "RESUME SCORING"
+- assertVisible:
+    id: "home-score-line"
+    text: "6-4 · 4-3"
+
+# The floating pill tab bar switches tabs natively.
+- tapOn: "MATCHES"
+- assertVisible: "stored locally"
+- tapOn: "PROFILE"
+- assertVisible: "WIN RATE"
+- tapOn: "HOME"
+- assertVisible: "HOLA, NICO"

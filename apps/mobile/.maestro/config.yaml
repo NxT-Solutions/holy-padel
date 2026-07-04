@@ -1,0 +1,8 @@
+# Maestro suite config. Flows drive the real native app on a simulator or
+# emulator — covering the shell behaviour the Playwright web suite can't:
+# OS alert dialogs, cold-start persistence across process death, and native
+# tab/back navigation. Each flow relaunches with clearState so it starts from
+# the same freshly seeded SQLite database.
+appId: com.holypadel.app
+flows:
+  - "*.yaml"

@@ -1,0 +1,25 @@
+# The native "End match?" alert — a real OS dialog, not a web confirm().
+# This is the behaviour the Playwright suite fakes with page.on("dialog").
+appId: com.holypadel.app
+name: End match native alert
+---
+- runFlow: subflows/launch-seeded.yaml
+
+- tapOn: "RESUME SCORING"
+- assertVisible:
+    id: "point-A"
+    text: "40"
+
+# Cancel first: the OS alert appears, "Keep scoring" dismisses it, score intact.
+- tapOn: "END MATCH"
+- assertVisible: "The match is not finished — discard it?"
+- tapOn: "Keep scoring"
+- assertVisible:
+    id: "point-A"
+    text: "40"
+
+# Now confirm the discard: back to home with no live match.
+- tapOn: "END MATCH"
+- tapOn: "Discard match"
+- assertVisible: "HOLA, NICO"
+- assertNotVisible: "LIVE NOW"

@@ -1,0 +1,22 @@
+# The native "Delete match?" alert from the overview, and the ledger shrinking.
+appId: com.holypadel.app
+name: Delete match native alert
+---
+- runFlow: subflows/launch-seeded.yaml
+
+- tapOn: "MATCHES"
+- assertVisible: "13 stored locally"
+- tapOn: "6-3 · 7-6"
+- assertVisible: "DEF. MARTA & LEO"
+
+# Cancel keeps the match.
+- tapOn: "DELETE MATCH"
+- assertVisible: "This removes the match and its points from this phone."
+- tapOn: "Cancel"
+- assertVisible: "DEF. MARTA & LEO"
+
+# Confirm deletes it and returns to the previous screen.
+- tapOn: "DELETE MATCH"
+- tapOn: "Delete"
+- tapOn: "MATCHES"
+- assertVisible: "12 stored locally"
