@@ -9,9 +9,11 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#F1F0EA",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.holypadel.app"
     },
     "android": {
+      "package": "com.holypadel.app",
       "adaptiveIcon": {
         "backgroundColor": "#0E1116",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
