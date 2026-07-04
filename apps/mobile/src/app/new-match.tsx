@@ -2,7 +2,7 @@ import { createMatch, createPlayer, getOwner, listRoster } from "@holy-padel/db"
 import type { DeuceMode, TeamId, ThirdSetMode } from "@holy-padel/scoring";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
@@ -11,6 +11,7 @@ import { PickerSheet } from "@/components/picker-sheet.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
 import { Avatar, Body, Card, Display, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { newMatchId } from "@/lib/navigation.ts";
 import { colors, inkAlpha } from "@/theme/colors.ts";
 
 function PlayerRow({
@@ -104,11 +105,16 @@ export default function NewMatchScreen(): ReactNode {
   const ready = partner !== undefined && teamB.length === 2;
   const partnerSelection = partner === undefined ? [] : [partner];
 
+  const started = useRef(false);
   const startMatch = (): void => {
     if (partner === undefined || teamB[0] === undefined || teamB[1] === undefined) {
       return;
     }
-    const id = `match-${String(Date.now())}`;
+    if (started.current) {
+      return;
+    }
+    started.current = true;
+    const id = newMatchId();
     const players = {
       A: [ownerId, partner] as const,
       B: [teamB[0], teamB[1]] as const,

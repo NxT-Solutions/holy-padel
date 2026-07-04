@@ -11,6 +11,7 @@ import type { MatchSnapshot } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
+import { useRef } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
@@ -35,6 +36,7 @@ import {
   pairInitials,
   pairLabel,
 } from "@/lib/format.ts";
+import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
 
@@ -174,11 +176,13 @@ export default function HomeScreen(): ReactNode {
   );
   const [lastFinished] = recent;
 
+  const rematchStarted = useRef(false);
   const startRematch = (): void => {
-    if (lastFinished === undefined) {
+    if (lastFinished === undefined || rematchStarted.current) {
       return;
     }
-    const id = `match-${String(Date.now())}`;
+    rematchStarted.current = true;
+    const id = newMatchId();
     mutate((driver) => {
       createMatch(driver, {
         id,

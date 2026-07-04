@@ -21,3 +21,11 @@ export function goBack(): void {
     router.replace("/");
   }
 }
+
+let matchCounter = 0;
+
+/** Collision-proof local id — two taps in the same millisecond must differ. */
+export function newMatchId(): string {
+  matchCounter += 1;
+  return `match-${String(Date.now())}-${String(matchCounter)}`;
+}
