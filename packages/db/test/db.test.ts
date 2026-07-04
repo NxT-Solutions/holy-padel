@@ -1,6 +1,7 @@
 import { computeMatch } from "@holy-padel/scoring";
 import { describe, expect, it } from "vitest";
 import {
+  appendEvent,
   countMatches,
   createMatch,
   databaseSizeBytes,
@@ -110,6 +111,22 @@ describe("matches and events", () => {
     createMatch(driver, newMatch("older"));
     createMatch(driver, newMatch("newer"));
     expect(listMatches(driver).map((match) => match.id)).toEqual(["newer", "older"]);
+  });
+});
+
+describe("event log integrity", () => {
+  it("refuses events once the match is finished", () => {
+    const driver = seededDriver();
+    const events = storeMatchWithPoints(driver, "m1", "AAAA");
+    finishMatch(driver, "m1", { winner: "A", endedAt: nextTimestamp(), scoreLine: "6-0 · 6-0" });
+    appendEvent(driver, "m1", { winner: "B", at: nextTimestamp() });
+    expect(loadEvents(driver, "m1")).toEqual(events);
+  });
+
+  it("refuses events for unknown matches", () => {
+    const driver = seededDriver();
+    appendEvent(driver, "ghost", { winner: "A", at: nextTimestamp() });
+    expect(loadEvents(driver, "ghost")).toEqual([]);
   });
 });
 

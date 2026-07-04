@@ -175,11 +175,16 @@ export function loadEvents(driver: SqlDriver, matchId: string): PointEvent[] {
     }));
 }
 
+/**
+ * Append one rally. A no-op unless the match exists and is still live —
+ * a stray write after the final point must never poison the event log.
+ */
 export function appendEvent(driver: SqlDriver, matchId: string, event: PointEvent): void {
   driver.execute(
     `INSERT INTO match_events (match_id, seq, winner, at)
-     VALUES (?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM match_events WHERE match_id = ?), ?, ?)`,
-    [matchId, matchId, event.winner, event.at],
+     SELECT ?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM match_events WHERE match_id = ?), ?, ?
+     WHERE EXISTS (SELECT 1 FROM matches WHERE id = ? AND status = 'live')`,
+    [matchId, matchId, event.winner, event.at, matchId],
   );
 }
 
