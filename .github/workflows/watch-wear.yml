@@ -1,0 +1,53 @@
+name: Wear OS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/watch-wear/**"
+      - ".github/workflows/watch-wear.yml"
+  pull_request:
+    paths:
+      - "apps/watch-wear/**"
+      - ".github/workflows/watch-wear.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: wear-os-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-wear-os:
+    name: build-wear-os
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Accept licenses and install SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.1"
+
+      - name: Build the Wear OS debug APK
+        working-directory: apps/watch-wear
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Upload the APK
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wear-os-apk
+          path: apps/watch-wear/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
