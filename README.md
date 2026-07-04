@@ -53,6 +53,24 @@ Four layers, all runnable locally:
   full matches of every format, undo across game/set/tie-break boundaries,
   rematch chains, twin live matches, the empty ledger, picker edges,
   double-tap guards, and the deep-link/reload navigation regressions.
+- **Native E2E** (`apps/mobile/.maestro`) — Maestro flows on a real
+  simulator/emulator for the shell behaviour the web build can't exercise:
+  OS alert dialogs, cold-start persistence across process death, native tab and
+  back navigation, and the picker with the on-screen keyboard.
+
+### Running the native flows
+
+They need the app on a device. Locally, with a booted emulator/simulator and a
+dev build (`npx expo run:android` or `run:ios`) plus
+[Maestro](https://maestro.mobile.dev) installed:
+
+```sh
+pnpm --filter @holy-padel/mobile e2e:native
+```
+
+In CI, the `native-e2e` workflow prebuilds a release APK and runs the flows on
+an Android emulator. It runs on merges to `main`, on demand, and on PRs tagged
+`native-e2e`; it is not a required check until it has gone green in CI.
 
 First launch seeds the design's demo ledger (players, twelve finished matches and
 the live one from the home screen) — all stored as real point events and replayed
