@@ -41,8 +41,10 @@ name: Capture screenshots
 - tapOn:
     id: "tab-matches"
 - waitForAnimationToEnd
+# The count node reads "13 stored locally"; Maestro anchors the text regex to the
+# whole node, so a bare "stored locally" never matches — use a wildcarded regex.
 - extendedWaitUntil:
-    visible: "stored locally"
+    visible: ".*stored locally.*"
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: shot-05-matches
