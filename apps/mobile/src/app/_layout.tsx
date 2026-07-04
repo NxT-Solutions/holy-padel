@@ -15,6 +15,7 @@ import { TamaguiProvider } from "tamagui";
 import { DbProvider } from "@/db/provider.tsx";
 import { tamaguiConfig } from "@/tamagui.config.ts";
 import { colors } from "@/theme/colors.ts";
+import { WatchSync } from "@/watch/use-watch-sync.ts";
 
 void preventAutoHideAsync();
 
@@ -49,6 +50,7 @@ export default function RootLayout(): ReactNode {
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <DbProvider>
+        <WatchSync />
         <StatusBar style="dark" />
         <Stack
           screenOptions={{
