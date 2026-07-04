@@ -24,7 +24,8 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      // Keep the phone viewport — the device preset would override it.
+      use: { ...devices["Desktop Chrome"], viewport: { width: 402, height: 874 } },
     },
   ],
   webServer: {
