@@ -1,7 +1,7 @@
 import { deleteMatch, getMatch, loadEvents } from "@holy-padel/db";
 import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
-import { useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { ScrollView, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,7 +44,12 @@ export default function MatchOverviewScreen(): ReactNode {
   const events = useDbQuery((driver) => loadEvents(driver, id));
 
   if (match === undefined) {
-    return null;
+    // Deleted or unknown match (stale link, back after delete): recover home.
+    return <Redirect href="/" />;
+  }
+  if (match.status === "live") {
+    // The overview is for finished matches — a live one belongs on the scoreboard.
+    return <Redirect href={`/live/${match.id}`} />;
   }
 
   const snapshot = computeMatch(match.config, events);
