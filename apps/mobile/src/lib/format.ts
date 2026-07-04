@@ -98,13 +98,18 @@ export function matchMetaLabel(match: MatchSummary, now: number): string {
     .join(" · ");
 }
 
-/** "6-4 · 4-3" — completed sets plus the set in play. */
+/** "6-4 · 4-3" — completed sets plus the set in play (super TB shows its points). */
 export function liveScoreLine(snapshot: MatchSnapshot): string {
   const parts = snapshot.completedSets.map(
     (set) => `${String(set.games.A)}-${String(set.games.B)}`,
   );
   if (!snapshot.finished) {
-    parts.push(`${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`);
+    const game = snapshot.currentGame;
+    if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
+      parts.push(`${String(game.points.A)}-${String(game.points.B)}`);
+    } else {
+      parts.push(`${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`);
+    }
   }
   return parts.join(" · ");
 }

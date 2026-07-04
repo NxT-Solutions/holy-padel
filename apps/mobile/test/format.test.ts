@@ -62,6 +62,25 @@ describe("format helpers", () => {
     expect(finalScoreLine(oneSet)).toBe("6-0");
   });
 
+  it("shows super tie-break points in the live line, not a frozen 0-0", () => {
+    const config = {
+      bestOf: 3,
+      deuceMode: "advantage",
+      thirdSet: "superTieBreak",
+      firstServe: "A",
+    } as const;
+    const oneSetAll = [
+      ...Array.from({ length: 24 }, () => "A" as const),
+      ...Array.from({ length: 24 }, () => "B" as const),
+    ];
+    const intoSuperTb = [...oneSetAll, "A", "A", "A", "B"] as const;
+    const snapshot = computeMatch(
+      config,
+      intoSuperTb.map((winner, index) => ({ winner, at: index })),
+    );
+    expect(liveScoreLine(snapshot)).toBe("6-0 · 0-6 · 3-1");
+  });
+
   it("labels storage sizes", () => {
     expect(megabytesLabel(1_258_291)).toBe("1.2 MB");
     expect(megabytesLabel(0)).toBe("0.0 MB");
