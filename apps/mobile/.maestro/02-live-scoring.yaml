@@ -1,0 +1,29 @@
+# Tap-to-score, the status pill and native undo on the live scoreboard.
+appId: com.holypadel.app
+name: Live scoring, status pill and undo
+---
+- runFlow: subflows/launch-seeded.yaml
+
+- tapOn: "RESUME SCORING"
+- assertVisible:
+    id: "point-A"
+    text: "40"
+- assertVisible:
+    id: "status-pill"
+    text: "GAME POINT — NICO & JAVI"
+
+# Level the game to deuce, then advantage, exercising the point calls.
+- tapOn: "Point Marta & Leo"
+- assertVisible:
+    id: "status-pill"
+    text: "DEUCE"
+- tapOn: "Point Nico & Javi"
+- assertVisible:
+    id: "status-pill"
+    text: "ADVANTAGE — NICO & JAVI"
+
+# Native undo steps the score back one point.
+- tapOn: "UNDO"
+- assertVisible:
+    id: "status-pill"
+    text: "DEUCE"

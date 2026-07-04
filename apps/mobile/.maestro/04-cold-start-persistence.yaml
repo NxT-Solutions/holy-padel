@@ -1,0 +1,28 @@
+# Persistence across a real process death — the native path the web OPFS
+# reload only approximates. Score a point, kill the app, relaunch WITHOUT
+# clearing state, and confirm SQLite replayed the exact score.
+appId: com.holypadel.app
+name: Cold-start persistence
+---
+- runFlow: subflows/launch-seeded.yaml
+
+- tapOn: "RESUME SCORING"
+- tapOn: "Point Marta & Leo"
+- assertVisible:
+    id: "status-pill"
+    text: "DEUCE"
+
+# Kill and relaunch the process; the seeded DB and the new point must survive.
+- stopApp
+- launchApp
+- assertVisible: "LIVE NOW"
+- tapOn: "RESUME SCORING"
+- assertVisible:
+    id: "point-A"
+    text: "40"
+- assertVisible:
+    id: "point-B"
+    text: "40"
+- assertVisible:
+    id: "status-pill"
+    text: "DEUCE"
