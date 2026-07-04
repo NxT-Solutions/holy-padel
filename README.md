@@ -112,12 +112,17 @@ JSON payload contract is [`docs/watch-sync.md`](docs/watch-sync.md).
 The Apple Watch target is generated into the iOS project by
 [`@bacons/apple-targets`](https://github.com/EvanBacon/expo-apple-targets) during
 `expo prebuild`, so it lives in the monorepo and survives regeneration. Both are
-**compiled on every change in CI** (see [CI](#ci)); live Bluetooth pairing needs
-the phone-side sync bridge and physical devices.
+**compiled on every change in CI** (see [CI](#ci)).
+
+The phone drives both from one place: `apps/mobile/src/watch` builds the state
+payload and applies incoming intents (unit-tested), and the native
+[`WatchBridge`](apps/mobile/modules/watch-bridge) Expo module carries them over
+WatchConnectivity / the Wearable Data Layer. Every layer is compiled in CI; only
+end-to-end Bluetooth pairing needs physical devices.
 
 ## CI
 
-Six workflows in [`.github/workflows`](.github/workflows), all on GitHub-hosted runners:
+Seven workflows in [`.github/workflows`](.github/workflows), all on GitHub-hosted runners:
 
 | Workflow        | Runs                                                    | Required? |
 | --------------- | ------------------------------------------------------- | --------- |
@@ -126,6 +131,7 @@ Six workflows in [`.github/workflows`](.github/workflows), all on GitHub-hosted 
 | `native-e2e`    | Maestro flows on an Android emulator (real device shell)| on demand / `main` / label |
 | `watch-wear`    | Gradle `assembleDebug` of the Wear OS app               | on watch changes |
 | `watchos`       | Unsigned `watchsimulator` build of the Apple Watch app (macos-26) | on watch changes |
+| `watch-bridge`  | Compiles the phone-side `WatchBridge` module — Kotlin + Swift | on bridge changes |
 | `dependabot`    | Grouped dependency PRs                                   | —         |
 
 `main` is protected by the `protect-main` ruleset: PRs required, `quality` / `e2e`
