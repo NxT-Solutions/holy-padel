@@ -2,154 +2,206 @@
 
 [![CI](https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml/badge.svg)](https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml)
 
-Padel score tracker — every point, game and set on your phone, stored locally.
+Local-first padel scoring for the match you are actually playing: fast rally entry,
+FIP-aware scoring, private match history, form stats, Apple Watch and Wear OS
+companions, and optional workout logging.
 
-Implements the **Padel Score Tracker** design (see [`design/`](design)) on top of the
-official [FIP Rules of Padel](design/FIP_Rules-of-Padel.pdf): sets to 6 games,
-tie-break at 6–6, advantage or golden-point deuce, optional super tie-break third set.
+Holy Padel is an open-source Expo / React Native app built around one simple idea:
+the phone is the truth. The phone stores the match ledger locally, computes every
+score from point events, and mirrors the live state to watches. Nothing leaves the
+device by default.
 
-Ships with **Apple Watch and Wear OS companions** that mirror the live match and
-score it from your wrist — see [Watch apps](#watch-apps).
+<p align="center">
+  <img src="design/store-screenshots/app-store-6.7/01-score-every-rally.png" width="19%" alt="Holy Padel live scoring screenshot" />
+  <img src="design/store-screenshots/app-store-6.7/02-live-match-hub.png" width="19%" alt="Holy Padel live match hub screenshot" />
+  <img src="design/store-screenshots/app-store-6.7/03-watch-mirroring.png" width="19%" alt="Holy Padel watch mirroring screenshot" />
+  <img src="design/store-screenshots/app-store-6.7/05-private-match-ledger.png" width="19%" alt="Holy Padel match ledger screenshot" />
+  <img src="design/store-screenshots/app-store-6.7/06-know-your-form.png" width="19%" alt="Holy Padel profile stats screenshot" />
+</p>
+
+## What it does
+
+- Score every rally from the phone or paired watch.
+- Handle real padel formats: best-of-1 or best-of-3, advantage or golden point,
+  set tie-breaks, and optional super tie-break third sets.
+- Keep an append-only local match ledger in SQLite.
+- Resume, pause, undo, stop-and-save, or discard live matches.
+- Show match history, recent form, head-to-head context, and finished-match stats.
+- Mirror live score to Apple Watch and Wear OS without duplicating scoring logic.
+- Optionally write completed matches to Apple Health / Health Connect.
+
+## Product tour
+
+| Score fast | Mirror to the wrist | Keep the ledger | Know your form |
+| --- | --- | --- | --- |
+| <img src="design/store-screenshots/app-store-6.7/01-score-every-rally.png" alt="Live scoring" /> | <img src="design/store-screenshots/app-store-6.7/03-watch-mirroring.png" alt="Watch mirroring" /> | <img src="design/store-screenshots/app-store-6.7/05-private-match-ledger.png" alt="Private match ledger" /> | <img src="design/store-screenshots/app-store-6.7/06-know-your-form.png" alt="Player form and stats" /> |
+| Big scoring targets, clear status, fast undo. | Watches mirror the phone and send simple intents back. | Matches stay local and remain reviewable. | Recent form and profile stats stay close to the match. |
+
+## Why it exists
+
+Most score apps are either too generic, too cloud-shaped, or too casual about the
+rules. Padel scoring has enough texture that the app should understand the sport:
+deuce modes, tie-break serve handoff, partial matches when court time ends, and
+watches that help without becoming a second source of truth.
+
+Holy Padel treats a match as a small local event stream:
+
+```text
+Match setup + ordered point events -> computed score snapshot
+```
+
+Undo is not a special mutation. It is just "remove the last point and recompute."
+That keeps the app predictable, testable, and easy to sync.
+
+## Documentation
+
+| Start here | For |
+| --- | --- |
+| [Human project guide](docs/project-guide.md) | Non-technical readers, open-source visitors, product overview |
+| [Technical overview](docs/technical-overview.md) | Developers who want the architecture, data model, sync model, and build map |
+| [FIP scoring spec](docs/fip-scoring-spec.md) | The scoring rules the engine implements |
+| [Watch sync contract](docs/watch-sync.md) | Phone-to-watch payloads and watch-to-phone intents |
+| [Generated GitNexus wiki](docs/gitnexus-wiki/README.md) | Graph-generated module docs for deeper code navigation |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Phone["Expo phone app"]
+  DB["SQLite ledger"]
+  Engine["@holy-padel/scoring"]
+  WatchState["Watch state builder"]
+  Apple["Apple Watch"]
+  Wear["Wear OS"]
+  Health["HealthKit / Health Connect"]
+
+  Phone --> DB
+  DB --> Engine
+  Engine --> Phone
+  Phone --> WatchState
+  WatchState --> Apple
+  WatchState --> Wear
+  Apple --> Phone
+  Wear --> Phone
+  Phone --> Health
+```
+
+The watches render state and send intents like `score`, `undo`, `pause`, and
+`stop`. They do not run the scoring engine. The phone applies every intent to the
+local ledger, recomputes the score, then pushes the next state back.
+
+## Monorepo map
+
+| Path | Responsibility |
+| --- | --- |
+| `apps/mobile` | Expo app, screens, navigation, SQLite adapter, watch sync |
+| `apps/mobile/modules/health-log` | Local Expo module for Apple Health / Health Connect writes |
+| `apps/mobile/modules/watch-bridge` | Local Expo module for WatchConnectivity / Wearable Data Layer |
+| `apps/mobile/targets/watch` | SwiftUI Apple Watch target generated with `@bacons/apple-targets` |
+| `apps/watch-wear` | Kotlin + Compose Wear OS companion |
+| `packages/scoring` | Pure TypeScript FIP scoring engine and golden vectors |
+| `packages/db` | SQLite schema, migrations, and typed repositories |
+| `packages/scoring-swift` | Swift scoring port checked against golden vectors |
+| `packages/scoring-kotlin` | Kotlin scoring port checked against golden vectors |
+| `docs` | Human docs, scoring contract, watch contract, generated code wiki |
+| `design` | Source design files, FIP PDF, screenshot assets |
 
 ## Stack
 
-- **Turborepo** + pnpm workspaces
-- **TypeScript** (strict) everywhere
-- **Expo / React Native** app in [`apps/mobile`](apps/mobile)
-- **Tamagui** for components and styling
-- **SQLite** (`expo-sqlite`) — matches never leave the phone
-- **BiomeJS** for linting and formatting, maximum strictness
-- **Wear OS** companion in [`apps/watch-wear`](apps/watch-wear) — Kotlin + Jetpack Compose
-- **watchOS** companion in [`apps/mobile/targets/watch`](apps/mobile/targets/watch) — SwiftUI, via `@bacons/apple-targets`
+- Turborepo + pnpm workspaces
+- Expo / React Native + expo-router
+- Tamagui design system
+- TypeScript strict mode with `exactOptionalPropertyTypes`
+- SQLite through `expo-sqlite`
+- SwiftUI watchOS target
+- Kotlin + Jetpack Compose Wear OS app
+- Biome for linting and formatting
+- Playwright, Vitest, fast-check, Gradle, Swift Package tests, and native CI jobs
 
-## Layout
-
-| Path                        | What                                                    |
-| --------------------------- | ------------------------------------------------------- |
-| `apps/mobile`               | Expo app — screens, navigation, SQLite adapter          |
-| `apps/mobile/targets/watch` | Apple Watch app — SwiftUI, WatchConnectivity            |
-| `apps/watch-wear`           | Wear OS app — Kotlin + Compose, Wearable Data Layer     |
-| `packages/scoring`          | Pure FIP-rules match engine (event-sourced, undoable)   |
-| `packages/db`               | Schema, migrations and typed repositories over SQLite   |
-| `docs/watch-sync.md`        | Phone ↔ watch sync contract (shared by both watches)    |
-| `design/`                   | Source design file + official rules PDF                 |
-
-## Commands
+## Run it locally
 
 ```sh
 pnpm install
-pnpm dev        # expo dev server (press i / a, or open the web preview)
-pnpm check      # biome + typecheck + unit/property tests, everywhere
-pnpm --filter @holy-padel/mobile e2e   # 59 Playwright specs against the web build
+pnpm dev
 ```
 
-## Testing
-
-Four layers, all runnable locally:
-
-- **Engine units** (`packages/scoring/test`) — 62 tests citing FIP rule numbers:
-  game modes, 7-5 sets, tie-break rotation and serve handoff, super tie-break,
-  star point boundaries, plus fast-check **property invariants** over hundreds of
-  random matches (undo is always exact, set scores always legal, no play after
-  the final point).
-- **DB units** (`packages/db/test`) — repositories on `node:sqlite`, including
-  the guard that refuses point events on finished matches.
-- **App units** (`apps/mobile/test`) — the seed replays to the design's exact
-  numbers; formatter contracts.
-- **E2E** (`apps/mobile/e2e`) — 59 Playwright specs, each in a fresh browser
-  context (fresh OPFS ⇒ the exact seeded database): every screen and flow,
-  full matches of every format, undo across game/set/tie-break boundaries,
-  rematch chains, twin live matches, the empty ledger, picker edges,
-  double-tap guards, and the deep-link/reload navigation regressions.
-- **Native E2E** (`apps/mobile/.maestro`) — Maestro flows on a real
-  simulator/emulator for the shell behaviour the web build can't exercise:
-  OS alert dialogs, cold-start persistence across process death, native tab and
-  back navigation, and the picker with the on-screen keyboard.
-
-### Running the native flows
-
-They need the app on a device. Locally, with a booted emulator/simulator and a
-dev build (`npx expo run:android` or `run:ios`) plus
-[Maestro](https://maestro.mobile.dev) installed:
+For the mobile app:
 
 ```sh
-pnpm --filter @holy-padel/mobile e2e:native
+pnpm --filter @holy-padel/mobile dev
+pnpm --filter @holy-padel/mobile web
+pnpm --filter @holy-padel/mobile ios
+pnpm --filter @holy-padel/mobile android
 ```
 
-In CI, the `native-e2e` workflow prebuilds a release APK and runs all six flows
-on an Android emulator (green in ~3 min of device time). It runs on merges to
-`main`, on demand, and on PRs tagged `native-e2e`. It's kept off the required
-set to spare every PR the ~20-minute Android build; promote `maestro-android`
-to the `protect-main` required checks if you want it gating merges.
+This app uses custom native modules and watch targets, so Expo Go is not the right
+runtime for native testing. Use a dev build for iOS/Android.
 
-First launch seeds the design's demo ledger (players, twelve finished matches and
-the live one from the home screen) — all stored as real point events and replayed
-through the engine, so every stat on screen is computed, not mocked.
+## Verify it
 
-## How scoring works
+```sh
+pnpm check
+pnpm --filter @holy-padel/mobile e2e
+```
 
-A match is its `MatchConfig` plus an append-only list of point events. The engine
-(`computeMatch`) folds events into a snapshot — points, games, sets, serving pair,
-and the "moment" (game/set/match point, deuce, advantage, golden point, tie-break)
-that drives the live status pill. Undo removes the last event; resume replays the
-list. `computeStats` derives the overview screen: breaks, service games held,
-longest game, per-set durations.
+`pnpm check` runs Biome, TypeScript, and unit/property tests across the workspace.
+The mobile E2E suite runs Playwright against the Expo web build with a fresh local
+database per spec.
 
-## Watch apps
+Native and companion coverage lives in separate workflows:
 
-The design's watch screens (3g/3h, 1c–1e) ship as **two native companions**, one
-per platform. Both are thin mirrors of the phone: they render the live match and
-send `score` / `undo` / `start-last` intents back, but run **no scoring engine** —
-so the FIP rules keep exactly one implementation, on the phone. The phone stays
-the single source of truth (its SQLite ledger + `@holy-padel/scoring`). The shared
-JSON payload contract is [`docs/watch-sync.md`](docs/watch-sync.md).
+| Workflow | What it checks |
+| --- | --- |
+| `ci` | Biome, typecheck, unit/property tests, web build, Playwright E2E |
+| `native-e2e` | Maestro flows on an Android emulator |
+| `watch-wear` | Wear OS Gradle build |
+| `watchos` | Apple Watch simulator build |
+| `watch-bridge` | Kotlin + Swift compile checks for the phone-side watch bridge |
+| `engine-ports` | Swift and Kotlin scoring ports against golden vectors |
 
-| Watch         | Where                            | Stack                     | Transport                                                                   |
-| ------------- | -------------------------------- | ------------------------- | --------------------------------------------------------------------------- |
-| **Wear OS**   | [`apps/watch-wear`](apps/watch-wear)                     | Kotlin + Jetpack Compose  | Wearable Data Layer — `DataClient` (state), `MessageClient` (intents)       |
-| **Apple Watch** | [`apps/mobile/targets/watch`](apps/mobile/targets/watch) | SwiftUI                   | WatchConnectivity — `updateApplicationContext` (state), `sendMessage`/`transferUserInfo` (intents) |
+## Regenerate code intelligence docs
 
-The Apple Watch target is generated into the iOS project by
-[`@bacons/apple-targets`](https://github.com/EvanBacon/expo-apple-targets) during
-`expo prebuild`, so it lives in the monorepo and survives regeneration. Both are
-**compiled on every change in CI** (see [CI](#ci)).
+GitNexus is used to keep a generated module wiki in Markdown:
 
-The phone drives both from one place: `apps/mobile/src/watch` builds the state
-payload and applies incoming intents (unit-tested), and the native
-[`WatchBridge`](apps/mobile/modules/watch-bridge) Expo module carries them over
-WatchConnectivity / the Wearable Data Layer. Every layer is compiled in CI; only
-end-to-end Bluetooth pairing needs physical devices.
+```sh
+pnpm gitnexus:wiki
+```
 
-## CI
+The generated pages are committed under `docs/gitnexus-wiki`, while
+`.gitnexusignore` keeps those pages out of future graph analysis so the index does
+not feed on its own output.
 
-Seven workflows in [`.github/workflows`](.github/workflows), all on GitHub-hosted runners:
+## Design language
 
-| Workflow        | Runs                                                    | Required? |
-| --------------- | ------------------------------------------------------- | --------- |
-| `ci`            | Biome, typecheck, unit + property tests, web build      | ✅ `quality`, `web-build` |
-| `ci` (`e2e`)    | 59 Playwright specs against the Expo web build          | ✅ `e2e`  |
-| `native-e2e`    | Maestro flows on an Android emulator (real device shell)| on demand / `main` / label |
-| `watch-wear`    | Gradle `assembleDebug` of the Wear OS app               | on watch changes |
-| `watchos`       | Unsigned `watchsimulator` build of the Apple Watch app (macos-26) | on watch changes |
-| `watch-bridge`  | Compiles the phone-side `WatchBridge` module — Kotlin + Swift | on bridge changes |
-| `dependabot`    | Grouped dependency PRs                                   | —         |
+Holy Padel uses a court-bold visual system: dark match surfaces, lime scoring
+accents, compact typography, and dense match cards that are built for repeated use
+during real court time. The source of truth is [DESIGN.md](DESIGN.md) plus
+`apps/mobile/src/theme/colors.ts`.
 
-`main` is protected by the `protect-main` ruleset: PRs required, `quality` / `e2e`
-/ `web-build` must pass and be up to date, no force-push or deletion. The heavier
-device/watch builds are kept off the required set so they don't gate every PR;
-promote them if you want them blocking merges.
+Store-ready screenshots live in `design/store-screenshots/app-store-6.7`.
 
-## Notes
+## Privacy
 
-- Finished matches can be logged to **Apple Health / Health Connect** from the
-  match overview — strictly opt-in per match and write-only (the app never reads
-  health data). Neither platform has a padel activity type yet, so workouts are
-  saved as Tennis titled "Padel" (the community convention). Implemented by the
-  local [`health-log`](apps/mobile/modules/health-log) module — free OS APIs, no
-  accounts, everything stays on the device.
-- `patches/expo-sqlite@57.0.0.patch` fixes an upstream bug in expo-sqlite's web
-  sync bridge: the worker wrote the result length through a `Uint8Array.set`,
-  truncating it to one byte, so any query result over 255 bytes failed with
-  "Unexpected end of JSON input". Worth an upstream PR.
-- `apps/mobile/metro.config.js` serves the sqlite wasm asset and sets the
-  cross-origin-isolation headers the web build needs.
+The default data model is local-first:
+
+- Match events are stored in SQLite on the device.
+- The scoring engine is pure and has no I/O.
+- Watches receive only the current display payload and send back simple intents.
+- Health logging is opt-in and write-only.
+- There is no account system and no default cloud sync.
+
+## Contributing
+
+Small, focused PRs are easiest to review. Before changing scoring behavior, update
+the scoring spec, regenerate golden vectors, and keep the TypeScript, Swift, and
+Kotlin engines aligned.
+
+Useful references:
+
+- [Technical overview](docs/technical-overview.md)
+- [FIP scoring spec](docs/fip-scoring-spec.md)
+- [Watch sync contract](docs/watch-sync.md)
+- [Generated GitNexus wiki](docs/gitnexus-wiki/README.md)
+
+Main is protected. Required checks are `quality`, `e2e`, and `web-build`; native
+jobs should still be reviewed before merging native-touching changes.
