@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Holy Padel",
     description: "A local-first padel score tracker for phone, Apple Watch, and Wear OS.",
-    images: [`${siteUrl}/assets/screenshots/01-score-every-rally.png`],
+    images: [`${siteUrl}/assets/screenshots/01-live-scoring.png`],
   },
 };
 
