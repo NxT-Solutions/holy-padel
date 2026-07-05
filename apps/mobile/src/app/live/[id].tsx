@@ -148,7 +148,7 @@ function TeamCard({
           TAP TO SCORE +1
         </Body>
       </YStack>
-      <Display fontSize={112} lineHeight={116} testID={testID}>
+      <Display fontSize={112} testID={testID}>
         {point}
       </Display>
     </XStack>
@@ -191,7 +191,7 @@ function MatchWon({
       <Body fontSize={11} fontWeight="800" letterSpacing={2} color={whiteAlpha(0.45)}>
         {meta}
       </Body>
-      <Display fontSize={58} lineHeight={60} color={colors.lime} letterSpacing={1} marginTop={14}>
+      <Display fontSize={58} color={colors.lime} letterSpacing={1} marginTop={14}>
         MATCH WON
       </Display>
       <Display fontSize={34} color={colors.white} marginTop={18}>
@@ -206,7 +206,7 @@ function MatchWon({
       >
         {`DEF. ${names[loser].toUpperCase()}`}
       </Body>
-      <Display fontSize={76} lineHeight={78} color={colors.white} marginTop={22} testID="won-score">
+      <Display fontSize={76} color={colors.white} marginTop={22} testID="won-score">
         {finalScoreLine(snapshot)}
       </Display>
       <XStack gap={8} marginTop={26} width="100%">

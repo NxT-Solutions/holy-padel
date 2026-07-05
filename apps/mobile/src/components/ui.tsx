@@ -2,7 +2,14 @@ import type { ReactNode } from "react";
 import { styled, Text, View } from "tamagui";
 import { colors, inkAlpha } from "@/theme/colors.ts";
 
-/** Anton display text — numerals, headings, team names. */
+/**
+ * Anton display text — numerals, headings, team names.
+ *
+ * Do NOT set a tight `lineHeight` on this (anything near or below `fontSize`):
+ * Anton's round glyphs (0, O, Q) overshoot below the baseline, so without the
+ * font's natural descent room the bottom gets clipped — "0" reads as "U". Leave
+ * `lineHeight` unset (natural metrics) unless it's clearly ≥ ~1.3× `fontSize`.
+ */
 export const Display = styled(Text, {
   fontFamily: "$heading",
   fontWeight: "400",
