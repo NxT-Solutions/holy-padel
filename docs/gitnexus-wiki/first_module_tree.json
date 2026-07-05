@@ -1,0 +1,333 @@
+[
+  {
+    "name": "Scoring Engine",
+    "slug": "scoring-engine",
+    "files": [
+      "packages/scoring/src/engine.ts",
+      "packages/scoring/src/index.ts",
+      "packages/scoring/src/labels.ts",
+      "packages/scoring/src/rules.ts",
+      "packages/scoring/src/stats.ts",
+      "packages/scoring/src/types.ts",
+      "packages/scoring/src/vectors.ts"
+    ]
+  },
+  {
+    "name": "Scoring Engine Ports",
+    "slug": "scoring-engine-ports",
+    "files": [
+      "packages/scoring-kotlin/src/main/kotlin/com/holypadel/engine/Engine.kt",
+      "packages/scoring-kotlin/src/main/kotlin/com/holypadel/engine/Rules.kt",
+      "packages/scoring-kotlin/src/main/kotlin/com/holypadel/engine/Types.kt",
+      "packages/scoring-kotlin/src/main/kotlin/com/holypadel/engine/Vectors.kt",
+      "packages/scoring-swift/Sources/HolyPadelEngine/Engine.swift",
+      "packages/scoring-swift/Sources/HolyPadelEngine/Rules.swift",
+      "packages/scoring-swift/Sources/HolyPadelEngine/Types.swift"
+    ]
+  },
+  {
+    "name": "Database Layer",
+    "slug": "database-layer",
+    "files": [
+      "packages/db/src/driver.ts",
+      "packages/db/src/index.ts",
+      "packages/db/src/matches.ts",
+      "packages/db/src/players.ts",
+      "packages/db/src/profile.ts",
+      "packages/db/src/schema.ts",
+      "apps/mobile/src/db/database.ts",
+      "apps/mobile/src/db/provider.tsx",
+      "apps/mobile/src/db/seed.ts"
+    ]
+  },
+  {
+    "name": "Mobile App Screens",
+    "slug": "mobile-app-screens",
+    "files": [
+      "apps/mobile/src/app/_layout.tsx",
+      "apps/mobile/src/app/(tabs)/_layout.tsx",
+      "apps/mobile/src/app/(tabs)/index.tsx",
+      "apps/mobile/src/app/(tabs)/matches.tsx",
+      "apps/mobile/src/app/(tabs)/profile.tsx",
+      "apps/mobile/src/app/data.tsx",
+      "apps/mobile/src/app/edit-profile.tsx",
+      "apps/mobile/src/app/live/[id].tsx",
+      "apps/mobile/src/app/match/[id].tsx",
+      "apps/mobile/src/app/new-match.tsx"
+    ]
+  },
+  {
+    "name": "Mobile UI System",
+    "slug": "mobile-ui-system",
+    "files": [
+      "apps/mobile/src/components/end-sheet.tsx",
+      "apps/mobile/src/components/icons.tsx",
+      "apps/mobile/src/components/match-won.tsx",
+      "apps/mobile/src/components/modal-header.tsx",
+      "apps/mobile/src/components/picker-sheet.tsx",
+      "apps/mobile/src/components/segmented-row.tsx",
+      "apps/mobile/src/components/ui.tsx",
+      "apps/mobile/src/theme/colors.ts"
+    ]
+  },
+  {
+    "name": "Mobile App Utilities",
+    "slug": "mobile-app-utilities",
+    "files": [
+      "apps/mobile/src/lib/confirm.ts",
+      "apps/mobile/src/lib/format.ts",
+      "apps/mobile/src/lib/match-actions.ts",
+      "apps/mobile/src/lib/navigation.ts",
+      "apps/mobile/src/lib/use-now.ts"
+    ]
+  },
+  {
+    "name": "Health and Workout Logging",
+    "slug": "health-and-workout-logging",
+    "files": [
+      "apps/mobile/src/health/health-log.ts",
+      "apps/mobile/src/health/watch-workout.ts",
+      "apps/mobile/modules/health-log/android/src/main/java/expo/modules/healthlog/HealthLogModule.kt",
+      "apps/mobile/modules/health-log/ios/HealthLogModule.swift",
+      "apps/mobile/targets/watch/WorkoutManager.swift"
+    ]
+  },
+  {
+    "name": "Watch Sync and Intent Handling",
+    "slug": "watch-sync-and-intent-handling",
+    "files": [
+      "apps/mobile/src/watch/apply-intent.ts",
+      "apps/mobile/src/watch/bridge.ts",
+      "apps/mobile/src/watch/build-state.ts",
+      "apps/mobile/src/watch/use-watch-sync.ts",
+      "apps/mobile/modules/watch-bridge/android/src/main/java/expo/modules/watchbridge/WatchBridgeModule.kt",
+      "apps/mobile/modules/watch-bridge/ios/WatchBridgeModule.swift"
+    ]
+  },
+  {
+    "name": "Apple Watch App",
+    "slug": "apple-watch-app",
+    "files": [
+      "apps/mobile/targets/watch/MatchState.swift",
+      "apps/mobile/targets/watch/Screens.swift",
+      "apps/mobile/targets/watch/Theme.swift",
+      "apps/mobile/targets/watch/WatchConnectivityManager.swift",
+      "apps/mobile/targets/watch/content.swift",
+      "apps/mobile/targets/watch/index.swift"
+    ]
+  },
+  {
+    "name": "Wear OS App",
+    "slug": "wear-os-app",
+    "files": [
+      "apps/watch-wear/app/src/main/java/com/holypadel/wear/ExerciseTracker.kt",
+      "apps/watch-wear/app/src/main/java/com/holypadel/wear/MainActivity.kt",
+      "apps/watch-wear/app/src/main/java/com/holypadel/wear/MatchState.kt",
+      "apps/watch-wear/app/src/main/java/com/holypadel/wear/WatchSync.kt",
+      "apps/watch-wear/app/src/main/java/com/holypadel/wear/ui/Colors.kt",
+      "apps/watch-wear/app/src/main/java/com/holypadel/wear/ui/Screens.kt",
+      "apps/watch-wear/app/src/main/java/com/holypadel/wear/ui/Text.kt"
+    ]
+  },
+  {
+    "name": "Other",
+    "slug": "other",
+    "files": [],
+    "children": [
+      {
+        "name": "Other — AGENTS.md",
+        "slug": "other-agents-md",
+        "files": ["AGENTS.md"]
+      },
+      {
+        "name": "Other — CLAUDE.md",
+        "slug": "other-claude-md",
+        "files": ["CLAUDE.md"]
+      },
+      {
+        "name": "Other — DESIGN.md",
+        "slug": "other-design-md",
+        "files": ["DESIGN.md"]
+      },
+      {
+        "name": "Other — README.md",
+        "slug": "other-readme-md",
+        "files": ["README.md"]
+      },
+      {
+        "name": "Other — mobile",
+        "slug": "other-mobile",
+        "files": [
+          "apps/mobile/app.json",
+          "apps/mobile/e2e/edge-cases.spec.ts",
+          "apps/mobile/e2e/edit-profile.spec.ts",
+          "apps/mobile/e2e/full-match.spec.ts",
+          "apps/mobile/e2e/helpers.ts",
+          "apps/mobile/e2e/home.spec.ts",
+          "apps/mobile/e2e/journeys.spec.ts",
+          "apps/mobile/e2e/live-scoring.spec.ts",
+          "apps/mobile/e2e/matches.spec.ts",
+          "apps/mobile/e2e/nav-exits.spec.ts",
+          "apps/mobile/e2e/navigation.spec.ts",
+          "apps/mobile/e2e/new-match.spec.ts",
+          "apps/mobile/e2e/overview.spec.ts",
+          "apps/mobile/e2e/pause.spec.ts",
+          "apps/mobile/e2e/profile.spec.ts",
+          "apps/mobile/e2e/tiebreak.spec.ts",
+          "apps/mobile/e2e/tsconfig.json",
+          "apps/mobile/metro.config.js",
+          "apps/mobile/modules/health-log/android/build.gradle",
+          "apps/mobile/modules/health-log/expo-module.config.json",
+          "apps/mobile/modules/health-log/ios/HealthLog.podspec",
+          "apps/mobile/modules/health-log/package.json",
+          "apps/mobile/modules/watch-bridge/android/build.gradle",
+          "apps/mobile/modules/watch-bridge/expo-module.config.json",
+          "apps/mobile/modules/watch-bridge/ios/WatchBridge.podspec",
+          "apps/mobile/modules/watch-bridge/package.json",
+          "apps/mobile/package.json",
+          "apps/mobile/playwright.config.ts",
+          "apps/mobile/plugins/with-health-connect.js",
+          "apps/mobile/src/tamagui.config.ts",
+          "apps/mobile/targets/watch/Assets.xcassets/$accent.colorset/Contents.json",
+          "apps/mobile/targets/watch/Assets.xcassets/AppIcon.appiconset/Contents.json",
+          "apps/mobile/targets/watch/Info.plist",
+          "apps/mobile/targets/watch/README.md",
+          "apps/mobile/targets/watch/expo-target.config.js",
+          "apps/mobile/targets/watch/generated.entitlements",
+          "apps/mobile/targets/watch/preview/Preview Assets.xcassets/Contents.json",
+          "apps/mobile/test/format.test.ts",
+          "apps/mobile/test/memory-driver.ts",
+          "apps/mobile/test/seed.test.ts",
+          "apps/mobile/test/tsconfig.json",
+          "apps/mobile/test/watch-intent.test.ts",
+          "apps/mobile/test/watch-state.test.ts",
+          "apps/mobile/test/watch-sync-loop.test.ts",
+          "apps/mobile/test/watch-workout.test.ts",
+          "apps/mobile/tsconfig.json",
+          "apps/mobile/vitest.config.ts"
+        ]
+      },
+      {
+        "name": "Other — watch-wear",
+        "slug": "other-watch-wear",
+        "files": [
+          "apps/watch-wear/README.md",
+          "apps/watch-wear/app/build.gradle.kts",
+          "apps/watch-wear/app/proguard-rules.pro",
+          "apps/watch-wear/app/src/main/AndroidManifest.xml",
+          "apps/watch-wear/app/src/main/res/drawable/ic_launcher_foreground.xml",
+          "apps/watch-wear/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+          "apps/watch-wear/app/src/main/res/values/colors.xml",
+          "apps/watch-wear/app/src/main/res/values/strings.xml",
+          "apps/watch-wear/app/src/main/res/values/themes.xml",
+          "apps/watch-wear/build.gradle.kts",
+          "apps/watch-wear/gradle.properties",
+          "apps/watch-wear/gradle/wrapper/gradle-wrapper.properties",
+          "apps/watch-wear/settings.gradle.kts"
+        ]
+      },
+      {
+        "name": "Other — biome.json",
+        "slug": "other-biome-json",
+        "files": ["biome.json"]
+      },
+      {
+        "name": "Other — design",
+        "slug": "other-design",
+        "files": ["design/Padel Score Tracker.dc.html", "design/ios-frame.jsx", "design/support.js"]
+      },
+      {
+        "name": "Other — store-screenshots",
+        "slug": "other-store-screenshots",
+        "files": ["design/store-screenshots/capture-extra.yaml"]
+      },
+      {
+        "name": "Other — docs",
+        "slug": "other-docs",
+        "files": ["docs/fip-scoring-spec.md", "docs/watch-sync.md"]
+      },
+      {
+        "name": "Other — package.json",
+        "slug": "other-package-json",
+        "files": ["package.json"]
+      },
+      {
+        "name": "Other — db",
+        "slug": "other-db",
+        "files": [
+          "packages/db/package.json",
+          "packages/db/test/db.test.ts",
+          "packages/db/test/fixtures.ts",
+          "packages/db/test/memory-driver.ts",
+          "packages/db/test/pause.test.ts",
+          "packages/db/test/profile.test.ts",
+          "packages/db/test/score-guard.test.ts",
+          "packages/db/tsconfig.json",
+          "packages/db/vitest.config.ts"
+        ]
+      },
+      {
+        "name": "Other — scoring-kotlin",
+        "slug": "other-scoring-kotlin",
+        "files": [
+          "packages/scoring-kotlin/README.md",
+          "packages/scoring-kotlin/build.gradle.kts",
+          "packages/scoring-kotlin/gradle/wrapper/gradle-wrapper.properties",
+          "packages/scoring-kotlin/gradlew",
+          "packages/scoring-kotlin/gradlew.bat",
+          "packages/scoring-kotlin/settings.gradle.kts",
+          "packages/scoring-kotlin/src/test/kotlin/com/holypadel/engine/VectorTest.kt"
+        ]
+      },
+      {
+        "name": "Other — scoring-swift",
+        "slug": "other-scoring-swift",
+        "files": [
+          "packages/scoring-swift/Package.swift",
+          "packages/scoring-swift/Tests/HolyPadelEngineTests/VectorTests.swift"
+        ]
+      },
+      {
+        "name": "Other — scoring",
+        "slug": "other-scoring",
+        "files": [
+          "packages/scoring/package.json",
+          "packages/scoring/scripts/write-vectors.ts",
+          "packages/scoring/test/critic-edges.test.ts",
+          "packages/scoring/test/game-modes.test.ts",
+          "packages/scoring/test/helpers.ts",
+          "packages/scoring/test/invariants.test.ts",
+          "packages/scoring/test/moments.test.ts",
+          "packages/scoring/test/serving.test.ts",
+          "packages/scoring/test/sets-and-tiebreaks.test.ts",
+          "packages/scoring/test/stats.test.ts",
+          "packages/scoring/test/undo.test.ts",
+          "packages/scoring/test/vectors.test.ts",
+          "packages/scoring/tsconfig.json",
+          "packages/scoring/vectors/golden.json",
+          "packages/scoring/vitest.config.ts"
+        ]
+      },
+      {
+        "name": "Other — patches",
+        "slug": "other-patches",
+        "files": ["patches/expo-sqlite@57.0.0.patch"]
+      },
+      {
+        "name": "Other — pnpm-workspace.yaml",
+        "slug": "other-pnpm-workspace-yaml",
+        "files": ["pnpm-workspace.yaml"]
+      },
+      {
+        "name": "Other — tsconfig.base.json",
+        "slug": "other-tsconfig-base-json",
+        "files": ["tsconfig.base.json"]
+      },
+      {
+        "name": "Other — turbo.json",
+        "slug": "other-turbo-json",
+        "files": ["turbo.json"]
+      }
+    ]
+  }
+]
