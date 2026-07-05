@@ -5,13 +5,19 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
+import androidx.health.connect.client.units.Energy
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.time.Instant
 import java.time.ZoneId
 import kotlinx.coroutines.CompletableDeferred
+import org.json.JSONObject
 
 /**
  * Logs a finished padel match to Health Connect as an exercise session.
@@ -25,7 +31,11 @@ class HealthLogModule : Module() {
   private val context: Context?
     get() = appContext.reactContext
 
-  private val writePermission = HealthPermission.getWritePermission(ExerciseSessionRecord::class)
+  private val writePermissions = setOf(
+    HealthPermission.getWritePermission(ExerciseSessionRecord::class),
+    HealthPermission.getWritePermission(HeartRateRecord::class),
+    HealthPermission.getWritePermission(TotalCaloriesBurnedRecord::class),
+  )
   private val permissionContract = PermissionController.createRequestPermissionResultContract()
   private var pendingPermission: CompletableDeferred<Boolean>? = null
 
@@ -44,7 +54,7 @@ class HealthLogModule : Module() {
     val granted = runCatching {
       client.permissionController.getGrantedPermissions()
     }.getOrDefault(emptySet())
-    if (writePermission in granted) {
+    if (granted.containsAll(writePermissions)) {
       return true
     }
     // Drive the permission contract manually — an Expo module has no
@@ -54,7 +64,7 @@ class HealthLogModule : Module() {
     pendingPermission = deferred
     runCatching {
       activity.startActivityForResult(
-        permissionContract.createIntent(activity, setOf(writePermission)),
+        permissionContract.createIntent(activity, writePermissions),
         PERMISSION_REQUEST_CODE,
       )
     }.onFailure {
@@ -64,7 +74,7 @@ class HealthLogModule : Module() {
     deferred.await()
     // Don't trust the parsed result alone — re-check what's actually granted.
     return runCatching {
-      writePermission in client.permissionController.getGrantedPermissions()
+      client.permissionController.getGrantedPermissions().containsAll(writePermissions)
     }.getOrDefault(false)
   }
 
@@ -98,6 +108,85 @@ class HealthLogModule : Module() {
           title = "Padel",
         )
         client.insertRecords(listOf(session))
+        true
+      }.getOrDefault(false)
+    }
+
+    // Rich variant fed by the watch's Health Services summary: session + heart
+    // rate series + calories, marked as actively recorded on a watch. Shares the
+    // deterministic clientRecordId with the manual path but a HIGHER version, so
+    // watch data replaces a bare manual log and never duplicates it.
+    AsyncFunction("logWatchWorkout") Coroutine { json: String ->
+      val client = client() ?: return@Coroutine false
+      if (!ensurePermission(client)) {
+        return@Coroutine false
+      }
+      runCatching {
+        val summary = JSONObject(json)
+        val startMs = summary.getLong("startedAt")
+        val endMs = summary.getLong("endedAt")
+        if (endMs <= startMs) return@runCatching false
+        val start = Instant.ofEpochMilli(startMs)
+        val end = Instant.ofEpochMilli(endMs)
+        val zone = ZoneId.systemDefault()
+        val startOffset = zone.rules.getOffset(start)
+        val endOffset = zone.rules.getOffset(end)
+        val recordId = "holy-padel-$startMs"
+        fun watchMetadata(suffix: String) = Metadata.activelyRecordedWithId(
+          clientRecordId = "$recordId$suffix",
+          clientRecordVersion = 1,
+          device = Device(type = Device.TYPE_WATCH),
+        )
+
+        val records = mutableListOf<Record>(
+          ExerciseSessionRecord(
+            startTime = start,
+            startZoneOffset = startOffset,
+            endTime = end,
+            endZoneOffset = endOffset,
+            metadata = watchMetadata(""),
+            exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_TENNIS,
+            title = "Padel",
+          ),
+        )
+
+        val samplesJson = summary.optJSONArray("samples")
+        if (samplesJson != null && samplesJson.length() > 0) {
+          val samples = (0 until samplesJson.length()).mapNotNull { index ->
+            val sample = samplesJson.optJSONObject(index) ?: return@mapNotNull null
+            val at = Instant.ofEpochMilli(sample.getLong("t"))
+            if (at.isBefore(start) || at.isAfter(end)) return@mapNotNull null
+            HeartRateRecord.Sample(time = at, beatsPerMinute = sample.getLong("bpm"))
+          }
+          if (samples.isNotEmpty()) {
+            records.add(
+              HeartRateRecord(
+                startTime = start,
+                startZoneOffset = startOffset,
+                endTime = end,
+                endZoneOffset = endOffset,
+                samples = samples,
+                metadata = watchMetadata("-hr"),
+              ),
+            )
+          }
+        }
+
+        val kcal = summary.optDouble("kcal", 0.0)
+        if (kcal > 0.0) {
+          records.add(
+            TotalCaloriesBurnedRecord(
+              startTime = start,
+              startZoneOffset = startOffset,
+              endTime = end,
+              endZoneOffset = endOffset,
+              energy = Energy.kilocalories(kcal),
+              metadata = watchMetadata("-kcal"),
+            ),
+          )
+        }
+
+        client.insertRecords(records)
         true
       }.getOrDefault(false)
     }

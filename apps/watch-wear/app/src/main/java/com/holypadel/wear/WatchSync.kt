@@ -15,6 +15,7 @@ object SyncPaths {
     const val SCORE = "/holy-padel/score"
     const val UNDO = "/holy-padel/undo"
     const val START_LAST = "/holy-padel/start-last"
+    const val WORKOUT = "/holy-padel/workout"
     const val STATE_KEY = "json"
 }
 
@@ -79,4 +80,7 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
     fun undo() = broadcast(SyncPaths.UNDO, "")
 
     fun startLast() = broadcast(SyncPaths.START_LAST, "")
+
+    /** Ship the finished exercise summary — the phone writes it to Health Connect. */
+    fun sendWorkout(summaryJson: String) = broadcast(SyncPaths.WORKOUT, summaryJson)
 }

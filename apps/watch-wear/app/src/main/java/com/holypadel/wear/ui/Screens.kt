@@ -26,6 +26,7 @@ import com.holypadel.wear.Phase
 @Composable
 fun WatchApp(
     state: MatchState,
+    liveBpm: Int,
     onScore: (String) -> Unit,
     onUndo: () -> Unit,
     onStartLast: () -> Unit,
@@ -36,7 +37,7 @@ fun WatchApp(
     ) {
         when (state.phase) {
             Phase.IDLE -> IdleScreen(state, onStartLast)
-            Phase.LIVE -> LiveScoreScreen(state, onScore, onUndo)
+            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onUndo)
             Phase.WON -> MatchWonScreen(state)
         }
     }
@@ -81,17 +82,22 @@ private fun IdleScreen(state: MatchState, onStartLast: () -> Unit) {
 @Composable
 private fun LiveScoreScreen(
     state: MatchState,
+    liveBpm: Int,
     onScore: (String) -> Unit,
     onUndo: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
-        // Header: clock · set/games · LIVE
+        // Header: clock (or live bpm) · set/games · LIVE
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
+            if (liveBpm > 0) {
+                BodyText("$liveBpm♥", color = CourtColors.Lime, sizeSp = 12)
+            } else {
+                BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
+            }
             LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Dot(sizeDp = 6)

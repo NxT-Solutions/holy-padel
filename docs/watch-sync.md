@@ -29,6 +29,9 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "pointB": "30",
   "games": "6-4 · 4-3",           // completed sets + current, the live score line
   "status": "GAME PT",            // watchStatusLabel(), may be empty
+  "startedAt": 1783200000000,     // epoch ms the match started — the watch's
+                                  // workout-session start time and cross-device
+                                  // dedup key; absent when idle
   "won": {                        // present only when phase = "won"
     "winnerShort": "N&J",
     "scoreLine": "6-4 · 7-5",
@@ -51,6 +54,32 @@ pushes fresh state back.
 | `/holy-padel/score`      | `"A"`\|`"B"`| Append a point event for that team           |
 | `/holy-padel/undo`       | `""`        | Remove the last point event                   |
 | `/holy-padel/start-last` | `""`        | From idle: start a rematch of the last lineup |
+| `/holy-padel/workout`    | summary JSON| Persist the watch-tracked workout (see below) |
+
+### Watch → phone: workout summary
+
+Wear OS has no Health Connect, so the watch tracks the match with **Health
+Services** (heart rate + calories, `RACQUETBALL` calorie model) and ships the
+result to the phone, which is the **single Health Connect writer**. Sent once,
+when the live phase ends:
+
+```jsonc
+{
+  "startedAt": 1783200000000,  // echoes the state payload's startedAt
+  "endedAt": 1783204500000,
+  "kcal": 412.5,
+  "avgBpm": 132,
+  "maxBpm": 171,
+  "samples": [ { "t": 1783200015000, "bpm": 120 } ]  // one per ~15s
+}
+```
+
+The phone writes `ExerciseSessionRecord` + `HeartRateRecord` + `TotalCaloriesBurnedRecord`
+with `Device.TYPE_WATCH` provenance and the same deterministic
+`clientRecordId` as the manual "LOG WORKOUT" path but a **higher
+`clientRecordVersion`** — watch data replaces a bare manual log, never
+duplicates it. On Apple Watch this path is unused: the watch runs its own
+`HKWorkoutSession` and saves straight to Health.
 
 ## Transport specifics
 

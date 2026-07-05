@@ -51,6 +51,11 @@ export interface WatchState {
   readonly pointB: string;
   readonly games: string;
   readonly status: string;
+  /**
+   * Epoch ms the live/won match started — the watches use it as the workout
+   * session's start time and as the cross-device dedup key. Absent when idle.
+   */
+  readonly startedAt?: number;
   readonly won?: WatchWon;
   readonly last?: WatchLast;
 }
@@ -97,6 +102,7 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     pointB: pointDisplay(snapshot, "B"),
     games: liveScoreLine(snapshot),
     status: watchStatusLabel(snapshot.moment, shorts) ?? "",
+    startedAt: match.startedAt,
   };
 }
 
@@ -117,6 +123,7 @@ function wonState(match: MatchSummary, snapshot: MatchSnapshot, now: number): Wa
     pointB: "",
     games: scoreLine,
     status: "",
+    startedAt: match.startedAt,
     won: { winnerShort: winner === "A" ? shorts.A : shorts.B, scoreLine, duration },
   };
 }

@@ -26,6 +26,8 @@ data class MatchState(
     val pointB: String,
     val games: String,
     val status: String,
+    /** Epoch ms the match started — workout session start + dedup key. 0 when idle. */
+    val startedAt: Long,
     val won: WonState?,
     val last: LastState?,
 ) {
@@ -41,6 +43,7 @@ data class MatchState(
             pointB = "",
             games = "",
             status = "",
+            startedAt = 0L,
             won = null,
             last = null,
         )
@@ -73,6 +76,7 @@ data class MatchState(
                 pointB = root.optString("pointB"),
                 games = root.optString("games"),
                 status = root.optString("status"),
+                startedAt = root.optLong("startedAt", 0L),
                 won = won,
                 last = last,
             )
