@@ -17,6 +17,12 @@ interface HealthLogModule {
    * for the "no health platform" case — that reports false.
    */
   logWorkout: (startMs: number, endMs: number) => Promise<boolean>;
+  /**
+   * Write the rich watch-tracked workout (session + heart-rate series +
+   * calories) from a `/holy-padel/workout` summary JSON. Android-only in
+   * practice — the Apple Watch saves its own session directly.
+   */
+  logWatchWorkout: (summaryJson: string) => Promise<boolean>;
 }
 
 const native = requireOptionalNativeModule<HealthLogModule>("HealthLog");
@@ -36,6 +42,18 @@ export async function logMatchWorkout(startMs: number, endMs: number): Promise<b
   }
   try {
     return await native.logWorkout(startMs, endMs);
+  } catch {
+    return false;
+  }
+}
+
+/** Persist a watch-tracked workout summary. Best-effort like everything here. */
+export async function logWatchWorkout(summaryJson: string): Promise<boolean> {
+  if (native === null) {
+    return false;
+  }
+  try {
+    return await native.logWatchWorkout(summaryJson);
   } catch {
     return false;
   }

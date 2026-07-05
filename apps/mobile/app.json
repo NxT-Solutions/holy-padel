@@ -27,7 +27,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.health.WRITE_EXERCISE"]
+      "permissions": [
+        "android.permission.health.WRITE_EXERCISE",
+        "android.permission.health.WRITE_HEART_RATE",
+        "android.permission.health.WRITE_TOTAL_CALORIES_BURNED"
+      ]
     },
     "web": {
       "output": "static",

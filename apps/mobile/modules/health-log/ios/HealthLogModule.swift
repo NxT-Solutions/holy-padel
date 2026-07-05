@@ -47,5 +47,12 @@ public class HealthLogModule: Module {
         return false
       }
     }
+
+    // On iOS the Apple Watch saves its own HKWorkoutSession directly to Health,
+    // so there is nothing for the phone to write — the watch never sends a
+    // summary here. Defined for interface parity with Android.
+    AsyncFunction("logWatchWorkout") { (_: String) async -> Bool in
+      false
+    }
   }
 }

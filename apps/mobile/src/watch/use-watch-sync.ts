@@ -4,6 +4,8 @@ import { computeMatch } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { logWatchWorkout } from "@/health/health-log.ts";
+import { parseWorkoutSummary, WORKOUT_PATH } from "@/health/watch-workout.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { applyWatchIntent } from "./apply-intent.ts";
@@ -47,6 +49,15 @@ export function useWatchSync(): void {
   useEffect(
     () =>
       addIntentListener((intent) => {
+        if (intent.path === WORKOUT_PATH) {
+          // A tracked workout summary, not a scoring intent: persist it to the
+          // health platform (fire-and-forget) — the ledger is untouched.
+          const summary = parseWorkoutSummary(intent.body);
+          if (summary !== undefined) {
+            void logWatchWorkout(JSON.stringify(summary));
+          }
+          return;
+        }
         mutate((driver) => {
           applyWatchIntent(driver, intent, { now: Date.now(), newMatchId });
         });
