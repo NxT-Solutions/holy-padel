@@ -1,0 +1,6 @@
+{
+  "name": "health-log",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Log finished padel matches as workouts — HealthKit on iOS, Health Connect on Android"
+}

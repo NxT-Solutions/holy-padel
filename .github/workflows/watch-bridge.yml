@@ -1,19 +1,20 @@
-name: Watch Bridge
+name: Native Modules
 
-# Compiles the phone-side WatchBridge native module (apps/mobile/modules/watch-bridge)
-# on both platforms — WatchConnectivity (Swift) for Apple Watch, Wearable Data
-# Layer (Kotlin) for Wear OS. The module autolinks into the app during
-# `expo prebuild`, so each job prebuilds then compiles. Runtime pairing needs
-# physical devices; this proves the native code builds. Not a required check.
+# Compiles the app's local Expo modules (apps/mobile/modules/*) on both
+# platforms — currently watch-bridge (WatchConnectivity / Wearable Data Layer)
+# and health-log (HealthKit / Health Connect). The modules autolink into the app
+# during `expo prebuild`, so each job prebuilds then compiles the whole app.
+# Device-only behaviour (pairing, health permissions) needs real hardware; this
+# proves the native code builds. Not a required check.
 on:
   push:
     branches: [main]
     paths:
-      - "apps/mobile/modules/watch-bridge/**"
+      - "apps/mobile/modules/**"
       - ".github/workflows/watch-bridge.yml"
   pull_request:
     paths:
-      - "apps/mobile/modules/watch-bridge/**"
+      - "apps/mobile/modules/**"
       - ".github/workflows/watch-bridge.yml"
   workflow_dispatch:
 
@@ -62,19 +63,21 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Prebuild iOS (installs pods, incl. the WatchBridge pod)
+      - name: Prebuild iOS (installs pods, incl. the local module pods)
         working-directory: apps/mobile
         run: npx expo prebuild -p ios
-      - name: Compile the WatchBridge pod (Swift)
+      - name: Compile the local module pods (Swift)
         working-directory: apps/mobile
         run: |
           set -x
           xcodebuild -project ios/Pods/Pods.xcodeproj -list
-          xcodebuild \
-            -project ios/Pods/Pods.xcodeproj \
-            -target WatchBridge \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            build
+          for TARGET in WatchBridge HealthLog; do
+            xcodebuild \
+              -project ios/Pods/Pods.xcodeproj \
+              -target "$TARGET" \
+              -sdk iphonesimulator \
+              -configuration Debug \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              build
+          done

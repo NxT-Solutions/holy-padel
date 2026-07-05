@@ -10,7 +10,13 @@
     "backgroundColor": "#F1F0EA",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.holypadel.app"
+      "bundleIdentifier": "com.holypadel.app",
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      },
+      "infoPlist": {
+        "NSHealthUpdateUsageDescription": "Holy Padel saves your finished matches to Apple Health as workouts. Nothing is ever read back."
+      }
     },
     "android": {
       "package": "com.holypadel.app",
@@ -20,7 +26,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.health.WRITE_EXERCISE"]
     },
     "web": {
       "output": "static",
@@ -37,7 +44,16 @@
           "imageWidth": 76
         }
       ],
-      "@bacons/apple-targets"
+      "@bacons/apple-targets",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      "./plugins/with-health-connect.js"
     ],
     "experiments": {
       "typedRoutes": true

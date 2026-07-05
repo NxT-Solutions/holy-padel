@@ -94,11 +94,13 @@
       }
     },
     {
-      "includes": ["**/metro.config.js", "**/babel.config.js"],
+      "includes": ["**/metro.config.js", "**/babel.config.js", "**/plugins/*.js"],
       "linter": {
         "rules": {
           "style": {
-            "noCommonJs": "off"
+            "noCommonJs": "off",
+            "useDestructuring": "off",
+            "useNamingConvention": "off"
           },
           "correctness": {
             "noGlobalDirnameFilename": "off"
