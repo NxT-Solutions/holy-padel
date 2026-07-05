@@ -67,11 +67,23 @@ Six workflows in `.github/workflows` (see the README's CI table). `main` is prot
 - Scoring questions → `packages/scoring/src` + `docs/fip-scoring-spec.md`.
 - Watch questions → `docs/watch-sync.md` + `apps/mobile/src/watch` + the two watch apps.
 - "How does X render?" → `apps/mobile/src/app` (expo-router screens) + `src/lib/format.ts` (all display strings).
+- Design/colors/typography → **[DESIGN.md](DESIGN.md)** (the token source of truth) + `apps/mobile/src/theme/colors.ts`.
+
+## Agentic workspace (`.claude/`)
+
+This repo ships a committed agentic workspace. Prefer these over ad-hoc work — they encode the conventions above.
+
+- **Subagents** (`.claude/agents/`) — delegate to these; they auto-trigger by task:
+  `scoring-guardian` (FIP engine + spec + vectors), `engine-port-parity` (Swift/Kotlin ports vs `golden.json`), `watch-sync-specialist` (phone↔watch contract + native), `design-system-keeper` (Court Bold tokens across platforms), `verify-gate` (pre-merge checks + required-vs-native CI), `holy-padel-reviewer` (repo-tuned review).
+- **Slash commands** (`.claude/commands/`) — `/verify` (install → check → e2e), `/regen-vectors` (regen `golden.json` + port tests), `/ship-pr` (gitmoji micro-commits → PR → manual merge after native jobs green), `/new-native-module` (the Expo-module triad).
+- **Skills** (`.claude/skills/`) — `ios-build-run` (dev-client build/run + fast watch rebuild), `gitnexus/*` (code-intelligence CLI).
+- **Path rules** (`.claude/rules/`) — load automatically when you open matching files: `scoring`, `watch`, `design`, `native-modules`, `typescript`.
+- **Enforced config** — `.claude/settings.json` (permission allowlist, UTF-8/telemetry env, a Biome auto-format hook in `.claude/hooks/`), and `.mcp.json` (the GitNexus MCP server). Personal overrides go in the git-ignored `.claude/settings.local.json`.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **holy-padel** (1280 symbols, 3014 relationships, 103 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **holy-padel** (1927 symbols, 4506 relationships, 160 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
