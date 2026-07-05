@@ -15,7 +15,8 @@
         "com.apple.developer.healthkit": true
       },
       "infoPlist": {
-        "NSHealthUpdateUsageDescription": "Holy Padel saves your finished matches to Apple Health as workouts. Nothing is ever read back."
+        "NSHealthUpdateUsageDescription": "Holy Padel saves your finished matches to Apple Health as workouts.",
+        "NSHealthShareUsageDescription": "The Holy Padel watch app reads your heart rate during a match to show it on the scoreboard."
       }
     },
     "android": {

@@ -8,8 +8,12 @@ module.exports = () => ({
   bundleIdentifier: ".watchkitapp",
   deploymentTarget: "11.0",
   icon: "../../assets/images/icon.png",
-  // WatchConnectivity carries the phone<->watch match sync (see docs/watch-sync.md).
-  frameworks: ["WatchConnectivity"],
+  // WatchConnectivity carries the phone<->watch match sync (docs/watch-sync.md);
+  // HealthKit runs the live workout session during the match.
+  frameworks: ["WatchConnectivity", "HealthKit"],
+  entitlements: {
+    "com.apple.developer.healthkit": true,
+  },
   // $accent drives the system tint; matches the design's lime.
   colors: { $accent: "#C6F135" },
 });
