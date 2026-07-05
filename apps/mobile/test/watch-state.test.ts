@@ -57,6 +57,7 @@ describe("buildWatchState", () => {
     expect(state.setLabel).toBe("SET 1");
     expect(state.clock).toBe("0:47");
     expect(state.court).toBe("COURT 4");
+    expect(state.startedAt).toBe(STARTED);
     expect(state.status).toBe("GAME PT");
     expect(state.won).toBeUndefined();
     expect(state.last).toBeUndefined();
@@ -94,6 +95,7 @@ describe("buildWatchState", () => {
     expect(state.games).toBe("6-0");
     expect(state.pointA).toBe("");
     expect(state.won).toEqual({ winnerShort: "N&J", scoreLine: "6-0", duration: "0:47" });
+    expect(state.startedAt).toBe(STARTED);
   });
 
   it("is idle with no hint when there is no history", () => {

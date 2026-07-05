@@ -29,6 +29,9 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "pointB": "30",
   "games": "6-4 · 4-3",           // completed sets + current, the live score line
   "status": "GAME PT",            // watchStatusLabel(), may be empty
+  "startedAt": 1783200000000,     // epoch ms the match started — the watch's
+                                  // workout-session start time and cross-device
+                                  // dedup key; absent when idle
   "won": {                        // present only when phase = "won"
     "winnerShort": "N&J",
     "scoreLine": "6-4 · 7-5",
