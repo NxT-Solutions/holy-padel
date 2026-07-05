@@ -1,5 +1,5 @@
 import { computeProfileStats, countMatches, databaseSizeBytes, getOwner } from "@holy-padel/db";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { Platform, ScrollView } from "react-native";
@@ -192,6 +192,12 @@ export default function ProfileScreen(): ReactNode {
           borderColor={inkAlpha(0.16)}
           paddingVertical={8}
           paddingHorizontal={13}
+          pressStyle={{ opacity: 0.6 }}
+          role="button"
+          aria-label="Edit profile"
+          onPress={() => {
+            router.navigate("/edit-profile");
+          }}
         >
           <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={inkAlpha(0.55)}>
             EDIT
