@@ -37,6 +37,19 @@ final class WorkoutManager: NSObject, ObservableObject {
         }
     }
 
+    /// Pause the running session so its active time and calories freeze while the
+    /// match is paused. Best-effort: a no-op when nothing is tracking.
+    func pause() {
+        guard isTracking else { return }
+        session?.pause()
+    }
+
+    /// Resume a paused session when the match resumes. Best-effort.
+    func resume() {
+        guard isTracking else { return }
+        session?.resume()
+    }
+
     /// End the session; HealthKit finalises and saves the workout.
     func end() {
         guard isTracking else { return }

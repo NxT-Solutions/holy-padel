@@ -1,6 +1,9 @@
 package com.holypadel.wear
 
 import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
@@ -15,6 +18,8 @@ object SyncPaths {
     const val SCORE = "/holy-padel/score"
     const val UNDO = "/holy-padel/undo"
     const val START_LAST = "/holy-padel/start-last"
+    const val PAUSE = "/holy-padel/pause"
+    const val END = "/holy-padel/end"
     const val WORKOUT = "/holy-padel/workout"
     const val STATE_KEY = "json"
 }
@@ -29,6 +34,7 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
     private val dataClient: DataClient = Wearable.getDataClient(appContext)
     private val messageClient = Wearable.getMessageClient(appContext)
     private val nodeClient = Wearable.getNodeClient(appContext)
+    private val vibrator = appContext.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
 
     private val stateFlow = MutableStateFlow(MatchState.IDLE)
     val state: StateFlow<MatchState> = stateFlow
@@ -75,11 +81,39 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
         }
     }
 
-    fun score(team: String) = broadcast(SyncPaths.SCORE, team)
+    /**
+     * Broadcast a user-initiated tap with instant local feedback — the visible
+     * score still comes from the phone's next state push (docs/watch-sync.md).
+     */
+    private fun tap(path: String, body: String) {
+        buzz()
+        broadcast(path, body)
+    }
 
-    fun undo() = broadcast(SyncPaths.UNDO, "")
+    /** Short haptic tick so a tap feels acknowledged before the round-trip. */
+    private fun buzz() {
+        val v = vibrator ?: return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                v.vibrate(VibrationEffect.createOneShot(20L, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                v.vibrate(20L)
+            }
+        }
+    }
 
-    fun startLast() = broadcast(SyncPaths.START_LAST, "")
+    fun score(team: String) = tap(SyncPaths.SCORE, team)
+
+    fun undo() = tap(SyncPaths.UNDO, "")
+
+    fun startLast() = tap(SyncPaths.START_LAST, "")
+
+    /** Toggle pause<->resume — the phone owns the pause state. */
+    fun pause() = tap(SyncPaths.PAUSE, "")
+
+    /** End the match — the phone decides to persist the win or discard. */
+    fun end() = tap(SyncPaths.END, "")
 
     /** Ship the finished exercise summary — the phone writes it to Health Connect. */
     fun sendWorkout(summaryJson: String) = broadcast(SyncPaths.WORKOUT, summaryJson)

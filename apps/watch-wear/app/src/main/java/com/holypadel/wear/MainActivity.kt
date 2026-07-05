@@ -23,6 +23,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var sync: WatchSync
     private lateinit var tracker: ExerciseTracker
     private var lastPhase = Phase.IDLE
+    private var lastPaused = false
     private var pendingStartedAt = 0L
 
     private val permissionLauncher =
@@ -49,7 +50,13 @@ class MainActivity : ComponentActivity() {
                 } else if (phase != Phase.LIVE && lastPhase == Phase.LIVE) {
                     tracker.end()
                 }
+                // Mirror pause/resume onto the workout session while live; only act
+                // on a real change so we never spam the exercise client.
+                if (phase == Phase.LIVE && state.paused != lastPaused) {
+                    if (state.paused) tracker.pause() else tracker.resume()
+                }
                 lastPhase = phase
+                lastPaused = if (phase == Phase.LIVE) state.paused else false
             }
         }
 
@@ -62,6 +69,8 @@ class MainActivity : ComponentActivity() {
                 onScore = { team -> sync.score(team) },
                 onUndo = { sync.undo() },
                 onStartLast = { sync.startLast() },
+                onPause = { sync.pause() },
+                onEnd = { sync.end() },
             )
         }
     }

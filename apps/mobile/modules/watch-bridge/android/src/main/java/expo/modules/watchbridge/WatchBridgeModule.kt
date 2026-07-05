@@ -21,6 +21,10 @@ class WatchBridgeModule : Module(), MessageClient.OnMessageReceivedListener {
   private val context: Context?
     get() = appContext.reactContext
 
+  /** Latest state JS pushed — replayed to a watch that (re)connects. */
+  @Volatile
+  private var lastState: String? = null
+
   private fun messageClient(): MessageClient? =
     context?.let { runCatching { Wearable.getMessageClient(it) }.getOrNull() }
 
@@ -38,19 +42,29 @@ class WatchBridgeModule : Module(), MessageClient.OnMessageReceivedListener {
     }
 
     Function("pushState") { json: String ->
-      val ctx = context ?: return@Function
-      runCatching {
-        val request = PutDataMapRequest.create(STATE_PATH).apply {
-          dataMap.putString(STATE_KEY, json)
-          // Bump so an identical-looking payload still propagates as a change.
-          dataMap.putLong("ts", System.currentTimeMillis())
-        }
-        Wearable.getDataClient(ctx).putDataItem(request.asPutDataRequest().setUrgent())
+      lastState = json
+      putState(json)
+    }
+  }
+
+  /** Put the state DataItem; latest-wins so a reconnecting watch self-heals. */
+  private fun putState(json: String) {
+    val ctx = context ?: return
+    runCatching {
+      val request = PutDataMapRequest.create(STATE_PATH).apply {
+        dataMap.putString(STATE_KEY, json)
+        // Bump so an identical-looking payload still propagates as a change.
+        dataMap.putLong("ts", System.currentTimeMillis())
       }
+      Wearable.getDataClient(ctx).putDataItem(request.asPutDataRequest().setUrgent())
     }
   }
 
   override fun onMessageReceived(event: MessageEvent) {
+    // An inbound intent proves a watch is (re)connected — re-put the cached state
+    // so a watch that reconnected mid-match refreshes without waiting for the next
+    // JS push (docs/watch-sync.md: latest-wins, phone re-pushes on reconnect).
+    lastState?.let { putState(it) }
     runCatching {
       sendEvent(
         "onIntent",

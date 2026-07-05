@@ -1,13 +1,18 @@
 import type { SqlDriver } from "@holy-padel/db";
 import {
   createMatch,
+  deleteMatch,
+  finishMatch,
   getLiveMatch,
   listMatches,
+  loadEvents,
   pauseMatch,
   removeLastEvent,
   resumeMatch,
   scorePoint,
 } from "@holy-padel/db";
+import { computeMatch } from "@holy-padel/scoring";
+import { finalScoreLine } from "@/lib/format.ts";
 
 /** The watch → phone intents (docs/watch-sync.md). */
 export const INTENT_PATHS = {
@@ -15,6 +20,7 @@ export const INTENT_PATHS = {
   undo: "/holy-padel/undo",
   startLast: "/holy-padel/start-last",
   pause: "/holy-padel/pause",
+  end: "/holy-padel/end",
 } as const;
 
 export interface WatchIntent {
@@ -61,6 +67,25 @@ function applyPauseToggle(driver: SqlDriver, now: number): void {
   }
 }
 
+function applyEnd(driver: SqlDriver, now: number): void {
+  const live = getLiveMatch(driver);
+  if (live === undefined) {
+    return;
+  }
+  // The phone decides: a finished snapshot persists the win, anything else is
+  // discarded — either way the match leaves "live" so the watch returns to idle.
+  const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
+  if (snapshot.finished) {
+    finishMatch(driver, live.id, {
+      winner: snapshot.winner ?? "A",
+      endedAt: now,
+      scoreLine: finalScoreLine(snapshot),
+    });
+  } else {
+    deleteMatch(driver, live.id);
+  }
+}
+
 function applyStartLast(driver: SqlDriver, ctx: IntentContext): void {
   if (getLiveMatch(driver) !== undefined) {
     return;
@@ -92,6 +117,8 @@ export function applyWatchIntent(driver: SqlDriver, intent: WatchIntent, ctx: In
     applyUndo(driver);
   } else if (intent.path === INTENT_PATHS.pause) {
     applyPauseToggle(driver, ctx.now);
+  } else if (intent.path === INTENT_PATHS.end) {
+    applyEnd(driver, ctx.now);
   } else if (intent.path === INTENT_PATHS.startLast) {
     applyStartLast(driver, ctx);
   }

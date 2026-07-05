@@ -56,6 +56,8 @@ struct LiveView: View {
     let liveBpm: Int
     let onScore: (String) -> Void
     let onUndo: () -> Void
+    let onPause: () -> Void
+    let onEnd: () -> Void
 
     var body: some View {
         VStack(spacing: 4) {
@@ -64,6 +66,7 @@ struct LiveView: View {
                 short: state.teamA.short,
                 point: state.pointA,
                 serving: state.teamA.serving,
+                paused: state.paused,
                 onTap: { onScore("A") }
             )
             Rectangle().fill(Court.white.opacity(0.12)).frame(height: 1)
@@ -71,6 +74,7 @@ struct LiveView: View {
                 short: state.teamB.short,
                 point: state.pointB,
                 serving: state.teamB.serving,
+                paused: state.paused,
                 onTap: { onScore("B") }
             )
             footer
@@ -97,31 +101,58 @@ struct LiveView: View {
                 .foregroundStyle(Court.white.opacity(0.75))
                 .lineLimit(1)
             Spacer(minLength: 4)
-            HStack(spacing: 3) {
-                Circle().fill(Court.lime).frame(width: 6, height: 6)
-                Text("LIVE").font(.system(size: 10, weight: .bold)).foregroundStyle(Court.lime)
+            if state.paused {
+                HStack(spacing: 3) {
+                    Circle().fill(Court.white.opacity(0.5)).frame(width: 6, height: 6)
+                    Text("PAUSED")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Court.white.opacity(0.5))
+                }
+            } else {
+                HStack(spacing: 3) {
+                    Circle().fill(Court.lime).frame(width: 6, height: 6)
+                    Text("LIVE").font(.system(size: 10, weight: .bold)).foregroundStyle(Court.lime)
+                }
             }
         }
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 8) {
             Button(action: onUndo) {
                 Text("UNDO")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(Court.white)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .overlay(Capsule().stroke(Court.white.opacity(0.25), lineWidth: 1))
             }
             .buttonStyle(.plain)
-            Spacer()
-            if !state.status.isEmpty {
-                Text(state.status)
-                    .font(.system(size: 13, weight: .heavy))
-                    .foregroundStyle(Court.lime)
-                    .lineLimit(1)
+            .disabled(state.paused)
+            .opacity(state.paused ? 0.4 : 1)
+
+            Button(action: onPause) {
+                Text(state.paused ? "RESUME" : "PAUSE")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(state.paused ? Court.ink : Court.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(state.paused ? Court.lime : Color.clear, in: Capsule())
+                    .overlay(Capsule().stroke(Court.white.opacity(0.25), lineWidth: state.paused ? 0 : 1))
             }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 2)
+
+            Button(action: onEnd) {
+                Text("END")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Court.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Court.white.opacity(0.85), in: Capsule())
+            }
+            .buttonStyle(.plain)
         }
     }
 }
@@ -130,13 +161,14 @@ private struct TeamScoreRow: View {
     let short: String
     let point: String
     let serving: Bool
+    let paused: Bool
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HStack {
                 HStack(spacing: 6) {
-                    ServingDot(active: serving)
+                    ServingDot(active: serving && !paused)
                     Text(short)
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Court.white)
@@ -151,6 +183,8 @@ private struct TeamScoreRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(paused)
+        .opacity(paused ? 0.35 : 1)
     }
 }
 
@@ -158,6 +192,7 @@ private struct TeamScoreRow: View {
 
 struct WonView: View {
     let state: MatchState
+    let onEnd: () -> Void
 
     var body: some View {
         VStack(spacing: 5) {
@@ -175,6 +210,17 @@ struct WonView: View {
             Text([state.won?.duration ?? "", "SAVED TO PHONE"].filter { !$0.isEmpty }.joined(separator: " · "))
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Court.white.opacity(0.5))
+
+            Button(action: onEnd) {
+                Text("DONE")
+                    .font(.system(size: 14, weight: .heavy))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(Court.ink)
+                    .background(Court.lime, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
         }
         .padding(.horizontal, 14)
         .multilineTextAlignment(.center)

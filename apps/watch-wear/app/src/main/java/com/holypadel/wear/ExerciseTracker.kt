@@ -99,6 +99,22 @@ class ExerciseTracker(context: Context) {
         }
     }
 
+    /** Pause the exercise session while the match is paused. No-op when idle. */
+    fun pause() {
+        if (!statsFlow.value.tracking) return
+        scope.launch {
+            runCatching { client.pauseExerciseAsync().await() }
+        }
+    }
+
+    /** Resume the exercise session when the match resumes. No-op when idle. */
+    fun resume() {
+        if (!statsFlow.value.tracking) return
+        scope.launch {
+            runCatching { client.resumeExerciseAsync().await() }
+        }
+    }
+
     /** End tracking and hand the summary to [onSummary]. No-op when idle. */
     fun end() {
         if (!statsFlow.value.tracking) return

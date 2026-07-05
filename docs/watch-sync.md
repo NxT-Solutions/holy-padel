@@ -53,8 +53,19 @@ pushes fresh state back.
 | ------------------------ | ----------- | -------------------------------------------- |
 | `/holy-padel/score`      | `"A"`\|`"B"`| Append a point event for that team           |
 | `/holy-padel/undo`       | `""`        | Remove the last point event                   |
+| `/holy-padel/pause`      | `""`        | Toggle pause ↔ resume on the live match       |
 | `/holy-padel/start-last` | `""`        | From idle: start a rematch of the last lineup |
+| `/holy-padel/end`        | `""`        | End the live match — **the phone decides**    |
 | `/holy-padel/workout`    | summary JSON| Persist the watch-tracked workout (see below) |
+
+**`/holy-padel/end` — the phone decides finish-vs-discard.** The watch has no
+scoring engine, so it can't tell a finished match from an abandoned one; it just
+asks the phone to end it. The phone recomputes the snapshot: if it is *finished*
+it persists the win (`finishMatch`), otherwise it *discards* the match
+(`deleteMatch`). Either way the match leaves `live`, so the watch's next state is
+`phase = "idle"`. This backs the **DONE / EXIT** control on the `won` screen — the
+user is never stuck on MATCH WON: pressing DONE sends `/holy-padel/end`, the phone
+persists the finished match, and the watch returns to idle.
 
 ### Watch → phone: workout summary
 
@@ -152,3 +163,20 @@ physically paired devices.
   the watch does no scoring math.
 - Because the payload is tiny and latest-wins, a missed update self-heals on the
   next point; there is no event replay on the watch.
+
+## Transport resilience — keep it local, sync in the background
+
+A watch tap must never be lost and must never block the UI on the round-trip:
+
+- **Instant local feedback.** Every tap fires a haptic immediately. The visible
+  score, however, still comes from the phone's *next* state push (instant on real
+  devices) — the watch has no scoring engine and never computes score locally.
+- **Immediate channel + guaranteed fallback.** Each intent is sent on the
+  immediate channel when the phone is reachable *and* falls back to the
+  queued/background-tolerant channel when it is not, so intents flush
+  automatically on reconnect. On Apple Watch that is `sendMessage` (reachable) →
+  `transferUserInfo` (queued, survives the phone being asleep); on Wear OS the
+  `MessageClient` send is retried against connected nodes.
+- **Latest-wins self-heals.** State is latest-wins and the phone re-pushes on
+  every change and every 30 s, so a reconnect converges the watch to the truth
+  even if an intermediate push was missed — no event replay is needed.

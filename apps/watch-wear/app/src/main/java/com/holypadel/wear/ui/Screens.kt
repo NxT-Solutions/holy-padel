@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.holypadel.wear.MatchState
@@ -30,6 +31,8 @@ fun WatchApp(
     onScore: (String) -> Unit,
     onUndo: () -> Unit,
     onStartLast: () -> Unit,
+    onPause: () -> Unit,
+    onEnd: () -> Unit,
 ) {
     Box(
         modifier = Modifier.fillMaxSize().background(CourtColors.Black),
@@ -37,8 +40,8 @@ fun WatchApp(
     ) {
         when (state.phase) {
             Phase.IDLE -> IdleScreen(state, onStartLast)
-            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onUndo)
-            Phase.WON -> MatchWonScreen(state)
+            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onUndo, onPause, onEnd)
+            Phase.WON -> MatchWonScreen(state, onEnd)
         }
     }
 }
@@ -85,9 +88,12 @@ private fun LiveScoreScreen(
     liveBpm: Int,
     onScore: (String) -> Unit,
     onUndo: () -> Unit,
+    onPause: () -> Unit,
+    onEnd: () -> Unit,
 ) {
+    val paused = state.paused
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
-        // Header: clock (or live bpm) · set/games · LIVE
+        // Header: clock (or live bpm) · set/games · LIVE (or PAUSED)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -100,14 +106,24 @@ private fun LiveScoreScreen(
             }
             LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Dot(sizeDp = 6)
+                Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Lime)
                 Spacer(Modifier.width(4.dp))
-                LabelText("LIVE", color = CourtColors.Lime, sizeSp = 10)
+                LabelText(
+                    if (paused) "PAUSED" else "LIVE",
+                    color = if (paused) CourtColors.White45 else CourtColors.Lime,
+                    sizeSp = 10,
+                )
             }
         }
 
+        // While paused, dim the halves and swallow taps — the phone rejects points
+        // when paused anyway, but this keeps the watch honest (docs/watch-sync.md).
+        val scoreEnabled = !paused
         TeamRow(
-            modifier = Modifier.weight(1f).clickable { onScore("A") },
+            modifier = Modifier
+                .weight(1f)
+                .alpha(if (paused) 0.35f else 1f)
+                .clickable(enabled = scoreEnabled) { onScore("A") },
             short = state.teamA.short,
             point = state.pointA,
             serving = state.teamA.serving,
@@ -119,31 +135,45 @@ private fun LiveScoreScreen(
                 .background(CourtColors.White25),
         )
         TeamRow(
-            modifier = Modifier.weight(1f).clickable { onScore("B") },
+            modifier = Modifier
+                .weight(1f)
+                .alpha(if (paused) 0.35f else 1f)
+                .clickable(enabled = scoreEnabled) { onScore("B") },
             short = state.teamB.short,
             point = state.pointB,
             serving = state.teamB.serving,
         )
 
-        // Footer: undo + status
+        // Footer: undo · pause/resume · end
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(99.dp))
-                    .border(1.dp, CourtColors.White25, RoundedCornerShape(99.dp))
-                    .clickable { onUndo() }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                LabelText("UNDO", color = CourtColors.White, sizeSp = 10)
-            }
-            if (state.status.isNotEmpty()) {
-                DisplayText(state.status, sizeSp = 14, color = CourtColors.Lime)
-            }
+            PillButton("UNDO", onClick = onUndo)
+            PillButton(if (paused) "RESUME" else "PAUSE", onClick = onPause, accent = paused)
+            PillButton("END", onClick = onEnd)
         }
+    }
+}
+
+/** Rounded outline control matching the LIVE footer style. */
+@Composable
+private fun PillButton(label: String, onClick: () -> Unit, accent: Boolean = false) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(99.dp))
+            .let {
+                if (accent) {
+                    it.background(CourtColors.Lime)
+                } else {
+                    it.border(1.dp, CourtColors.White25, RoundedCornerShape(99.dp))
+                }
+            }
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    ) {
+        LabelText(label, color = if (accent) CourtColors.Ink else CourtColors.White, sizeSp = 10)
     }
 }
 
@@ -164,7 +194,7 @@ private fun TeamRow(modifier: Modifier, short: String, point: String, serving: B
 }
 
 @Composable
-private fun MatchWonScreen(state: MatchState) {
+private fun MatchWonScreen(state: MatchState, onEnd: () -> Unit) {
     val won = state.won
     Column(
         modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
@@ -181,5 +211,17 @@ private fun MatchWonScreen(state: MatchState) {
             listOf(won?.duration ?: "", "SAVED TO PHONE").filter { it.isNotEmpty() }.joinToString(" · "),
             sizeSp = 10,
         )
+        Spacer(Modifier.height(14.dp))
+        // DONE lets the user leave MATCH WON — the phone persists the finished
+        // match and the next state push lands the watch back on IDLE.
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(28.dp))
+                .background(CourtColors.Lime)
+                .clickable { onEnd() }
+                .padding(horizontal = 22.dp, vertical = 10.dp),
+        ) {
+            DisplayText("DONE", sizeSp = 15, color = CourtColors.Ink)
+        }
     }
 }

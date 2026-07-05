@@ -108,4 +108,30 @@ describe("applyWatchIntent", () => {
 
     expect(loadEvents(driver, "m1")).toHaveLength(0);
   });
+
+  it("ends an in-progress match by discarding it", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    appendEvent(driver, "m1", { winner: "A", at: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.end, body: "" }, ctx);
+
+    expect(getLiveMatch(driver)).toBeUndefined();
+    expect(getMatch(driver, "m1")).toBeUndefined();
+  });
+
+  it("ends a finished match by persisting the win", () => {
+    const driver = freshDb();
+    // bestOf:1 finishes at 6 love games — 24 points to A wins the set 6-0.
+    createMatch(driver, { id: "m1", config: { ...config, bestOf: 1 }, players, startedAt: 0 });
+    for (let i = 0; i < 24; i += 1) {
+      appendEvent(driver, "m1", { winner: "A", at: 0 });
+    }
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.end, body: "" }, { ...ctx, now: 5000 });
+
+    expect(getLiveMatch(driver)).toBeUndefined();
+    expect(getMatch(driver, "m1")?.status).toBe("finished");
+    expect(getMatch(driver, "m1")?.winner).toBe("A");
+  });
 });

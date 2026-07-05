@@ -4,6 +4,8 @@
     <uses-feature android:name="android.hardware.type.watch" />
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Instant local feedback on every score/undo/pause/end tap. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Live match tracking (Health Services): heart rate + calories.
          BODY_SENSORS is replaced by the granular health permission on API 36+. -->
