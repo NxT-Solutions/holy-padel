@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "site:dev": "pnpm --filter @holy-padel/site dev",
+    "site:build": "pnpm --filter @holy-padel/site build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "lint": "biome check .",

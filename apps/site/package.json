@@ -1,0 +1,21 @@
+{
+  "name": "@holy-padel/site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "biome check README.md app next.config.mjs package.json tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.0",
+    "@types/react": "~19.2.2",
+    "typescript": "6.0.3"
+  }
+}
