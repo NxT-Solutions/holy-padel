@@ -1,7 +1,6 @@
-# The native "End match?" alert — a real OS dialog, not a web confirm().
-# This is the behaviour the Playwright suite fakes with page.on("dialog").
+# The in-app "End match?" sheet protects against losing an unfinished score.
 appId: com.holypadel.app
-name: End match native alert
+name: End match sheet
 ---
 - runFlow: subflows/launch-seeded.yaml
 
@@ -12,12 +11,13 @@ name: End match native alert
       text: "40"
     timeout: 20000
 
-# Cancel first: the OS alert appears, "Cancel" dismisses it, score intact.
+# Cancel first: the end sheet appears, "Keep playing" dismisses it, score intact.
 - tapOn: "END MATCH"
 - extendedWaitUntil:
-    visible: "The match is not finished — discard it?"
+    visible: "END THE MATCH?"
     timeout: 10000
-- tapOn: "Cancel"
+- tapOn:
+    id: "end-keep-playing"
 - assertVisible:
     id: "point-A"
     text: "40"
@@ -25,9 +25,10 @@ name: End match native alert
 # Now confirm the discard: back to home with no live match.
 - tapOn: "END MATCH"
 - extendedWaitUntil:
-    visible: "Discard match"
+    visible: "END THE MATCH?"
     timeout: 10000
-- tapOn: "Discard match"
+- tapOn:
+    id: "end-discard"
 - extendedWaitUntil:
     visible: "HOLA, NICO"
     timeout: 20000
