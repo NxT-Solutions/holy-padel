@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Holy Padel logo mark foreground">
+  <defs>
+    <clipPath id="ballClip">
+      <circle cx="512" cy="512" r="318" />
+    </clipPath>
+  </defs>
+  <circle cx="512" cy="512" r="390" fill="#0E1116" stroke="#F1F0EA" stroke-width="62" />
+  <circle cx="512" cy="512" r="318" fill="#C6F135" />
+  <g clip-path="url(#ballClip)">
+    <path d="M256 348c92 0 144 66 256 66s164-66 256-66" fill="none" stroke="#F1F0EA" stroke-linecap="round" stroke-width="42" />
+    <path d="M256 676c92 0 144-66 256-66s164 66 256 66" fill="none" stroke="#F1F0EA" stroke-linecap="round" stroke-width="42" />
+    <path d="M230 454h254v116H230zM540 454h254v116H540zM484 454h56v244h-56z" fill="#0E1116" />
+    <circle cx="294" cy="512" r="27" fill="#C6F135" />
+    <circle cx="366" cy="512" r="27" fill="#C6F135" />
+    <circle cx="438" cy="512" r="27" fill="#F1F0EA" />
+    <circle cx="586" cy="512" r="27" fill="#F1F0EA" />
+    <circle cx="658" cy="512" r="27" fill="#C6F135" />
+    <circle cx="730" cy="512" r="27" fill="#C6F135" />
+  </g>
+</svg>

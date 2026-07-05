@@ -1,0 +1,18 @@
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+LANG = "en_US.UTF-8"
+LC_ALL = "en_US.UTF-8"
+EXPO_NO_TELEMETRY = "1"
+
+[mcp_servers.claude_design]
+url = "https://api.anthropic.com/v1/design/mcp"
+
+[mcp_servers.gitnexus]
+command = "npx"
+args = [
+    "-y",
+    "gitnexus",
+    "mcp",
+]
