@@ -135,10 +135,10 @@ test.describe("empty ledger", () => {
     await gotoHome(page);
 
     // Discard the live match, delete all twelve finished ones.
-    armConfirm(page, true);
     await page.getByRole("button", { name: "RESUME SCORING" }).click();
     await expect(page.getByTestId("point-A")).toBeVisible();
-    await page.getByRole("button", { name: "END MATCH" }).click();
+    await page.getByRole("button", { name: "End match" }).click();
+    await page.getByRole("button", { name: "Discard match" }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
     for (let index = 1; index <= 12; index += 1) {

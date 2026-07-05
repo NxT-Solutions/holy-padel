@@ -10,25 +10,20 @@ import {
   resumeMatch,
   scorePoint as scorePointDb,
 } from "@holy-padel/db";
-import type { MatchSnapshot, MatchStats, PointEvent, TeamId } from "@holy-padel/scoring";
+import type { MatchSnapshot, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
-import { Pause, Play, Undo } from "@/components/icons.tsx";
+import { EndSheet } from "@/components/end-sheet.tsx";
+import { Pause, Play, Square, Undo } from "@/components/icons.tsx";
+import { MatchWon } from "@/components/match-won.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import { confirmDestructive } from "@/lib/confirm.ts";
-import {
-  dayLabel,
-  durationLabel,
-  finalScoreLine,
-  playedMs,
-  pointDisplay,
-  teamNames,
-} from "@/lib/format.ts";
+import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
+import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
@@ -155,162 +150,6 @@ function TeamCard({
   );
 }
 
-function MatchWon({
-  match,
-  snapshot,
-  stats,
-  now,
-  onRematch,
-}: {
-  readonly match: MatchSummary;
-  readonly snapshot: MatchSnapshot;
-  readonly stats: MatchStats;
-  readonly now: number;
-  readonly onRematch: () => void;
-}): ReactNode {
-  const insets = useSafeAreaInsets();
-  const winner = snapshot.winner ?? "A";
-  const loser: TeamId = winner === "A" ? "B" : "A";
-  const names = teamNames(match);
-  const meta = [
-    dayLabel(match.startedAt, now),
-    match.court?.toUpperCase(),
-    durationLabel(stats.durationMs),
-  ]
-    .filter((part): part is string => part !== undefined)
-    .join(" · ");
-  return (
-    <YStack
-      flex={1}
-      backgroundColor={colors.inkDeep}
-      alignItems="center"
-      paddingTop={insets.top + 46}
-      paddingBottom={insets.bottom + 16}
-      paddingHorizontal={20}
-    >
-      <Body fontSize={11} fontWeight="800" letterSpacing={2} color={whiteAlpha(0.45)}>
-        {meta}
-      </Body>
-      <Display fontSize={58} color={colors.lime} letterSpacing={1} marginTop={14}>
-        MATCH WON
-      </Display>
-      <Display fontSize={34} color={colors.white} marginTop={18}>
-        {names[winner].toUpperCase()}
-      </Display>
-      <Body
-        fontSize={12}
-        fontWeight="700"
-        letterSpacing={1.5}
-        color={whiteAlpha(0.45)}
-        marginTop={6}
-      >
-        {`DEF. ${names[loser].toUpperCase()}`}
-      </Body>
-      <Display fontSize={76} color={colors.white} marginTop={22} testID="won-score">
-        {finalScoreLine(snapshot)}
-      </Display>
-      <XStack gap={8} marginTop={26} width="100%">
-        <YStack
-          flex={1}
-          backgroundColor={colors.inkRaised}
-          borderRadius={16}
-          paddingVertical={12}
-          alignItems="center"
-        >
-          <Display fontSize={22} color={colors.white}>
-            {`${String(snapshot.totalGames[winner])}–${String(snapshot.totalGames[loser])}`}
-          </Display>
-          <Body
-            fontSize={9}
-            fontWeight="800"
-            letterSpacing={1.4}
-            color={whiteAlpha(0.45)}
-            marginTop={2}
-          >
-            GAMES
-          </Body>
-        </YStack>
-        <YStack
-          flex={1}
-          backgroundColor={colors.inkRaised}
-          borderRadius={16}
-          paddingVertical={12}
-          alignItems="center"
-        >
-          <Display fontSize={22} color={colors.white}>
-            {`${String(snapshot.totalPoints[winner])}–${String(snapshot.totalPoints[loser])}`}
-          </Display>
-          <Body
-            fontSize={9}
-            fontWeight="800"
-            letterSpacing={1.4}
-            color={whiteAlpha(0.45)}
-            marginTop={2}
-          >
-            POINTS
-          </Body>
-        </YStack>
-        <YStack
-          flex={1}
-          backgroundColor={colors.inkRaised}
-          borderRadius={16}
-          paddingVertical={12}
-          alignItems="center"
-        >
-          <Display fontSize={22} color={colors.white}>
-            {String(stats.breaks[winner])}
-          </Display>
-          <Body
-            fontSize={9}
-            fontWeight="800"
-            letterSpacing={1.4}
-            color={whiteAlpha(0.45)}
-            marginTop={2}
-          >
-            BREAKS
-          </Body>
-        </YStack>
-      </XStack>
-      <YStack marginTop="auto" width="100%" gap={9}>
-        <XStack
-          height={60}
-          backgroundColor={colors.lime}
-          borderRadius={17}
-          alignItems="center"
-          justifyContent="center"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          onPress={() => {
-            goHome();
-          }}
-        >
-          <Display fontSize={19} letterSpacing={1.4} color={colors.ink}>
-            SAVE & CLOSE
-          </Display>
-        </XStack>
-        <XStack
-          height={52}
-          borderWidth={1}
-          borderColor={whiteAlpha(0.18)}
-          borderRadius={15}
-          alignItems="center"
-          justifyContent="center"
-          pressStyle={{ opacity: 0.7 }}
-          role="button"
-          onPress={onRematch}
-        >
-          <Body fontSize={13} fontWeight="800" letterSpacing={1.4} color={colors.white}>
-            REMATCH
-          </Body>
-        </XStack>
-        <Body textAlign="center" fontSize={10.5} fontWeight="600" color={whiteAlpha(0.4)}>
-          Saved to this phone · watches updated
-        </Body>
-      </YStack>
-    </YStack>
-  );
-}
-
 /** Persist the finished result once the engine says the match is over. */
 function usePersistFinish(
   id: string,
@@ -389,6 +228,7 @@ export default function LiveScreen(): ReactNode {
   const insets = useSafeAreaInsets();
   const now = useNow(10_000);
   const mutate = useDbMutation();
+  const [ending, setEnding] = useState(false);
 
   const match = useDbQuery((driver) => getMatch(driver, id));
   const events = useDbQuery((driver) => loadEvents(driver, id));
@@ -469,158 +309,179 @@ export default function LiveScreen(): ReactNode {
     });
   };
 
-  const endMatch = (): void => {
-    confirmDestructive({
-      title: "End match?",
-      message: "The match is not finished — discard it?",
-      confirmLabel: "Discard match",
-      onConfirm: () => {
-        mutate((driver) => {
-          deleteMatch(driver, id);
-        });
-        goHome();
-      },
+  const stopAndSave = (): void => {
+    mutate((driver) => {
+      stopAndSaveMatch(driver, id, Date.now());
     });
+    goHome();
+  };
+
+  const discardMatch = (): void => {
+    mutate((driver) => {
+      deleteMatch(driver, id);
+    });
+    goHome();
   };
 
   const label = statusLabel(snapshot.moment, names);
 
   return (
-    <YStack
-      flex={1}
-      backgroundColor={colors.cream}
-      paddingTop={insets.top + 10}
-      paddingBottom={insets.bottom + 14}
-      paddingHorizontal={16}
-      gap={12}
-    >
-      <XStack alignItems="center" justifyContent="space-between">
-        <Pill
-          backgroundColor={paused ? inkAlpha(0.4) : colors.ink}
-          paddingVertical={6}
-          paddingLeft={9}
-          paddingRight={12}
-          gap={6}
-          testID="live-pill"
-        >
-          {paused ? <Pause size={9} color={colors.white} /> : <LiveDot size={7} />}
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.white}>
-            {paused ? "PAUSED" : "LIVE"}
+    <View flex={1} backgroundColor={colors.cream}>
+      <YStack
+        flex={1}
+        paddingTop={insets.top + 10}
+        paddingBottom={insets.bottom + 14}
+        paddingHorizontal={16}
+        gap={12}
+      >
+        <XStack alignItems="center" justifyContent="space-between">
+          <Pill
+            backgroundColor={paused ? inkAlpha(0.4) : colors.ink}
+            paddingVertical={6}
+            paddingLeft={9}
+            paddingRight={12}
+            gap={6}
+            testID="live-pill"
+          >
+            {paused ? <Pause size={9} color={colors.white} /> : <LiveDot size={7} />}
+            <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.white}>
+              {paused ? "PAUSED" : "LIVE"}
+            </Body>
+          </Pill>
+          <Body fontSize={11} fontWeight="700" letterSpacing={1.8} color={inkAlpha(0.55)}>
+            {[match.court?.toUpperCase(), `SET ${String(snapshot.setNumber)}`]
+              .filter((part): part is string => part !== undefined)
+              .join(" · ")}
           </Body>
-        </Pill>
-        <Body fontSize={11} fontWeight="700" letterSpacing={1.8} color={inkAlpha(0.55)}>
-          {[match.court?.toUpperCase(), `SET ${String(snapshot.setNumber)}`]
-            .filter((part): part is string => part !== undefined)
-            .join(" · ")}
-        </Body>
-        <Display fontSize={16} testID="match-clock">
-          {durationLabel(playedMs(match, now))}
-        </Display>
-      </XStack>
+          <Display fontSize={16} testID="match-clock">
+            {durationLabel(playedMs(match, now))}
+          </Display>
+        </XStack>
 
-      <SetChips match={match} snapshot={snapshot} />
+        <SetChips match={match} snapshot={snapshot} />
 
-      <YStack flex={1} gap={10} opacity={paused ? 0.4 : 1}>
-        <TeamCard
-          name={names.A}
-          point={pointDisplay(snapshot, "A")}
-          testID="point-A"
-          serving={snapshot.servingTeam === "A"}
-          onScore={() => {
-            scorePoint("A");
-          }}
-        />
-        <TeamCard
-          name={names.B}
-          point={pointDisplay(snapshot, "B")}
-          testID="point-B"
-          serving={snapshot.servingTeam === "B"}
-          onScore={() => {
-            scorePoint("B");
-          }}
-        />
+        <YStack flex={1} gap={10} opacity={paused ? 0.4 : 1}>
+          <TeamCard
+            name={names.A}
+            point={pointDisplay(snapshot, "A")}
+            testID="point-A"
+            serving={snapshot.servingTeam === "A"}
+            onScore={() => {
+              scorePoint("A");
+            }}
+          />
+          <TeamCard
+            name={names.B}
+            point={pointDisplay(snapshot, "B")}
+            testID="point-B"
+            serving={snapshot.servingTeam === "B"}
+            onScore={() => {
+              scorePoint("B");
+            }}
+          />
+        </YStack>
+
+        {label === undefined ? null : (
+          <Pill
+            alignSelf="center"
+            backgroundColor={colors.ink}
+            paddingVertical={10}
+            paddingHorizontal={22}
+            testID="status-pill"
+          >
+            <Display fontSize={15} letterSpacing={1.5} color={colors.lime}>
+              {label}
+            </Display>
+          </Pill>
+        )}
+
+        <XStack gap={10}>
+          <XStack
+            flex={1}
+            height={58}
+            backgroundColor={colors.white}
+            borderWidth={1}
+            borderColor={inkAlpha(0.08)}
+            borderRadius={16}
+            alignItems="center"
+            justifyContent="center"
+            gap={9}
+            boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
+            pressStyle={{ opacity: 0.85 }}
+            role="button"
+            onPress={undoPoint}
+          >
+            <Undo size={17} color={colors.ink} />
+            <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
+              UNDO
+            </Body>
+          </XStack>
+          <XStack
+            flex={1.3}
+            height={58}
+            backgroundColor={paused ? colors.lime : colors.white}
+            borderWidth={1}
+            borderColor={paused ? colors.lime : inkAlpha(0.08)}
+            borderRadius={16}
+            alignItems="center"
+            justifyContent="center"
+            gap={9}
+            boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
+            pressStyle={{ opacity: 0.85 }}
+            role="button"
+            onPress={togglePause}
+            testID="pause-toggle"
+          >
+            {paused ? (
+              <Play size={17} color={colors.ink} />
+            ) : (
+              <Pause size={17} color={colors.ink} />
+            )}
+            <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
+              {paused ? "RESUME" : "PAUSE"}
+            </Body>
+          </XStack>
+          <XStack
+            flex={1}
+            height={58}
+            borderWidth={1}
+            borderColor={inkAlpha(0.16)}
+            borderRadius={16}
+            alignItems="center"
+            justifyContent="center"
+            gap={8}
+            pressStyle={{ opacity: 0.7 }}
+            role="button"
+            aria-label="End match"
+            onPress={() => {
+              setEnding(true);
+            }}
+            testID="end-match"
+          >
+            <Square size={13} color={inkAlpha(0.55)} />
+            <Body fontSize={13} fontWeight="700" letterSpacing={1.4} color={inkAlpha(0.5)}>
+              END
+            </Body>
+          </XStack>
+        </XStack>
+
+        <XStack alignItems="center" justifyContent="center" gap={6}>
+          <LiveDot size={6} />
+          <Body fontSize={11} fontWeight="600" color={inkAlpha(0.45)}>
+            {paused ? "Paused — workout paused on your watch too" : "Synced — 2 watches connected"}
+          </Body>
+        </XStack>
       </YStack>
 
-      {label === undefined ? null : (
-        <Pill
-          alignSelf="center"
-          backgroundColor={colors.ink}
-          paddingVertical={10}
-          paddingHorizontal={22}
-          testID="status-pill"
-        >
-          <Display fontSize={15} letterSpacing={1.5} color={colors.lime}>
-            {label}
-          </Display>
-        </Pill>
-      )}
-
-      <XStack gap={10}>
-        <XStack
-          flex={1}
-          height={58}
-          backgroundColor={colors.white}
-          borderWidth={1}
-          borderColor={inkAlpha(0.08)}
-          borderRadius={16}
-          alignItems="center"
-          justifyContent="center"
-          gap={9}
-          boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          onPress={undoPoint}
-        >
-          <Undo size={17} color={colors.ink} />
-          <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
-            UNDO
-          </Body>
-        </XStack>
-        <XStack
-          flex={1.3}
-          height={58}
-          backgroundColor={paused ? colors.lime : colors.white}
-          borderWidth={1}
-          borderColor={paused ? colors.lime : inkAlpha(0.08)}
-          borderRadius={16}
-          alignItems="center"
-          justifyContent="center"
-          gap={9}
-          boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          onPress={togglePause}
-          testID="pause-toggle"
-        >
-          {paused ? <Play size={17} color={colors.ink} /> : <Pause size={17} color={colors.ink} />}
-          <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
-            {paused ? "RESUME" : "PAUSE"}
-          </Body>
-        </XStack>
-        <XStack
-          flex={1}
-          height={58}
-          borderWidth={1}
-          borderColor={inkAlpha(0.16)}
-          borderRadius={16}
-          alignItems="center"
-          justifyContent="center"
-          pressStyle={{ opacity: 0.7 }}
-          role="button"
-          onPress={endMatch}
-        >
-          <Body fontSize={13} fontWeight="700" letterSpacing={1.4} color={inkAlpha(0.5)}>
-            END
-          </Body>
-        </XStack>
-      </XStack>
-
-      <XStack alignItems="center" justifyContent="center" gap={6}>
-        <LiveDot size={6} />
-        <Body fontSize={11} fontWeight="600" color={inkAlpha(0.45)}>
-          {paused ? "Paused — workout paused on your watch too" : "Synced — 2 watches connected"}
-        </Body>
-      </XStack>
-    </YStack>
+      {ending ? (
+        <EndSheet
+          onStopSave={stopAndSave}
+          onDiscard={discardMatch}
+          onCancel={() => {
+            setEnding(false);
+          }}
+        />
+      ) : null}
+    </View>
   );
 }

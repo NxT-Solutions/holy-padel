@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { armConfirm, gotoHome, gotoLive, score, winLoveGames } from "./helpers.ts";
+import { gotoHome, gotoLive, score, winLoveGames } from "./helpers.ts";
 
 test.describe("navigation regressions", () => {
   test("save & close works after a page reload straight into the live screen", async ({ page }) => {
@@ -22,8 +22,8 @@ test.describe("navigation regressions", () => {
 
   test("discarding a match from a deep link lands on home", async ({ page }) => {
     await gotoLive(page, "seed-live");
-    armConfirm(page, true);
-    await page.getByRole("button", { name: "END MATCH" }).click();
+    await page.getByRole("button", { name: "End match" }).click();
+    await page.getByRole("button", { name: "Discard match" }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
     await expect(page.getByText(/POP_TO_TOP/u)).toHaveCount(0);
     await expect(page.getByText("LIVE NOW")).toHaveCount(0);
