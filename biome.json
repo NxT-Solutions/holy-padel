@@ -92,7 +92,25 @@
       }
     },
     {
-      "includes": ["**/*.config.ts", "**/*.config.js", "**/app/**/*.tsx"],
+      "includes": ["**/*.config.ts", "**/*.config.js", "**/*.config.mjs"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off",
+            "noProcessEnv": "off"
+          },
+          "correctness": {
+            "noNodejsModules": "off",
+            "noProcessGlobal": "off"
+          },
+          "suspicious": {
+            "noUndeclaredEnvVars": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/app/**/*.tsx"],
       "linter": {
         "rules": {
           "style": {
@@ -191,6 +209,47 @@
                 "skip": ["Display", "Body", "Overline"]
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/site/app/**/*.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noExcessiveLinesPerFile": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/site/app/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noProcessGlobal": "off",
+            "useUniqueElementIds": "off"
+          },
+          "style": {
+            "noJsxLiterals": "off",
+            "noProcessEnv": "off",
+            "useComponentExportOnlyModules": "off"
+          },
+          "nursery": {
+            "noReactNativeRawText": "off",
+            "useExplicitReturnType": "off",
+            "useExplicitType": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/env.d.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNamespace": "off"
           }
         }
       }
