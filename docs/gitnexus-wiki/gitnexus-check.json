@@ -1,0 +1,13 @@
+{
+  "status": "cycles_found",
+  "cycleCount": 1,
+  "cycles": [
+    {
+      "files": [
+        "apps/watch-wear/app/src/main/java/com/holypadel/wear/MainActivity.kt",
+        "apps/watch-wear/app/src/main/java/com/holypadel/wear/ui/Screens.kt",
+        "apps/watch-wear/app/src/main/java/com/holypadel/wear/MainActivity.kt"
+      ]
+    }
+  ]
+}

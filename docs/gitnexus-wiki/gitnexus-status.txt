@@ -1,0 +1,6 @@
+Repository: /Users/noah/dev/holy-padel
+Branch: codex/human-docs-gitnexus
+Indexed: 7/5/2026, 10:42:45 PM
+Indexed commit: ef85523
+Current commit: ef85523
+Status: ✅ up-to-date
