@@ -8,7 +8,9 @@ import {
   Play as LucidePlay,
   Plus as LucidePlus,
   Search as LucideSearch,
+  Square as LucideSquare,
   Undo2 as LucideUndo2,
+  X as LucideX,
 } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { colors } from "@/theme/colors.ts";
@@ -76,4 +78,14 @@ export function Play({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconP
 
 export function Heart({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
   return <LucideHeart size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+/** The close/dismiss glyph for modal headers. */
+export function X({ size = 15, color = colors.ink, strokeWidth = 2.8 }: IconProps): ReactNode {
+  return <LucideX size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+/** The stop-and-save glyph — a filled square, the "end recording" affordance. */
+export function Square({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucideSquare size={size} color={color} strokeWidth={strokeWidth} fill={color} />;
 }

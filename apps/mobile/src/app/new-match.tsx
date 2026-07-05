@@ -7,6 +7,7 @@ import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ArrowRight } from "@/components/icons.tsx";
+import { ModalHeader } from "@/components/modal-header.tsx";
 import { PickerSheet } from "@/components/picker-sheet.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
 import { Avatar, Body, Card, Display, Pill } from "@/components/ui.tsx";
@@ -145,27 +146,13 @@ export default function NewMatchScreen(): ReactNode {
 
   return (
     <View flex={1} backgroundColor={colors.cream}>
-      {/* Fixed top bar — always offers a way out of the modal. */}
-      <XStack
-        paddingTop={insets.top + 12}
-        paddingHorizontal={16}
-        paddingBottom={4}
-        alignItems="center"
-        justifyContent="flex-end"
-      >
-        <Body
-          fontSize={13}
-          fontWeight="800"
-          letterSpacing={1.2}
-          color={inkAlpha(0.5)}
-          role="button"
-          aria-label="Cancel"
-          pressStyle={{ opacity: 0.6 }}
-          onPress={goBack}
-        >
-          CANCEL
+      {/* Fixed top bar — the icon back button always offers a way out. */}
+      <YStack paddingTop={insets.top + 12} paddingHorizontal={16} paddingBottom={6} gap={4}>
+        <ModalHeader title="NEW MATCH" onClose={goBack} label="Cancel" titleSize={30} />
+        <Body fontSize={12.5} fontWeight="600" color={inkAlpha(0.45)} marginLeft={52}>
+          Doubles · FIP scoring
         </Body>
-      </XStack>
+      </YStack>
 
       <ScrollView
         contentContainerStyle={{
@@ -174,13 +161,6 @@ export default function NewMatchScreen(): ReactNode {
           gap: 14,
         }}
       >
-        <YStack>
-          <Display fontSize={34}>NEW MATCH</Display>
-          <Body fontSize={12.5} fontWeight="600" color={inkAlpha(0.45)} marginTop={2}>
-            Doubles · FIP scoring
-          </Body>
-        </YStack>
-
         <TeamCard
           team="A"
           onPress={() => {

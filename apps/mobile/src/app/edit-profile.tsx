@@ -6,6 +6,7 @@ import { useState } from "react";
 import { TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { XStack, YStack } from "tamagui";
+import { ModalHeader } from "@/components/modal-header.tsx";
 import { Body, Display, Overline } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { goBack } from "@/lib/navigation.ts";
@@ -55,21 +56,7 @@ export default function EditProfileScreen(): ReactNode {
       paddingHorizontal={20}
       gap={20}
     >
-      <XStack alignItems="center" justifyContent="space-between">
-        <Display fontSize={26}>EDIT PROFILE</Display>
-        <Body
-          fontSize={13}
-          fontWeight="800"
-          letterSpacing={1.2}
-          color={inkAlpha(0.5)}
-          role="button"
-          aria-label="Cancel"
-          pressStyle={{ opacity: 0.6 }}
-          onPress={goBack}
-        >
-          CANCEL
-        </Body>
-      </XStack>
+      <ModalHeader title="EDIT PROFILE" onClose={goBack} label="Cancel" />
 
       <YStack gap={14}>
         <Field label="NAME">

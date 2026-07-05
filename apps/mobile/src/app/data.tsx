@@ -2,7 +2,8 @@ import { countMatches, databaseSizeBytes, deleteMatch, listMatches } from "@holy
 import type { ReactNode } from "react";
 import { Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { XStack, YStack } from "tamagui";
+import { YStack } from "tamagui";
+import { ModalHeader } from "@/components/modal-header.tsx";
 import { Body, Card, Display, Overline } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { confirmDestructive } from "@/lib/confirm.ts";
@@ -52,21 +53,7 @@ export default function DataScreen(): ReactNode {
       paddingHorizontal={20}
       gap={18}
     >
-      <XStack alignItems="center" justifyContent="space-between">
-        <Display fontSize={26}>YOUR DATA</Display>
-        <Body
-          fontSize={13}
-          fontWeight="800"
-          letterSpacing={1.2}
-          color={inkAlpha(0.5)}
-          role="button"
-          aria-label="Close"
-          pressStyle={{ opacity: 0.6 }}
-          onPress={goBack}
-        >
-          DONE
-        </Body>
-      </XStack>
+      <ModalHeader title="YOUR DATA" onClose={goBack} label="Close" />
 
       <YStack
         backgroundColor={colors.ink}
