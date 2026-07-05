@@ -1,5 +1,6 @@
 package com.holypadel.wear.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,14 +13,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import kotlin.math.cos
+import kotlin.math.sin
 import com.holypadel.wear.MatchState
 import com.holypadel.wear.Phase
 
@@ -144,36 +157,97 @@ private fun LiveScoreScreen(
             serving = state.teamB.serving,
         )
 
-        // Footer: undo · pause/resume · end
+        // Footer: undo · pause/resume · end — icon controls (compact, no wrapping text)
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PillButton("UNDO", onClick = onUndo)
-            PillButton(if (paused) "RESUME" else "PAUSE", onClick = onPause, accent = paused)
-            PillButton("END", onClick = onEnd)
+            CircleIconButton(ControlIcon.UNDO, onClick = onUndo, enabled = !paused)
+            // Pause is the primary mid-match action — larger + lime.
+            CircleIconButton(
+                if (paused) ControlIcon.PLAY else ControlIcon.PAUSE,
+                onClick = onPause,
+                accent = true,
+                diameterDp = 44,
+            )
+            CircleIconButton(ControlIcon.CLOSE, onClick = onEnd)
         }
     }
 }
 
-/** Rounded outline control matching the LIVE footer style. */
+private enum class ControlIcon { UNDO, PAUSE, PLAY, CLOSE }
+
+/** A round icon button, icon drawn with Canvas — no icon dependency, crisp on the watch. */
 @Composable
-private fun PillButton(label: String, onClick: () -> Unit, accent: Boolean = false) {
+private fun CircleIconButton(
+    icon: ControlIcon,
+    onClick: () -> Unit,
+    accent: Boolean = false,
+    enabled: Boolean = true,
+    diameterDp: Int = 36,
+) {
+    val background = if (accent) CourtColors.Lime else CourtColors.White.copy(alpha = 0.14f)
+    val tint = if (accent) CourtColors.Ink else CourtColors.White
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(99.dp))
-            .let {
-                if (accent) {
-                    it.background(CourtColors.Lime)
-                } else {
-                    it.border(1.dp, CourtColors.White25, RoundedCornerShape(99.dp))
-                }
-            }
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .size(diameterDp.dp)
+            .alpha(if (enabled) 1f else 0.35f)
+            .clip(CircleShape)
+            .background(background)
+            .clickable(enabled = enabled) { onClick() },
+        contentAlignment = Alignment.Center,
     ) {
-        LabelText(label, color = if (accent) CourtColors.Ink else CourtColors.White, sizeSp = 10)
+        Canvas(Modifier.size((diameterDp * 0.42f).dp)) { drawControlIcon(icon, tint) }
+    }
+}
+
+private fun DrawScope.drawControlIcon(icon: ControlIcon, color: Color) {
+    val w = size.width
+    val h = size.height
+    val stroke = w * 0.16f
+    when (icon) {
+        ControlIcon.PAUSE -> {
+            val bar = w * 0.26f
+            val radius = CornerRadius(bar / 2f)
+            drawRoundRect(color, topLeft = Offset(w * 0.16f, 0f), size = Size(bar, h), cornerRadius = radius)
+            drawRoundRect(color, topLeft = Offset(w * 0.58f, 0f), size = Size(bar, h), cornerRadius = radius)
+        }
+        ControlIcon.PLAY -> {
+            val path = Path().apply {
+                moveTo(w * 0.2f, 0f)
+                lineTo(w * 0.92f, h / 2f)
+                lineTo(w * 0.2f, h)
+                close()
+            }
+            drawPath(path, color)
+        }
+        ControlIcon.CLOSE -> {
+            drawLine(color, Offset(0f, 0f), Offset(w, h), strokeWidth = stroke, cap = StrokeCap.Round)
+            drawLine(color, Offset(w, 0f), Offset(0f, h), strokeWidth = stroke, cap = StrokeCap.Round)
+        }
+        ControlIcon.UNDO -> {
+            // Counterclockwise arc (gap at top-right) + an arrowhead at its start.
+            val inset = stroke / 2f
+            drawArc(
+                color,
+                startAngle = -50f,
+                sweepAngle = 300f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = Size(w - stroke, h - stroke),
+                style = Stroke(width = stroke, cap = StrokeCap.Round),
+            )
+            // Arrowhead at the arc start point (angle -50°), pointing along the sweep.
+            val cx = w / 2f
+            val cy = h / 2f
+            val r = (w - stroke) / 2f
+            val a = Math.toRadians(-50.0)
+            val tip = Offset(cx + r * cos(a).toFloat(), cy + r * sin(a).toFloat())
+            val head = w * 0.28f
+            drawLine(color, tip, Offset(tip.x - head, tip.y), strokeWidth = stroke, cap = StrokeCap.Round)
+            drawLine(color, tip, Offset(tip.x, tip.y - head), strokeWidth = stroke, cap = StrokeCap.Round)
+        }
     }
 }
 

@@ -118,42 +118,42 @@ struct LiveView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            Button(action: onUndo) {
-                Text("UNDO")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Court.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .overlay(Capsule().stroke(Court.white.opacity(0.25), lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .disabled(state.paused)
-            .opacity(state.paused ? 0.4 : 1)
+        HStack(spacing: 14) {
+            CircleIcon(system: "arrow.uturn.backward", tint: Court.white, fill: Court.white.opacity(0.14), action: onUndo)
+                .disabled(state.paused)
+                .opacity(state.paused ? 0.35 : 1)
 
-            Button(action: onPause) {
-                Text(state.paused ? "RESUME" : "PAUSE")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(state.paused ? Court.ink : Court.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(state.paused ? Court.lime : Color.clear, in: Capsule())
-                    .overlay(Capsule().stroke(Court.white.opacity(0.25), lineWidth: state.paused ? 0 : 1))
-            }
-            .buttonStyle(.plain)
+            // Pause is the primary mid-match action — larger + lime.
+            CircleIcon(
+                system: state.paused ? "play.fill" : "pause.fill",
+                tint: Court.ink,
+                fill: Court.lime,
+                diameter: 44,
+                action: onPause
+            )
 
-            Spacer(minLength: 2)
-
-            Button(action: onEnd) {
-                Text("END")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Court.ink)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Court.white.opacity(0.85), in: Capsule())
-            }
-            .buttonStyle(.plain)
+            CircleIcon(system: "xmark", tint: Court.white, fill: Court.white.opacity(0.14), action: onEnd)
         }
+    }
+}
+
+/// A round icon button — compact and legible on the watch (no wrapping text).
+private struct CircleIcon: View {
+    let system: String
+    let tint: Color
+    let fill: Color
+    var diameter: CGFloat = 36
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.system(size: diameter * 0.4, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: diameter, height: diameter)
+                .background(fill, in: Circle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
