@@ -1,0 +1,36 @@
+apply plugin: 'com.android.library'
+
+group = 'expo.modules.healthlog'
+version = '1.0.0'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+
+android {
+  namespace "expo.modules.healthlog"
+  compileSdkVersion safeExtGet("compileSdkVersion", 36)
+
+  defaultConfig {
+    // connect-client requires 26; the app raises its minSdk to match via
+    // expo-build-properties in app.json.
+    minSdkVersion 26
+    targetSdkVersion safeExtGet("targetSdkVersion", 36)
+  }
+
+  lintOptions {
+    abortOnError false
+  }
+}
+
+repositories {
+  mavenCentral()
+  google()
+}
+
+dependencies {
+  // Health Connect — write the finished match as an exercise session.
+  implementation "androidx.health.connect:connect-client:1.1.0"
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+}
