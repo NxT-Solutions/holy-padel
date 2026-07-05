@@ -132,10 +132,12 @@ class HealthLogModule : Module() {
         val startOffset = zone.rules.getOffset(start)
         val endOffset = zone.rules.getOffset(end)
         val recordId = "holy-padel-$startMs"
-        fun watchMetadata(suffix: String) = Metadata.activelyRecordedWithId(
+        // Signature verified against the connect-client 1.1.0 bytecode:
+        // activelyRecorded(device, clientRecordId, clientRecordVersion).
+        fun watchMetadata(suffix: String) = Metadata.activelyRecorded(
+          device = Device(type = Device.TYPE_WATCH),
           clientRecordId = "$recordId$suffix",
           clientRecordVersion = 1,
-          device = Device(type = Device.TYPE_WATCH),
         )
 
         val records = mutableListOf<Record>(
