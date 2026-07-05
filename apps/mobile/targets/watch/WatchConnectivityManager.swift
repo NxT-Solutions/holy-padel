@@ -50,8 +50,12 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
     func startLast() { send(path: "/holy-padel/start-last", body: "") }
     /// Toggles pause<->resume on the phone.
     func pause() { send(path: "/holy-padel/pause", body: "") }
-    /// Ends the match: the phone persists a finished match or discards an
-    /// unfinished one, then the next pushed state is phase = idle.
+    /// Stops AND saves the match in its current state — the phone credits the
+    /// leader if it isn't finished, so a court-time-up stop never loses the score.
+    func stop() { send(path: "/holy-padel/stop", body: "") }
+    /// Discards the match entirely — nothing is saved.
+    func cancel() { send(path: "/holy-padel/cancel", body: "") }
+    /// Legacy alias kept for the won screen's DONE (the phone treats it as `stop`).
     func end() { send(path: "/holy-padel/end", body: "") }
 }
 

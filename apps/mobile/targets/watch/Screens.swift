@@ -51,13 +51,43 @@ struct IdleView: View {
 
 // MARK: - Live scoring
 
+/// Apple-Workout-style sideways tabs: swipe between the **controls** (undo,
+/// pause, stop-and-save, cancel) and the **scoreboard** (tap a team to score).
+/// Separating the two keeps the score face uncluttered and makes an accidental
+/// stop impossible while you're rapidly tapping points.
 struct LiveView: View {
     let state: MatchState
     let liveBpm: Int
     let onScore: (String) -> Void
     let onUndo: () -> Void
     let onPause: () -> Void
-    let onEnd: () -> Void
+    let onStop: () -> Void
+    let onCancel: () -> Void
+
+    // Land on the scoreboard — the surface you touch every rally; controls are
+    // one swipe away.
+    @State private var tab = Tab.score
+
+    private enum Tab {
+        case controls, score
+    }
+
+    var body: some View {
+        TabView(selection: $tab) {
+            ControlsTab(state: state, onUndo: onUndo, onPause: onPause, onStop: onStop, onCancel: onCancel)
+                .tag(Tab.controls)
+            ScoreTab(state: state, liveBpm: liveBpm, onScore: onScore)
+                .tag(Tab.score)
+        }
+        .tabViewStyle(.page)
+    }
+}
+
+/// The score face — the only thing on screen is the two tappable team rows.
+private struct ScoreTab: View {
+    let state: MatchState
+    let liveBpm: Int
+    let onScore: (String) -> Void
 
     var body: some View {
         VStack(spacing: 4) {
@@ -77,10 +107,9 @@ struct LiveView: View {
                 paused: state.paused,
                 onTap: { onScore("B") }
             )
-            footer
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 4)
+        .padding(.top, 2)
     }
 
     private var header: some View {
@@ -116,23 +145,83 @@ struct LiveView: View {
             }
         }
     }
+}
 
-    private var footer: some View {
-        HStack(spacing: 14) {
-            CircleIcon(system: "arrow.uturn.backward", tint: Court.white, fill: Court.white.opacity(0.14), action: onUndo)
-                .disabled(state.paused)
-                .opacity(state.paused ? 0.35 : 1)
+/// The actions face — undo, pause/resume, the square stop-and-save, and a
+/// guarded full cancel.
+private struct ControlsTab: View {
+    let state: MatchState
+    let onUndo: () -> Void
+    let onPause: () -> Void
+    let onStop: () -> Void
+    let onCancel: () -> Void
 
-            // Pause is the primary mid-match action — larger + lime.
-            CircleIcon(
-                system: state.paused ? "play.fill" : "pause.fill",
-                tint: Court.ink,
-                fill: Court.lime,
-                diameter: 44,
-                action: onPause
-            )
+    @State private var confirmingCancel = false
 
-            CircleIcon(system: "xmark", tint: Court.white, fill: Court.white.opacity(0.14), action: onEnd)
+    var body: some View {
+        VStack(spacing: 9) {
+            Text(state.paused ? "PAUSED" : "CONTROLS")
+                .font(.system(size: 11, weight: .bold))
+                .tracking(1.5)
+                .foregroundStyle(state.paused ? Court.white.opacity(0.5) : Court.lime)
+
+            HStack(spacing: 18) {
+                labeled("UNDO") {
+                    CircleIcon(system: "arrow.uturn.backward", tint: Court.white, fill: Court.white.opacity(0.14), action: onUndo)
+                        .disabled(state.paused)
+                        .opacity(state.paused ? 0.35 : 1)
+                }
+                labeled(state.paused ? "RESUME" : "PAUSE") {
+                    CircleIcon(
+                        system: state.paused ? "play.fill" : "pause.fill",
+                        tint: Court.ink,
+                        fill: Court.lime,
+                        diameter: 44,
+                        action: onPause
+                    )
+                }
+            }
+
+            // Stop AND save — the square, "court time's up, don't lose the score".
+            Button(action: onStop) {
+                HStack(spacing: 6) {
+                    Image(systemName: "stop.fill").font(.system(size: 13, weight: .bold))
+                    Text("STOP & SAVE").font(.system(size: 14, weight: .heavy))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .foregroundStyle(Court.ink)
+                .background(Court.lime, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+
+            // Full cancel discards the match — guarded so a stray tap can't wipe it.
+            Button(action: { confirmingCancel = true }) {
+                Text("CANCEL MATCH")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Court.white.opacity(0.55))
+            }
+            .buttonStyle(.plain)
+            .confirmationDialog("Discard this match?", isPresented: $confirmingCancel) {
+                Button("Discard", role: .destructive, action: onCancel)
+                Button("Keep playing", role: .cancel) {}
+            } message: {
+                Text("The score will be lost.")
+            }
+        }
+        .padding(.horizontal, 14)
+        .multilineTextAlignment(.center)
+    }
+
+    private func labeled<Content: View>(
+        _ title: String,
+        @ViewBuilder _ content: () -> Content
+    ) -> some View {
+        VStack(spacing: 3) {
+            content()
+            Text(title)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Court.white.opacity(0.5))
         }
     }
 }

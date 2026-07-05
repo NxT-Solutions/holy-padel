@@ -21,7 +21,8 @@ struct ContentView: View {
                     onScore: sync.score,
                     onUndo: sync.undo,
                     onPause: sync.pause,
-                    onEnd: sync.end
+                    onStop: sync.stop,
+                    onCancel: sync.cancel
                 )
             case .won:
                 WonView(state: sync.state, onEnd: sync.end)
