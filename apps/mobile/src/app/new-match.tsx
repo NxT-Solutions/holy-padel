@@ -11,7 +11,7 @@ import { PickerSheet } from "@/components/picker-sheet.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
 import { Avatar, Body, Card, Display, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import { newMatchId } from "@/lib/navigation.ts";
+import { goBack, newMatchId } from "@/lib/navigation.ts";
 import { colors, inkAlpha } from "@/theme/colors.ts";
 
 function PlayerRow({
@@ -145,11 +145,32 @@ export default function NewMatchScreen(): ReactNode {
 
   return (
     <View flex={1} backgroundColor={colors.cream}>
+      {/* Fixed top bar — always offers a way out of the modal. */}
+      <XStack
+        paddingTop={insets.top + 12}
+        paddingHorizontal={16}
+        paddingBottom={4}
+        alignItems="center"
+        justifyContent="flex-end"
+      >
+        <Body
+          fontSize={13}
+          fontWeight="800"
+          letterSpacing={1.2}
+          color={inkAlpha(0.5)}
+          role="button"
+          aria-label="Cancel"
+          pressStyle={{ opacity: 0.6 }}
+          onPress={goBack}
+        >
+          CANCEL
+        </Body>
+      </XStack>
+
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 16,
           paddingHorizontal: 16,
-          paddingBottom: insets.bottom + 24,
+          paddingBottom: 20,
           gap: 14,
         }}
       >
@@ -218,31 +239,39 @@ export default function NewMatchScreen(): ReactNode {
             onChange={setFirstServe}
           />
         </Card>
-
-        <YStack gap={8} marginTop="auto">
-          <XStack
-            height={62}
-            backgroundColor={colors.lime}
-            borderRadius={18}
-            alignItems="center"
-            justifyContent="center"
-            gap={10}
-            opacity={ready ? 1 : 0.5}
-            boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
-            pressStyle={{ opacity: 0.85 }}
-            role="button"
-            onPress={startMatch}
-          >
-            <Display fontSize={21} letterSpacing={1.5} color={colors.ink}>
-              START MATCH
-            </Display>
-            <ArrowRight size={18} color={colors.ink} />
-          </XStack>
-          <Body textAlign="center" fontSize={11} fontWeight="600" color={inkAlpha(0.45)}>
-            Watches join automatically when the match starts
-          </Body>
-        </YStack>
       </ScrollView>
+
+      {/* Fixed footer — START MATCH is always reachable, never scrolled off. */}
+      <YStack
+        gap={8}
+        paddingHorizontal={16}
+        paddingTop={10}
+        paddingBottom={insets.bottom + 12}
+        backgroundColor={colors.cream}
+      >
+        <XStack
+          height={62}
+          backgroundColor={colors.lime}
+          borderRadius={18}
+          alignItems="center"
+          justifyContent="center"
+          gap={10}
+          opacity={ready ? 1 : 0.5}
+          boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
+          pressStyle={{ opacity: 0.85 }}
+          role="button"
+          aria-label="Start match"
+          onPress={startMatch}
+        >
+          <Display fontSize={21} letterSpacing={1.5} color={colors.ink}>
+            START MATCH
+          </Display>
+          <ArrowRight size={18} color={colors.ink} />
+        </XStack>
+        <Body textAlign="center" fontSize={11} fontWeight="600" color={inkAlpha(0.45)}>
+          Watches join automatically when the match starts
+        </Body>
+      </YStack>
 
       {picking === undefined ? null : (
         <PickerSheet

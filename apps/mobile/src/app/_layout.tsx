@@ -61,6 +61,7 @@ export default function RootLayout(): ReactNode {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="new-match" options={{ presentation: "modal" }} />
           <Stack.Screen name="edit-profile" options={{ presentation: "modal" }} />
+          <Stack.Screen name="data" options={{ presentation: "modal" }} />
           <Stack.Screen name="live/[id]" options={{ gestureEnabled: false }} />
           <Stack.Screen name="match/[id]" />
         </Stack>

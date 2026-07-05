@@ -268,6 +268,12 @@ export default function ProfileScreen(): ReactNode {
         paddingHorizontal={17}
         alignItems="center"
         justifyContent="space-between"
+        pressStyle={{ opacity: 0.85 }}
+        role="button"
+        aria-label="Manage your data"
+        onPress={() => {
+          router.navigate("/data");
+        }}
       >
         <Body fontSize={10} fontWeight="800" letterSpacing={1.5} color={colors.lime}>
           ON THIS PHONE
