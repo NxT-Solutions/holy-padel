@@ -2,17 +2,14 @@ import type { SqlDriver } from "@holy-padel/db";
 import {
   createMatch,
   deleteMatch,
-  finishMatch,
   getLiveMatch,
   listMatches,
-  loadEvents,
   pauseMatch,
   removeLastEvent,
   resumeMatch,
   scorePoint,
 } from "@holy-padel/db";
-import { computeMatch } from "@holy-padel/scoring";
-import { finalScoreLine } from "@/lib/format.ts";
+import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 
 /** The watch → phone intents (docs/watch-sync.md). */
 export const INTENT_PATHS = {
@@ -20,6 +17,11 @@ export const INTENT_PATHS = {
   undo: "/holy-padel/undo",
   startLast: "/holy-padel/start-last",
   pause: "/holy-padel/pause",
+  /** Stop AND save the match in its current state (even unfinished). */
+  stop: "/holy-padel/stop",
+  /** Discard the match — lose it. */
+  cancel: "/holy-padel/cancel",
+  /** Back-compat alias for `stop` (older watch builds sent this). */
   end: "/holy-padel/end",
 } as const;
 
@@ -67,23 +69,27 @@ function applyPauseToggle(driver: SqlDriver, now: number): void {
   }
 }
 
-function applyEnd(driver: SqlDriver, now: number): void {
+/**
+ * Stop AND save the live match in whatever state it's in — the "court time's up,
+ * don't lose the score" path. Shares `stopAndSaveMatch` with the phone's END
+ * sheet so both surfaces persist identically. The match then leaves "live" and
+ * the watch returns to idle.
+ */
+function applyStop(driver: SqlDriver, now: number): void {
   const live = getLiveMatch(driver);
   if (live === undefined) {
     return;
   }
-  // The phone decides: a finished snapshot persists the win, anything else is
-  // discarded — either way the match leaves "live" so the watch returns to idle.
-  const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
-  if (snapshot.finished) {
-    finishMatch(driver, live.id, {
-      winner: snapshot.winner ?? "A",
-      endedAt: now,
-      scoreLine: finalScoreLine(snapshot),
-    });
-  } else {
-    deleteMatch(driver, live.id);
+  stopAndSaveMatch(driver, live.id, now);
+}
+
+/** Discard the live match entirely — nothing is saved. */
+function applyCancel(driver: SqlDriver): void {
+  const live = getLiveMatch(driver);
+  if (live === undefined) {
+    return;
   }
+  deleteMatch(driver, live.id);
 }
 
 function applyStartLast(driver: SqlDriver, ctx: IntentContext): void {
@@ -117,8 +123,10 @@ export function applyWatchIntent(driver: SqlDriver, intent: WatchIntent, ctx: In
     applyUndo(driver);
   } else if (intent.path === INTENT_PATHS.pause) {
     applyPauseToggle(driver, ctx.now);
-  } else if (intent.path === INTENT_PATHS.end) {
-    applyEnd(driver, ctx.now);
+  } else if (intent.path === INTENT_PATHS.stop || intent.path === INTENT_PATHS.end) {
+    applyStop(driver, ctx.now);
+  } else if (intent.path === INTENT_PATHS.cancel) {
+    applyCancel(driver);
   } else if (intent.path === INTENT_PATHS.startLast) {
     applyStartLast(driver, ctx);
   }
