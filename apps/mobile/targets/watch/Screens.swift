@@ -53,6 +53,7 @@ struct IdleView: View {
 
 struct LiveView: View {
     let state: MatchState
+    let liveBpm: Int
     let onScore: (String) -> Void
     let onUndo: () -> Void
 
@@ -80,9 +81,16 @@ struct LiveView: View {
 
     private var header: some View {
         HStack {
-            Text(state.clock)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Court.white.opacity(0.5))
+            // Live heart rate from the workout session, else the match clock.
+            if liveBpm > 0 {
+                Text("\(liveBpm)♥")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Court.lime)
+            } else {
+                Text(state.clock)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Court.white.opacity(0.5))
+            }
             Spacer(minLength: 4)
             Text([state.setLabel, state.games].filter { !$0.isEmpty }.joined(separator: "  "))
                 .font(.system(size: 11, weight: .semibold))
