@@ -29,5 +29,6 @@ repositories {
 
 dependencies {
   // Wearable Data Layer — publish state DataItems, receive intent messages.
-  implementation "com.google.android.gms:play-services-wearable:18.2.0"
+  // Keep in lockstep with apps/watch-wear — both ends speak the same Data Layer.
+  implementation "com.google.android.gms:play-services-wearable:20.0.1"
 }
