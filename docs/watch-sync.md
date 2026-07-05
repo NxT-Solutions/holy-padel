@@ -55,17 +55,22 @@ pushes fresh state back.
 | `/holy-padel/undo`       | `""`        | Remove the last point event                   |
 | `/holy-padel/pause`      | `""`        | Toggle pause ↔ resume on the live match       |
 | `/holy-padel/start-last` | `""`        | From idle: start a rematch of the last lineup |
-| `/holy-padel/end`        | `""`        | End the live match — **the phone decides**    |
+| `/holy-padel/stop`       | `""`        | **Stop AND save** the match in its current state |
+| `/holy-padel/cancel`     | `""`        | **Discard** the live match — nothing is saved  |
+| `/holy-padel/end`        | `""`        | Legacy alias for `stop` (older builds)         |
 | `/holy-padel/workout`    | summary JSON| Persist the watch-tracked workout (see below) |
 
-**`/holy-padel/end` — the phone decides finish-vs-discard.** The watch has no
-scoring engine, so it can't tell a finished match from an abandoned one; it just
-asks the phone to end it. The phone recomputes the snapshot: if it is *finished*
-it persists the win (`finishMatch`), otherwise it *discards* the match
-(`deleteMatch`). Either way the match leaves `live`, so the watch's next state is
-`phase = "idle"`. This backs the **DONE / EXIT** control on the `won` screen — the
-user is never stuck on MATCH WON: pressing DONE sends `/holy-padel/end`, the phone
-persists the finished match, and the watch returns to idle.
+**`/holy-padel/stop` vs `/holy-padel/cancel` — save vs discard.** Court time
+routinely runs out mid-match, so *stopping must never lose the score*. `stop`
+recomputes the snapshot and always `finishMatch`es: a truly finished match keeps
+the engine's winner and final line; a match stopped mid-play is credited to
+whoever's ahead (`currentLeader`) so the partial result still counts. `cancel` is
+the only path that `deleteMatch`es. Both leave `live`, so the watch's next state
+is `phase = "idle"`. This is shared with the phone's END sheet via
+`stopAndSaveMatch` (`apps/mobile/src/lib/match-actions.ts`) so the two surfaces
+persist identically. `end` remains a back-compat alias for `stop`, and still
+backs the **DONE** control on the `won` screen — the user is never stuck on MATCH
+WON; DONE persists the finished match and the watch returns to idle.
 
 ### Watch → phone: workout summary
 
