@@ -27,6 +27,8 @@ function baseMatch(overrides: Partial<MatchSummary> = {}): MatchSummary {
     endedAt: undefined,
     winner: undefined,
     scoreLine: undefined,
+    pausedMs: 0,
+    pausedAt: undefined,
     names: { A: ["Nico", "Javi"], B: ["Marta", "Leo"] },
     ...overrides,
   };
@@ -59,8 +61,26 @@ describe("buildWatchState", () => {
     expect(state.court).toBe("COURT 4");
     expect(state.startedAt).toBe(STARTED);
     expect(state.status).toBe("GAME PT");
+    expect(state.paused).toBe(false);
     expect(state.won).toBeUndefined();
     expect(state.last).toBeUndefined();
+  });
+
+  it("flags a paused match and freezes the clock at play time", () => {
+    // Started 47m ago, paused 5m ago → 42m of play, frozen.
+    const events: PointEvent[] = [...wins("A", 3), ...wins("B", 1)];
+    const snapshot = computeMatch(bestOfThree, events);
+    const pausedAt = NOW - 5 * 60_000;
+
+    const state = buildWatchState({
+      ownerId: "nico",
+      now: NOW,
+      live: { match: baseMatch({ pausedAt }), snapshot },
+    });
+
+    expect(state.phase).toBe("live");
+    expect(state.paused).toBe(true);
+    expect(state.clock).toBe("0:42"); // 47m elapsed − 5m open pause
   });
 
   it("labels the deciding super tie-break", () => {

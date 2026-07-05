@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  armConfirm,
   expectPoints,
   gotoHome,
   gotoLive,
@@ -97,13 +96,22 @@ test.describe("live scoring (design 1a)", () => {
     await expect(statusPill(page)).toHaveText("MATCH POINT — NICO & JAVI");
   });
 
-  test("end match asks first and cancel keeps scoring", async ({ page }) => {
+  test("end sheet — keep playing dismisses and scoring continues", async ({ page }) => {
     await gotoLive(page, "seed-live");
-    armConfirm(page, false);
-    await page.getByRole("button", { name: "END MATCH" }).click();
+    await page.getByRole("button", { name: "End match" }).click();
+    await page.getByRole("button", { name: "Keep playing" }).click();
     // Still on the live screen with the same score.
     await expectPoints(page, "40", "30");
     await expect(pointButton(page, "A")).toBeVisible();
+  });
+
+  test("end sheet — stop & save keeps the partial result and lands home", async ({ page }) => {
+    await gotoLive(page, "seed-live");
+    await page.getByRole("button", { name: "End match" }).click();
+    await page.getByRole("button", { name: "Stop and save" }).click();
+    // Saved (not discarded): back home with no live match left.
+    await expect(page.getByText("HOLA, NICO")).toBeVisible();
+    await expect(page.getByText("LIVE NOW")).toHaveCount(0);
   });
 
   test("a set won 6-4 banks the chip and opens the next set", async ({ page }) => {

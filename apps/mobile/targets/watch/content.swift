@@ -19,10 +19,13 @@ struct ContentView: View {
                     state: sync.state,
                     liveBpm: workout.heartRate,
                     onScore: sync.score,
-                    onUndo: sync.undo
+                    onUndo: sync.undo,
+                    onPause: sync.pause,
+                    onStop: sync.stop,
+                    onCancel: sync.cancel
                 )
             case .won:
-                WonView(state: sync.state)
+                WonView(state: sync.state, onEnd: sync.end)
             }
         }
         .onAppear {
@@ -30,6 +33,13 @@ struct ContentView: View {
         }
         .onChange(of: sync.state.phase) { _, newPhase in
             syncWorkout(to: newPhase)
+        }
+        .onChange(of: sync.state.paused) { _, isPaused in
+            if isPaused {
+                workout.pause()
+            } else {
+                workout.resume()
+            }
         }
     }
 

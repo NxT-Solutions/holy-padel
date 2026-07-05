@@ -5,6 +5,7 @@ import {
   createPlayer,
   finishMatch,
   getLiveMatch,
+  getMatch,
   loadEvents,
   migrate,
 } from "@holy-padel/db";
@@ -83,5 +84,85 @@ describe("applyWatchIntent", () => {
     applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
 
     expect(getLiveMatch(driver)?.id).toBe("m1");
+  });
+
+  it("toggles pause and resume, banking the interval", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.pause, body: "" }, { ...ctx, now: 1000 });
+    expect(getMatch(driver, "m1")?.pausedAt).toBe(1000);
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.pause, body: "" }, { ...ctx, now: 3000 });
+    const match = getMatch(driver, "m1");
+    expect(match?.pausedAt).toBeUndefined();
+    expect(match?.pausedMs).toBe(2000);
+  });
+
+  it("ignores score intents while paused", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.pause, body: "" }, ctx);
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+
+    expect(loadEvents(driver, "m1")).toHaveLength(0);
+  });
+
+  it("stops an in-progress match by saving it, crediting the leader", () => {
+    const driver = freshDb();
+    // Court time's up mid-play: A leads the first game 30-0. Don't lose the score.
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    appendEvent(driver, "m1", { winner: "A", at: 0 });
+    appendEvent(driver, "m1", { winner: "A", at: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.stop, body: "" }, { ...ctx, now: 5000 });
+
+    expect(getLiveMatch(driver)).toBeUndefined();
+    const match = getMatch(driver, "m1");
+    expect(match?.status).toBe("finished");
+    expect(match?.winner).toBe("A");
+    // The partial set (still 0-0 in games) is preserved as the saved line.
+    expect(match?.scoreLine).toBe("0-0");
+  });
+
+  it("cancels an in-progress match by discarding it", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    appendEvent(driver, "m1", { winner: "A", at: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.cancel, body: "" }, ctx);
+
+    expect(getLiveMatch(driver)).toBeUndefined();
+    expect(getMatch(driver, "m1")).toBeUndefined();
+  });
+
+  it("stops a finished match by persisting the engine's win", () => {
+    const driver = freshDb();
+    // bestOf:1 finishes at 6 love games — 24 points to A wins the set 6-0.
+    createMatch(driver, { id: "m1", config: { ...config, bestOf: 1 }, players, startedAt: 0 });
+    for (let i = 0; i < 24; i += 1) {
+      appendEvent(driver, "m1", { winner: "A", at: 0 });
+    }
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.stop, body: "" }, { ...ctx, now: 5000 });
+
+    expect(getLiveMatch(driver)).toBeUndefined();
+    const match = getMatch(driver, "m1");
+    expect(match?.status).toBe("finished");
+    expect(match?.winner).toBe("A");
+    expect(match?.scoreLine).toBe("6-0");
+  });
+
+  it("keeps the legacy `end` intent as an alias for stop-and-save", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    appendEvent(driver, "m1", { winner: "B", at: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.end, body: "" }, { ...ctx, now: 5000 });
+
+    expect(getLiveMatch(driver)).toBeUndefined();
+    expect(getMatch(driver, "m1")?.status).toBe("finished");
+    expect(getMatch(driver, "m1")?.winner).toBe("B");
   });
 });

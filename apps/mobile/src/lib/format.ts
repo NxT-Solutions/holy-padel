@@ -84,6 +84,23 @@ export function durationLabel(durationMs: number): string {
   return `${String(hours)}:${minutes}`;
 }
 
+/**
+ * Elapsed play time (ms) excluding paused breaks — the match's accurate duration.
+ * `at` is `now` while live (freezes during an open pause, since the open interval
+ * grows with `now`) or `endedAt` once finished.
+ */
+export function playedMs(
+  match: {
+    readonly startedAt: number;
+    readonly pausedMs: number;
+    readonly pausedAt: number | undefined;
+  },
+  at: number,
+): number {
+  const openPause = match.pausedAt === undefined ? 0 : Math.max(0, at - match.pausedAt);
+  return Math.max(0, at - match.startedAt - match.pausedMs - openPause);
+}
+
 /** "TODAY · 18:32 · COURT 4" or "TUE · CLUB PADEL NORTE". */
 export function matchMetaLabel(match: MatchSummary, now: number): string {
   const day = dayLabel(match.startedAt, now);
@@ -119,6 +136,27 @@ export function finalScoreLine(snapshot: MatchSnapshot): string {
   return snapshot.completedSets
     .map((set) => `${String(set.games.A)}-${String(set.games.B)}`)
     .join(" · ");
+}
+
+/**
+ * Who is ahead right now — for stopping a match mid-play ("court time's up")
+ * and still crediting a result: most sets, then games in the set in play, then
+ * total points. Ties fall to A (vanishingly rare, and never for a real finish
+ * where the engine already set the winner).
+ */
+export function currentLeader(snapshot: MatchSnapshot): TeamId {
+  const setsA = snapshot.completedSets.filter((set) => set.winner === "A").length;
+  const setsB = snapshot.completedSets.length - setsA;
+  if (setsA !== setsB) {
+    return setsA > setsB ? "A" : "B";
+  }
+  if (snapshot.currentSetGames.A !== snapshot.currentSetGames.B) {
+    return snapshot.currentSetGames.A > snapshot.currentSetGames.B ? "A" : "B";
+  }
+  if (snapshot.totalPoints.A !== snapshot.totalPoints.B) {
+    return snapshot.totalPoints.A > snapshot.totalPoints.B ? "A" : "B";
+  }
+  return "A";
 }
 
 /** The point call for a team — "0/15/30/40/AD" in a game, the number in a tie-break. */

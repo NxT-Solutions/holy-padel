@@ -38,6 +38,9 @@ struct MatchState: Decodable {
     var pointB: String = "0"
     var games: String = ""
     var status: String = ""
+    /// True while a live match is paused; scoring is disabled and the workout
+    /// session is paused until the phone reports it resumed.
+    var paused: Bool = false
     /// Epoch ms the match started — workout session start + dedup key. Nil when idle.
     var startedAt: Double?
     var won: WonState?
@@ -50,7 +53,7 @@ struct MatchState: Decodable {
 extension MatchState {
     private enum CodingKeys: String, CodingKey {
         case v, phase, clock, court, setLabel, teamA, teamB, pointA, pointB, games, status,
-            startedAt, won, last
+            paused, startedAt, won, last
     }
 
     /// Decode defensively: a missing or malformed field falls back to its default
@@ -69,6 +72,7 @@ extension MatchState {
         pointB = try c.decodeIfPresent(String.self, forKey: .pointB) ?? "0"
         games = try c.decodeIfPresent(String.self, forKey: .games) ?? ""
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        paused = try c.decodeIfPresent(Bool.self, forKey: .paused) ?? false
         startedAt = try c.decodeIfPresent(Double.self, forKey: .startedAt)
         won = try c.decodeIfPresent(WonState.self, forKey: .won)
         last = try c.decodeIfPresent(LastState.self, forKey: .last)

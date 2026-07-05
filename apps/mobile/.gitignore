@@ -49,3 +49,6 @@ targets/watch/Assets.xcassets/
 # playwright
 test-results/
 playwright-report/
+
+# @bacons/apple-targets generates these on prebuild
+targets/watch/generated.entitlements

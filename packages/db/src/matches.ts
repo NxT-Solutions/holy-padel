@@ -1,4 +1,5 @@
 import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
+import { computeMatch } from "@holy-padel/scoring";
 import type { SqlDriver, SqlRow } from "./driver.ts";
 import {
   expectNumber,
@@ -36,6 +37,10 @@ export interface StoredMatch {
   readonly endedAt: number | undefined;
   readonly winner: TeamId | undefined;
   readonly scoreLine: string | undefined;
+  /** Accumulated paused time (ms), excluded from the match duration. */
+  readonly pausedMs: number;
+  /** Start of the current pause (ms), or undefined while the match is running. */
+  readonly pausedAt: number | undefined;
 }
 
 /** A match row joined with the four player names, for list screens. */
@@ -92,6 +97,8 @@ function toStoredMatch(row: SqlRow): StoredMatch {
     endedAt: optionalNumber(row, "ended_at"),
     winner: winner === undefined ? undefined : parseTeam(winner),
     scoreLine: optionalString(row, "score_line"),
+    pausedMs: expectNumber(row, "paused_ms"),
+    pausedAt: optionalNumber(row, "paused_at"),
   };
 }
 
@@ -188,6 +195,24 @@ export function appendEvent(driver: SqlDriver, matchId: string, event: PointEven
   );
 }
 
+/**
+ * Score a rally — the guarded entry point for every "+1" from the phone or a
+ * watch. Reads the committed state fresh and refuses the point when the match
+ * isn't live, is paused, or the engine already considers it decided. Because
+ * each call re-reads, a burst of fast taps (e.g. mashing the watch) can't append
+ * events past match point — the second tap sees the finished fold and stops.
+ */
+export function scorePoint(driver: SqlDriver, matchId: string, winner: TeamId, at: number): void {
+  const match = getMatch(driver, matchId);
+  if (match === undefined || match.status !== "live" || match.pausedAt !== undefined) {
+    return;
+  }
+  if (computeMatch(match.config, loadEvents(driver, matchId)).finished) {
+    return;
+  }
+  appendEvent(driver, matchId, { winner, at });
+}
+
 const APPEND_CHUNK = 100;
 
 /** Append many events in a few multi-row inserts (bulk seeding, imports). */
@@ -233,9 +258,30 @@ export function finishMatch(
   id: string,
   outcome: { readonly winner: TeamId; readonly endedAt: number; readonly scoreLine: string },
 ): void {
+  // Close any open pause at the end time so the stored paused_ms is final.
   driver.execute(
-    "UPDATE matches SET status = 'finished', winner = ?, ended_at = ?, score_line = ? WHERE id = ?",
-    [outcome.winner, outcome.endedAt, outcome.scoreLine, id],
+    `UPDATE matches
+       SET status = 'finished', winner = ?, ended_at = ?, score_line = ?,
+           paused_ms = paused_ms + CASE WHEN paused_at IS NULL THEN 0 ELSE ? - paused_at END,
+           paused_at = NULL
+     WHERE id = ?`,
+    [outcome.winner, outcome.endedAt, outcome.scoreLine, outcome.endedAt, id],
+  );
+}
+
+/** Pause a live match — records the pause start; a no-op if already paused. */
+export function pauseMatch(driver: SqlDriver, id: string, now: number): void {
+  driver.execute(
+    "UPDATE matches SET paused_at = ? WHERE id = ? AND status = 'live' AND paused_at IS NULL",
+    [now, id],
+  );
+}
+
+/** Resume a paused match — banks the elapsed pause into paused_ms. No-op if running. */
+export function resumeMatch(driver: SqlDriver, id: string, now: number): void {
+  driver.execute(
+    "UPDATE matches SET paused_ms = paused_ms + (? - paused_at), paused_at = NULL WHERE id = ? AND paused_at IS NOT NULL",
+    [now, id],
   );
 }
 

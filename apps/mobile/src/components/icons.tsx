@@ -3,9 +3,14 @@ import {
   Check as LucideCheck,
   ChevronLeft as LucideChevronLeft,
   ChevronRight as LucideChevronRight,
+  Heart as LucideHeart,
+  Pause as LucidePause,
+  Play as LucidePlay,
   Plus as LucidePlus,
   Search as LucideSearch,
+  Square as LucideSquare,
   Undo2 as LucideUndo2,
+  X as LucideX,
 } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { colors } from "@/theme/colors.ts";
@@ -61,4 +66,26 @@ export function Check({ size = 15, color = colors.ink, strokeWidth = 3.4 }: Icon
 
 export function Search({ size = 15, color = colors.ink, strokeWidth = 2.5 }: IconProps): ReactNode {
   return <LucideSearch size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+export function Pause({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucidePause size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+export function Play({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucidePlay size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+export function Heart({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucideHeart size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+/** The close/dismiss glyph for modal headers. */
+export function X({ size = 15, color = colors.ink, strokeWidth = 2.8 }: IconProps): ReactNode {
+  return <LucideX size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+/** The stop-and-save glyph — a filled square, the "end recording" affordance. */
+export function Square({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucideSquare size={size} color={color} strokeWidth={strokeWidth} fill={color} />;
 }

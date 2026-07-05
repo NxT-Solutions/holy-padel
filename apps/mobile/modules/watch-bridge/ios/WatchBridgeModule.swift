@@ -30,6 +30,10 @@ public class WatchBridgeModule: Module {
 private final class PhoneWatchSync: NSObject, WCSessionDelegate {
   var onIntent: ((String, String) -> Void)?
 
+  /// The most recent state JSON, replayed on reconnect so the watch refreshes
+  /// promptly rather than waiting for the next ledger change / 30 s tick.
+  private var lastStateJSON: String?
+
   func activate() {
     guard WCSession.isSupported() else { return }
     let session = WCSession.default
@@ -39,6 +43,7 @@ private final class PhoneWatchSync: NSObject, WCSessionDelegate {
 
   func pushState(_ json: String) {
     guard WCSession.isSupported() else { return }
+    lastStateJSON = json
     let session = WCSession.default
     // Latest-wins, survives relaunch. Also nudge it live when the watch is up.
     try? session.updateApplicationContext(["state": json])
@@ -72,5 +77,13 @@ private final class PhoneWatchSync: NSObject, WCSessionDelegate {
   func sessionDidDeactivate(_ session: WCSession) {
     // Re-activate for a newly-paired watch.
     WCSession.default.activate()
+  }
+
+  func sessionReachabilityDidChange(_ session: WCSession) {
+    // On reconnect, re-push the last state so the watch refreshes promptly
+    // (latest-wins, so this is safe to repeat).
+    guard session.isReachable, let json = lastStateJSON else { return }
+    try? session.updateApplicationContext(["state": json])
+    session.sendMessage(["state": json], replyHandler: nil, errorHandler: nil)
   }
 }

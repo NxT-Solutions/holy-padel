@@ -88,7 +88,7 @@ describe("engine invariants over random matches", () => {
     );
   });
 
-  it("refuses points after the match is over", () => {
+  it("ignores points after the match is over", () => {
     fc.assert(
       fc.property(configArbitrary, winnersArbitrary, (config, winners) => {
         const events = playableEvents(config, winners);
@@ -96,9 +96,9 @@ describe("engine invariants over random matches", () => {
         if (!snapshot.finished) {
           return;
         }
-        expect(() => computeMatch(config, [...events, { winner: "A", at: 999_999_999 }])).toThrow(
-          /finished/u,
-        );
+        // Extra events past match point are dropped, not fatal — the result holds.
+        const withExtra = computeMatch(config, [...events, { winner: "A", at: 999_999_999 }]);
+        expect(withExtra).toEqual(snapshot);
       }),
       { numRuns: 100 },
     );

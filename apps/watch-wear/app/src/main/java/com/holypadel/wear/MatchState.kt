@@ -28,6 +28,8 @@ data class MatchState(
     val status: String,
     /** Epoch ms the match started — workout session start + dedup key. 0 when idle. */
     val startedAt: Long,
+    /** True while a live match is paused — dim scoring and pause the workout. */
+    val paused: Boolean,
     val won: WonState?,
     val last: LastState?,
 ) {
@@ -44,6 +46,7 @@ data class MatchState(
             games = "",
             status = "",
             startedAt = 0L,
+            paused = false,
             won = null,
             last = null,
         )
@@ -77,6 +80,7 @@ data class MatchState(
                 games = root.optString("games"),
                 status = root.optString("status"),
                 startedAt = root.optLong("startedAt", 0L),
+                paused = root.optBoolean("paused", false),
                 won = won,
                 last = last,
             )

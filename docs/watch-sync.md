@@ -53,8 +53,24 @@ pushes fresh state back.
 | ------------------------ | ----------- | -------------------------------------------- |
 | `/holy-padel/score`      | `"A"`\|`"B"`| Append a point event for that team           |
 | `/holy-padel/undo`       | `""`        | Remove the last point event                   |
+| `/holy-padel/pause`      | `""`        | Toggle pause ↔ resume on the live match       |
 | `/holy-padel/start-last` | `""`        | From idle: start a rematch of the last lineup |
+| `/holy-padel/stop`       | `""`        | **Stop AND save** the match in its current state |
+| `/holy-padel/cancel`     | `""`        | **Discard** the live match — nothing is saved  |
+| `/holy-padel/end`        | `""`        | Legacy alias for `stop` (older builds)         |
 | `/holy-padel/workout`    | summary JSON| Persist the watch-tracked workout (see below) |
+
+**`/holy-padel/stop` vs `/holy-padel/cancel` — save vs discard.** Court time
+routinely runs out mid-match, so *stopping must never lose the score*. `stop`
+recomputes the snapshot and always `finishMatch`es: a truly finished match keeps
+the engine's winner and final line; a match stopped mid-play is credited to
+whoever's ahead (`currentLeader`) so the partial result still counts. `cancel` is
+the only path that `deleteMatch`es. Both leave `live`, so the watch's next state
+is `phase = "idle"`. This is shared with the phone's END sheet via
+`stopAndSaveMatch` (`apps/mobile/src/lib/match-actions.ts`) so the two surfaces
+persist identically. `end` remains a back-compat alias for `stop`, and still
+backs the **DONE** control on the `won` screen — the user is never stuck on MATCH
+WON; DONE persists the finished match and the watch returns to idle.
 
 ### Watch → phone: workout summary
 
@@ -152,3 +168,20 @@ physically paired devices.
   the watch does no scoring math.
 - Because the payload is tiny and latest-wins, a missed update self-heals on the
   next point; there is no event replay on the watch.
+
+## Transport resilience — keep it local, sync in the background
+
+A watch tap must never be lost and must never block the UI on the round-trip:
+
+- **Instant local feedback.** Every tap fires a haptic immediately. The visible
+  score, however, still comes from the phone's *next* state push (instant on real
+  devices) — the watch has no scoring engine and never computes score locally.
+- **Immediate channel + guaranteed fallback.** Each intent is sent on the
+  immediate channel when the phone is reachable *and* falls back to the
+  queued/background-tolerant channel when it is not, so intents flush
+  automatically on reconnect. On Apple Watch that is `sendMessage` (reachable) →
+  `transferUserInfo` (queued, survives the phone being asleep); on Wear OS the
+  `MessageClient` send is retried against connected nodes.
+- **Latest-wins self-heals.** State is latest-wins and the phone re-pushes on
+  every change and every 30 s, so a reconnect converges the watch to the truth
+  even if an intermediate push was missed — no event replay is needed.

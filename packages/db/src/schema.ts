@@ -47,6 +47,15 @@ const MIGRATIONS: readonly Migration[] = [
       "CREATE INDEX idx_match_events_match ON match_events (match_id, seq)",
     ],
   },
+  {
+    // Pause support: accumulated paused time, plus the open pause's start (null
+    // while running). Match duration = wall-clock − paused_ms − any open pause.
+    version: 2,
+    statements: [
+      "ALTER TABLE matches ADD COLUMN paused_ms INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE matches ADD COLUMN paused_at INTEGER",
+    ],
+  },
 ];
 
 /** Bring a database up to the latest schema. Safe to call on every launch. */

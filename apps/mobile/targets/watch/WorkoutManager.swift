@@ -17,24 +17,55 @@ final class WorkoutManager: NSObject, ObservableObject {
     private var builder: HKLiveWorkoutBuilder?
 
     /// Start a session for the live match. Safe to call repeatedly.
+    ///
+    /// Best-effort and never a prompt-on-launch: the workout is opt-in and must
+    /// never gate scoring. We branch on the current sharing status for the
+    /// workout type rather than requesting blindly —
+    /// - `.sharingAuthorized`: begin the session straight away.
+    /// - `.notDetermined`: request authorization once, and begin only if that
+    ///   grant succeeds.
+    /// - `.sharingDenied` (or the request failing): silently give up — no
+    ///   session, no retry, nothing surfaced to the UI. Scoring carries on.
     func start(startedAtMs: Double?) {
         guard !isTracking, HKHealthStore.isHealthDataAvailable() else { return }
-        isTracking = true
 
-        let share: Set<HKSampleType> = [HKObjectType.workoutType()]
-        let read: Set<HKObjectType> = [
-            HKQuantityType(.heartRate),
-            HKQuantityType(.activeEnergyBurned),
-        ]
-        store.requestAuthorization(toShare: share, read: read) { [weak self] granted, _ in
-            guard granted, let self else {
-                self?.finishTracking()
-                return
+        switch store.authorizationStatus(for: HKObjectType.workoutType()) {
+        case .sharingAuthorized:
+            isTracking = true
+            beginSession(startedAtMs: startedAtMs)
+        case .notDetermined:
+            isTracking = true
+            let share: Set<HKSampleType> = [HKObjectType.workoutType()]
+            let read: Set<HKObjectType> = [
+                HKQuantityType(.heartRate),
+                HKQuantityType(.activeEnergyBurned),
+            ]
+            store.requestAuthorization(toShare: share, read: read) { [weak self] granted, _ in
+                guard granted, let self else {
+                    self?.finishTracking()
+                    return
+                }
+                DispatchQueue.main.async {
+                    self.beginSession(startedAtMs: startedAtMs)
+                }
             }
-            DispatchQueue.main.async {
-                self.beginSession(startedAtMs: startedAtMs)
-            }
+        default:
+            // .sharingDenied or any future case: stay off, scoring is unaffected.
+            return
         }
+    }
+
+    /// Pause the running session so its active time and calories freeze while the
+    /// match is paused. Best-effort: a no-op when nothing is tracking.
+    func pause() {
+        guard isTracking else { return }
+        session?.pause()
+    }
+
+    /// Resume a paused session when the match resumes. Best-effort.
+    func resume() {
+        guard isTracking else { return }
+        session?.resume()
     }
 
     /// End the session; HealthKit finalises and saves the workout.

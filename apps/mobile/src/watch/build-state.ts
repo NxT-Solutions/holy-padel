@@ -8,6 +8,7 @@ import {
   opponentsOf,
   ownerTeamOf,
   pairInitials,
+  playedMs,
   pointDisplay,
   teamInitials,
   watchSetLabel,
@@ -51,6 +52,8 @@ export interface WatchState {
   readonly pointB: string;
   readonly games: string;
   readonly status: string;
+  /** True while a live match is paused — the watches pause the workout too. */
+  readonly paused?: boolean;
   /**
    * Epoch ms the live/won match started — the watches use it as the workout
    * session's start time and as the cross-device dedup key. Absent when idle.
@@ -93,7 +96,7 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
   return {
     v: SCHEMA_VERSION,
     phase: "live",
-    clock: durationLabel(now - match.startedAt),
+    clock: durationLabel(playedMs(match, now)),
     ...courtField(match),
     setLabel: watchSetLabel(snapshot),
     teamA: { short: shorts.A, serving: snapshot.servingTeam === "A" },
@@ -102,6 +105,7 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     pointB: pointDisplay(snapshot, "B"),
     games: liveScoreLine(snapshot),
     status: watchStatusLabel(snapshot.moment, shorts) ?? "",
+    paused: match.pausedAt !== undefined,
     startedAt: match.startedAt,
   };
 }
@@ -110,7 +114,7 @@ function wonState(match: MatchSummary, snapshot: MatchSnapshot, now: number): Wa
   const shorts = teamInitials(match);
   const winner: TeamId = snapshot.winner ?? "A";
   const scoreLine = finalScoreLine(snapshot);
-  const duration = durationLabel(now - match.startedAt);
+  const duration = durationLabel(playedMs(match, match.endedAt ?? now));
   return {
     v: SCHEMA_VERSION,
     phase: "won",

@@ -284,11 +284,18 @@ function toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot {
 
 /**
  * Fold a match from its config and the full list of point events.
- * Throws if the events continue past the end of the match.
+ *
+ * Events after the match is decided are ignored rather than fatal: a padel match
+ * is settled by the events up to match point, and a late/duplicate tap (e.g. a
+ * fast double-press racing the "finished" flip on a watch) must never crash the
+ * fold. `applyPoint` still guards defensively, but we never call it once done.
  */
 export function computeMatch(config: MatchConfig, events: readonly PointEvent[]): MatchSnapshot {
   let state = initialState(config);
   for (const event of events) {
+    if (state.finished) {
+      break;
+    }
     state = applyPoint(state, config, event.winner);
   }
   return toSnapshot(state, config);
