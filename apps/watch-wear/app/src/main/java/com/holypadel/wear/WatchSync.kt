@@ -114,11 +114,12 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
     /** Toggle pause<->resume — the phone owns the pause state. */
     fun pause() = tap(SyncPaths.PAUSE, "")
 
-    /** Stop AND save — the phone credits the leader if the match isn't finished. */
-    fun stop() = tap(SyncPaths.STOP, "")
+    /** Stop AND save — the phone credits the leader if the match isn't finished.
+     *  Named `stopMatch` to avoid clashing with [stop], which tears down the listener. */
+    fun stopMatch() = tap(SyncPaths.STOP, "")
 
     /** Discard the match entirely — nothing is saved. */
-    fun cancel() = tap(SyncPaths.CANCEL, "")
+    fun cancelMatch() = tap(SyncPaths.CANCEL, "")
 
     /** Legacy alias kept for the won screen's DONE (the phone treats it as `stop`). */
     fun end() = tap(SyncPaths.END, "")
