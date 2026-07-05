@@ -1,0 +1,38 @@
+appId: com.holypadel.app
+name: Capture extra store screenshots
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "HOLA, NICO"
+    timeout: 45000
+- assertVisible: "LIVE NOW"
+
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible: "WIN RATE"
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/shot-06-profile
+
+- tapOn:
+    id: "tab-home"
+- extendedWaitUntil:
+    visible: "HOLA, NICO"
+    timeout: 30000
+- tapOn: "NEW MATCH"
+- extendedWaitUntil:
+    visible: "Doubles · FIP scoring"
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/shot-07-new-match
+
+- tapOn:
+    text: "Pick a player"
+    index: 0
+- extendedWaitUntil:
+    visible: "PICK TEAM A"
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: screenshots/shot-08-player-picker
