@@ -3,12 +3,14 @@ import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
-import { ScrollView, Share } from "react-native";
+import { useState } from "react";
+import { Alert, Platform, ScrollView, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ChevronLeft } from "@/components/icons.tsx";
 import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { isHealthLogAvailable, logMatchWorkout } from "@/health/health-log.ts";
 import { confirmDestructive } from "@/lib/confirm.ts";
 import { durationLabel, fullDayLabel, pairInitials, teamNames, timeLabel } from "@/lib/format.ts";
 import { goBack } from "@/lib/navigation.ts";
@@ -39,6 +41,7 @@ export default function MatchOverviewScreen(): ReactNode {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const mutate = useDbMutation();
+  const [workoutLogged, setWorkoutLogged] = useState(false);
 
   const match = useDbQuery((driver) => getMatch(driver, id));
   const events = useDbQuery((driver) => loadEvents(driver, id));
@@ -84,6 +87,21 @@ export default function MatchOverviewScreen(): ReactNode {
   const exportMatch = (): void => {
     void Share.share({
       message: `${names[winner]} def. ${names[loser]} ${match.scoreLine ?? ""} · ${durationLabel(stats.durationMs)}`,
+    });
+  };
+
+  const healthAppName = Platform.OS === "ios" ? "Apple Health" : "Health Connect";
+  const logWorkout = (): void => {
+    const endedAt = match.endedAt ?? match.startedAt + stats.durationMs;
+    void logMatchWorkout(match.startedAt, endedAt).then((ok) => {
+      if (ok) {
+        setWorkoutLogged(true);
+      } else {
+        Alert.alert(
+          "Could not log workout",
+          `Allow Holy Padel to write workouts in ${healthAppName}, then try again.`,
+        );
+      }
     });
   };
 
@@ -239,6 +257,22 @@ export default function MatchOverviewScreen(): ReactNode {
       </Card>
 
       <XStack alignItems="center" justifyContent="center" gap={18} marginTop={8}>
+        {isHealthLogAvailable() ? (
+          <>
+            <Body
+              fontSize={11}
+              fontWeight="800"
+              letterSpacing={1.3}
+              color={workoutLogged ? colors.limeInk : inkAlpha(0.45)}
+              pressStyle={{ opacity: 0.6 }}
+              role="button"
+              onPress={workoutLogged ? undefined : logWorkout}
+            >
+              {workoutLogged ? "WORKOUT LOGGED ✓" : "LOG WORKOUT"}
+            </Body>
+            <View width={3} height={3} borderRadius={2} backgroundColor={inkAlpha(0.25)} />
+          </>
+        ) : null}
         <Body
           fontSize={11}
           fontWeight="800"
