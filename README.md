@@ -141,6 +141,12 @@ promote them if you want them blocking merges.
 
 ## Notes
 
+- Finished matches can be logged to **Apple Health / Health Connect** from the
+  match overview — strictly opt-in per match and write-only (the app never reads
+  health data). Neither platform has a padel activity type yet, so workouts are
+  saved as Tennis titled "Padel" (the community convention). Implemented by the
+  local [`health-log`](apps/mobile/modules/health-log) module — free OS APIs, no
+  accounts, everything stays on the device.
 - `patches/expo-sqlite@57.0.0.patch` fixes an upstream bug in expo-sqlite's web
   sync bridge: the worker wrote the result length through a `Uint8Array.set`,
   truncating it to one byte, so any query result over 255 bytes failed with
