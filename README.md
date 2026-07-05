@@ -1,10 +1,18 @@
-# Holy Padel
+<p align="center">
+  <img src="apps/mobile/assets/images/logo-mark.svg" width="112" alt="Holy Padel logo" />
+</p>
 
-[![CI](https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml/badge.svg)](https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml)
+<h1 align="center">Holy Padel</h1>
 
-Local-first padel scoring for the match you are actually playing: fast rally entry,
-FIP-aware scoring, private match history, form stats, Apple Watch and Wear OS
-companions, and optional workout logging.
+<p align="center">
+  Local-first padel scoring for phone, Apple Watch, and Wear OS.
+</p>
+
+<p align="center">
+  <a href="https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml"><img src="https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <a href="https://github.com/NxT-Solutions/holy-padel/actions/workflows/site.yml"><img src="https://github.com/NxT-Solutions/holy-padel/actions/workflows/site.yml/badge.svg" alt="Site status" /></a>
+  <a href="https://nxt-solutions.github.io/holy-padel/"><img src="https://img.shields.io/badge/site-GitHub%20Pages-C6F135?labelColor=0E1116&color=C6F135" alt="GitHub Pages site" /></a>
+</p>
 
 Holy Padel is an open-source Expo / React Native app built around one simple idea:
 the phone is the truth. The phone stores the match ledger locally, computes every
@@ -63,6 +71,21 @@ That keeps the app predictable, testable, and easy to sync.
 | [Watch sync contract](docs/watch-sync.md) | Phone-to-watch payloads and watch-to-phone intents |
 | [Generated GitNexus wiki](docs/gitnexus-wiki/README.md) | Graph-generated module docs for deeper code navigation |
 
+## Website
+
+The project also ships a static Next.js content site in [`apps/site`](apps/site).
+It uses the same Court Bold theme as the app and exports plain static files for
+GitHub Pages.
+
+```sh
+pnpm --filter @holy-padel/site dev
+pnpm --filter @holy-padel/site build
+```
+
+The [`Site`](.github/workflows/site.yml) workflow builds the site on PRs that
+touch `apps/site/**`, and deploys it to GitHub Pages after those changes are
+merged to `main`.
+
 ## Architecture
 
 ```mermaid
@@ -95,6 +118,7 @@ local ledger, recomputes the score, then pushes the next state back.
 | Path | Responsibility |
 | --- | --- |
 | `apps/mobile` | Expo app, screens, navigation, SQLite adapter, watch sync |
+| `apps/site` | Static Next.js content site for GitHub Pages |
 | `apps/mobile/modules/health-log` | Local Expo module for Apple Health / Health Connect writes |
 | `apps/mobile/modules/watch-bridge` | Local Expo module for WatchConnectivity / Wearable Data Layer |
 | `apps/mobile/targets/watch` | SwiftUI Apple Watch target generated with `@bacons/apple-targets` |
