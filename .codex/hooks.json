@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/noah/dev/holy-padel/.codex/hooks/biome-format.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}
