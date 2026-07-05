@@ -1,6 +1,5 @@
 import type { MatchSummary } from "@holy-padel/db";
 import {
-  appendEvent,
   createMatch,
   deleteMatch,
   finishMatch,
@@ -9,6 +8,7 @@ import {
   pauseMatch,
   removeLastEvent,
   resumeMatch,
+  scorePoint as scorePointDb,
 } from "@holy-padel/db";
 import type { MatchSnapshot, MatchStats, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
@@ -148,7 +148,7 @@ function TeamCard({
           TAP TO SCORE +1
         </Body>
       </YStack>
-      <Display fontSize={112} lineHeight={100} testID={testID}>
+      <Display fontSize={112} lineHeight={116} testID={testID}>
         {point}
       </Display>
     </XStack>
@@ -443,13 +443,10 @@ export default function LiveScreen(): ReactNode {
   const paused = match.pausedAt !== undefined;
 
   const scorePoint = (team: TeamId): void => {
-    // A tap that races the match-won swap must not extend the event log, and
-    // there's no scoring during a break.
-    if (snapshot.finished || paused) {
-      return;
-    }
+    // scorePointDb re-reads committed state and refuses once the match is
+    // paused or decided, so rapid double-taps can't race past the final point.
     mutate((driver) => {
-      appendEvent(driver, id, { winner: team, at: Date.now() });
+      scorePointDb(driver, id, team, Date.now());
     });
   };
 

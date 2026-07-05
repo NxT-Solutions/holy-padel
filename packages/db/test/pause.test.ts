@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createMatch,
-  finishMatch,
-  getMatch,
-  pauseMatch,
-  resumeMatch,
-} from "../src/index.ts";
+import { createMatch, finishMatch, getMatch, pauseMatch, resumeMatch } from "../src/index.ts";
 import { newMatch, seededDriver } from "./fixtures.ts";
 
 describe("pause / resume", () => {

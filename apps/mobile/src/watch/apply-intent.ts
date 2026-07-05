@@ -1,12 +1,12 @@
 import type { SqlDriver } from "@holy-padel/db";
 import {
-  appendEvent,
   createMatch,
   getLiveMatch,
   listMatches,
   pauseMatch,
   removeLastEvent,
   resumeMatch,
+  scorePoint,
 } from "@holy-padel/db";
 
 /** The watch → phone intents (docs/watch-sync.md). */
@@ -34,9 +34,10 @@ function applyScore(driver: SqlDriver, body: string, now: number): void {
     return;
   }
   const live = getLiveMatch(driver);
-  // No scoring during a break — play is paused.
-  if (live !== undefined && live.pausedAt === undefined) {
-    appendEvent(driver, live.id, { winner: body, at: now });
+  // scorePoint re-reads fresh state and refuses if paused/finished, so a burst
+  // of fast watch taps can't append past match point.
+  if (live !== undefined) {
+    scorePoint(driver, live.id, body, now);
   }
 }
 

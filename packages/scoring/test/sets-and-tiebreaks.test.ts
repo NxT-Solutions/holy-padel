@@ -83,9 +83,11 @@ describe("match structure", () => {
     expect(snapshot.winner).toBe("B");
   });
 
-  it("throws when scoring past the end of the match", () => {
+  it("ignores points scored after the match ends", () => {
+    // A late/duplicate tap (e.g. a fast double-press on the watch) must not crash
+    // the fold — the extra event is dropped and the finished result is unchanged.
     const done = `${loveSet("A")}${loveSet("A")}`;
-    expect(() => snap(ADVANTAGE_MATCH, `${done}A`)).toThrow(/finished/u);
+    expect(snap(ADVANTAGE_MATCH, `${done}A`)).toEqual(snap(ADVANTAGE_MATCH, done));
   });
 
   it("plays a full third set when configured", () => {

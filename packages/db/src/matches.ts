@@ -1,4 +1,5 @@
 import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
+import { computeMatch } from "@holy-padel/scoring";
 import type { SqlDriver, SqlRow } from "./driver.ts";
 import {
   expectNumber,
@@ -192,6 +193,24 @@ export function appendEvent(driver: SqlDriver, matchId: string, event: PointEven
      WHERE EXISTS (SELECT 1 FROM matches WHERE id = ? AND status = 'live')`,
     [matchId, matchId, event.winner, event.at, matchId],
   );
+}
+
+/**
+ * Score a rally — the guarded entry point for every "+1" from the phone or a
+ * watch. Reads the committed state fresh and refuses the point when the match
+ * isn't live, is paused, or the engine already considers it decided. Because
+ * each call re-reads, a burst of fast taps (e.g. mashing the watch) can't append
+ * events past match point — the second tap sees the finished fold and stops.
+ */
+export function scorePoint(driver: SqlDriver, matchId: string, winner: TeamId, at: number): void {
+  const match = getMatch(driver, matchId);
+  if (match === undefined || match.status !== "live" || match.pausedAt !== undefined) {
+    return;
+  }
+  if (computeMatch(match.config, loadEvents(driver, matchId)).finished) {
+    return;
+  }
+  appendEvent(driver, matchId, { winner, at });
 }
 
 const APPEND_CHUNK = 100;
