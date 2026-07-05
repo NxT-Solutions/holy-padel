@@ -84,6 +84,23 @@ export function durationLabel(durationMs: number): string {
   return `${String(hours)}:${minutes}`;
 }
 
+/**
+ * Elapsed play time (ms) excluding paused breaks — the match's accurate duration.
+ * `at` is `now` while live (freezes during an open pause, since the open interval
+ * grows with `now`) or `endedAt` once finished.
+ */
+export function playedMs(
+  match: {
+    readonly startedAt: number;
+    readonly pausedMs: number;
+    readonly pausedAt: number | undefined;
+  },
+  at: number,
+): number {
+  const openPause = match.pausedAt === undefined ? 0 : Math.max(0, at - match.pausedAt);
+  return Math.max(0, at - match.startedAt - match.pausedMs - openPause);
+}
+
 /** "TODAY · 18:32 · COURT 4" or "TUE · CLUB PADEL NORTE". */
 export function matchMetaLabel(match: MatchSummary, now: number): string {
   const day = dayLabel(match.startedAt, now);

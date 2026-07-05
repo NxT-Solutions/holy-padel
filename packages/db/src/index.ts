@@ -12,8 +12,10 @@ export {
   getMatch,
   listMatches,
   loadEvents,
+  pauseMatch,
   removeLastEvent,
   reopenMatch,
+  resumeMatch,
 } from "./matches.ts";
 export type { CourtSide, NewPlayer, Player, RosterEntry } from "./players.ts";
 export {

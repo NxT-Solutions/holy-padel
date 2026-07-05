@@ -5,6 +5,7 @@ import {
   createPlayer,
   finishMatch,
   getLiveMatch,
+  getMatch,
   loadEvents,
   migrate,
 } from "@holy-padel/db";
@@ -83,5 +84,28 @@ describe("applyWatchIntent", () => {
     applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
 
     expect(getLiveMatch(driver)?.id).toBe("m1");
+  });
+
+  it("toggles pause and resume, banking the interval", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.pause, body: "" }, { ...ctx, now: 1000 });
+    expect(getMatch(driver, "m1")?.pausedAt).toBe(1000);
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.pause, body: "" }, { ...ctx, now: 3000 });
+    const match = getMatch(driver, "m1");
+    expect(match?.pausedAt).toBeUndefined();
+    expect(match?.pausedMs).toBe(2000);
+  });
+
+  it("ignores score intents while paused", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.pause, body: "" }, ctx);
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+
+    expect(loadEvents(driver, "m1")).toHaveLength(0);
   });
 });

@@ -12,7 +12,14 @@ import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { isHealthLogAvailable, logMatchWorkout } from "@/health/health-log.ts";
 import { confirmDestructive } from "@/lib/confirm.ts";
-import { durationLabel, fullDayLabel, pairInitials, teamNames, timeLabel } from "@/lib/format.ts";
+import {
+  durationLabel,
+  fullDayLabel,
+  pairInitials,
+  playedMs,
+  teamNames,
+  timeLabel,
+} from "@/lib/format.ts";
 import { goBack } from "@/lib/navigation.ts";
 import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
 
@@ -93,7 +100,9 @@ export default function MatchOverviewScreen(): ReactNode {
   const healthAppName = Platform.OS === "ios" ? "Apple Health" : "Health Connect";
   const logWorkout = (): void => {
     const endedAt = match.endedAt ?? match.startedAt + stats.durationMs;
-    void logMatchWorkout(match.startedAt, endedAt).then((ok) => {
+    // Exclude paused breaks so the logged duration is real play time.
+    const activeEnd = match.startedAt + playedMs(match, endedAt);
+    void logMatchWorkout(match.startedAt, activeEnd).then((ok) => {
       if (ok) {
         setWorkoutLogged(true);
       } else {

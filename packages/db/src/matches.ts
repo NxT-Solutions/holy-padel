@@ -36,6 +36,10 @@ export interface StoredMatch {
   readonly endedAt: number | undefined;
   readonly winner: TeamId | undefined;
   readonly scoreLine: string | undefined;
+  /** Accumulated paused time (ms), excluded from the match duration. */
+  readonly pausedMs: number;
+  /** Start of the current pause (ms), or undefined while the match is running. */
+  readonly pausedAt: number | undefined;
 }
 
 /** A match row joined with the four player names, for list screens. */
@@ -92,6 +96,8 @@ function toStoredMatch(row: SqlRow): StoredMatch {
     endedAt: optionalNumber(row, "ended_at"),
     winner: winner === undefined ? undefined : parseTeam(winner),
     scoreLine: optionalString(row, "score_line"),
+    pausedMs: expectNumber(row, "paused_ms"),
+    pausedAt: optionalNumber(row, "paused_at"),
   };
 }
 
@@ -233,9 +239,30 @@ export function finishMatch(
   id: string,
   outcome: { readonly winner: TeamId; readonly endedAt: number; readonly scoreLine: string },
 ): void {
+  // Close any open pause at the end time so the stored paused_ms is final.
   driver.execute(
-    "UPDATE matches SET status = 'finished', winner = ?, ended_at = ?, score_line = ? WHERE id = ?",
-    [outcome.winner, outcome.endedAt, outcome.scoreLine, id],
+    `UPDATE matches
+       SET status = 'finished', winner = ?, ended_at = ?, score_line = ?,
+           paused_ms = paused_ms + CASE WHEN paused_at IS NULL THEN 0 ELSE ? - paused_at END,
+           paused_at = NULL
+     WHERE id = ?`,
+    [outcome.winner, outcome.endedAt, outcome.scoreLine, outcome.endedAt, id],
+  );
+}
+
+/** Pause a live match — records the pause start; a no-op if already paused. */
+export function pauseMatch(driver: SqlDriver, id: string, now: number): void {
+  driver.execute(
+    "UPDATE matches SET paused_at = ? WHERE id = ? AND status = 'live' AND paused_at IS NULL",
+    [now, id],
+  );
+}
+
+/** Resume a paused match — banks the elapsed pause into paused_ms. No-op if running. */
+export function resumeMatch(driver: SqlDriver, id: string, now: number): void {
+  driver.execute(
+    "UPDATE matches SET paused_ms = paused_ms + (? - paused_at), paused_at = NULL WHERE id = ? AND paused_at IS NOT NULL",
+    [now, id],
   );
 }
 

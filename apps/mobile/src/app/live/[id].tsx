@@ -6,7 +6,9 @@ import {
   finishMatch,
   getMatch,
   loadEvents,
+  pauseMatch,
   removeLastEvent,
+  resumeMatch,
 } from "@holy-padel/db";
 import type { MatchSnapshot, MatchStats, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
@@ -15,11 +17,18 @@ import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
-import { Undo } from "@/components/icons.tsx";
+import { Pause, Play, Undo } from "@/components/icons.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { confirmDestructive } from "@/lib/confirm.ts";
-import { dayLabel, durationLabel, finalScoreLine, pointDisplay, teamNames } from "@/lib/format.ts";
+import {
+  dayLabel,
+  durationLabel,
+  finalScoreLine,
+  playedMs,
+  pointDisplay,
+  teamNames,
+} from "@/lib/format.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
@@ -431,9 +440,12 @@ export default function LiveScreen(): ReactNode {
     );
   }
 
+  const paused = match.pausedAt !== undefined;
+
   const scorePoint = (team: TeamId): void => {
-    // A tap that races the match-won swap must not extend the event log.
-    if (snapshot.finished) {
+    // A tap that races the match-won swap must not extend the event log, and
+    // there's no scoring during a break.
+    if (snapshot.finished || paused) {
       return;
     }
     mutate((driver) => {
@@ -447,6 +459,16 @@ export default function LiveScreen(): ReactNode {
     }
     mutate((driver) => {
       removeLastEvent(driver, id);
+    });
+  };
+
+  const togglePause = (): void => {
+    mutate((driver) => {
+      if (match.pausedAt === undefined) {
+        pauseMatch(driver, id, Date.now());
+      } else {
+        resumeMatch(driver, id, Date.now());
+      }
     });
   };
 
@@ -477,15 +499,16 @@ export default function LiveScreen(): ReactNode {
     >
       <XStack alignItems="center" justifyContent="space-between">
         <Pill
-          backgroundColor={colors.ink}
+          backgroundColor={paused ? inkAlpha(0.4) : colors.ink}
           paddingVertical={6}
           paddingLeft={9}
           paddingRight={12}
           gap={6}
+          testID="live-pill"
         >
-          <LiveDot size={7} />
+          {paused ? <Pause size={9} color={colors.white} /> : <LiveDot size={7} />}
           <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.white}>
-            LIVE
+            {paused ? "PAUSED" : "LIVE"}
           </Body>
         </Pill>
         <Body fontSize={11} fontWeight="700" letterSpacing={1.8} color={inkAlpha(0.55)}>
@@ -493,12 +516,14 @@ export default function LiveScreen(): ReactNode {
             .filter((part): part is string => part !== undefined)
             .join(" · ")}
         </Body>
-        <Display fontSize={16}>{durationLabel(now - match.startedAt)}</Display>
+        <Display fontSize={16} testID="match-clock">
+          {durationLabel(playedMs(match, now))}
+        </Display>
       </XStack>
 
       <SetChips match={match} snapshot={snapshot} />
 
-      <YStack flex={1} gap={10}>
+      <YStack flex={1} gap={10} opacity={paused ? 0.4 : 1}>
         <TeamCard
           name={names.A}
           point={pointDisplay(snapshot, "A")}
@@ -535,7 +560,7 @@ export default function LiveScreen(): ReactNode {
 
       <XStack gap={10}>
         <XStack
-          flex={1.4}
+          flex={1}
           height={58}
           backgroundColor={colors.white}
           borderWidth={1}
@@ -555,6 +580,27 @@ export default function LiveScreen(): ReactNode {
           </Body>
         </XStack>
         <XStack
+          flex={1.3}
+          height={58}
+          backgroundColor={paused ? colors.lime : colors.white}
+          borderWidth={1}
+          borderColor={paused ? colors.lime : inkAlpha(0.08)}
+          borderRadius={16}
+          alignItems="center"
+          justifyContent="center"
+          gap={9}
+          boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
+          pressStyle={{ opacity: 0.85 }}
+          role="button"
+          onPress={togglePause}
+          testID="pause-toggle"
+        >
+          {paused ? <Play size={17} color={colors.ink} /> : <Pause size={17} color={colors.ink} />}
+          <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
+            {paused ? "RESUME" : "PAUSE"}
+          </Body>
+        </XStack>
+        <XStack
           flex={1}
           height={58}
           borderWidth={1}
@@ -567,7 +613,7 @@ export default function LiveScreen(): ReactNode {
           onPress={endMatch}
         >
           <Body fontSize={13} fontWeight="700" letterSpacing={1.4} color={inkAlpha(0.5)}>
-            END MATCH
+            END
           </Body>
         </XStack>
       </XStack>
@@ -575,7 +621,7 @@ export default function LiveScreen(): ReactNode {
       <XStack alignItems="center" justifyContent="center" gap={6}>
         <LiveDot size={6} />
         <Body fontSize={11} fontWeight="600" color={inkAlpha(0.45)}>
-          Synced — 2 watches connected
+          {paused ? "Paused — workout paused on your watch too" : "Synced — 2 watches connected"}
         </Body>
       </XStack>
     </YStack>
