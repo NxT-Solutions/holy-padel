@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!design", "!**/*.gen.ts", "!apps/mobile/targets"]
+    "includes": ["**", "!design", "!**/*.gen.ts", "!apps/mobile/targets", "!**/vectors/golden.json"]
   },
   "formatter": {
     "enabled": true,
@@ -80,6 +80,17 @@
     }
   },
   "overrides": [
+    {
+      "includes": ["**/scoring/src/vectors.ts", "**/scoring/scripts/write-vectors.ts"],
+      "linter": {
+        "rules": {
+          "style": { "noMagicNumbers": "off" },
+          "suspicious": { "noBitwiseOperators": "off" },
+          "complexity": { "noExcessiveCognitiveComplexity": "off" },
+          "correctness": { "noProcessGlobal": "off", "noNodejsModules": "off" }
+        }
+      }
+    },
     {
       "includes": ["**/*.config.ts", "**/*.config.js", "**/app/**/*.tsx"],
       "linter": {
