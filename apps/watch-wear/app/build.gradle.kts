@@ -54,4 +54,9 @@ dependencies {
 
     // Wearable Data Layer API — receives phone match state, sends score/undo intents.
     implementation("com.google.android.gms:play-services-wearable:20.0.1")
+
+    // Health Services — workout-grade heart rate + calories during the live match.
+    implementation("androidx.health:health-services-client:1.0.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
 }

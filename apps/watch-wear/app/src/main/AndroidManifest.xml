@@ -5,6 +5,14 @@
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Live match tracking (Health Services): heart rate + calories.
+         BODY_SENSORS is replaced by the granular health permission on API 36+. -->
+    <uses-permission
+        android:name="android.permission.BODY_SENSORS"
+        android:maxSdkVersion="35" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
