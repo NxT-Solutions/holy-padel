@@ -8,9 +8,25 @@ import { requireOptionalNativeModule } from "expo";
  * the app never reads health data.
  */
 
+/**
+ * Coarse share-authorization state for the workout type, used to decide
+ * whether the Profile screen should offer to connect. `"unavailable"` means
+ * there is no health platform (web, or a device without HealthKit / Health
+ * Connect); the app treats it exactly like "nothing to offer".
+ */
+export type HealthStatus = "granted" | "denied" | "undetermined" | "unavailable";
+
 interface HealthLogModule {
   /** Health platform present on this device (HealthKit / Health Connect). */
   isAvailable: () => boolean;
+  /** Current share-authorization state for the workout type. */
+  getAuthorizationStatus: () => Promise<HealthStatus>;
+  /**
+   * Prompt for workout write access. Resolves true when the request completed
+   * (iOS) or every write permission was granted (Android); the caller re-reads
+   * getHealthStatus afterwards to learn the resulting state. Never rejects.
+   */
+  requestAuthorization: () => Promise<boolean>;
   /**
    * Write one workout for a past interval. Resolves true when written, false
    * when the user declined permission or the platform refused. Never rejects
@@ -30,6 +46,34 @@ const native = requireOptionalNativeModule<HealthLogModule>("HealthLog");
 export function isHealthLogAvailable(): boolean {
   try {
     return native?.isAvailable() ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Read the current health authorization state. Falls back to "unavailable"
+ * with no native module (web) or on any failure, so callers can treat it as
+ * "don't offer to connect" without special-casing.
+ */
+export async function getHealthStatus(): Promise<HealthStatus> {
+  if (native === null) {
+    return "unavailable";
+  }
+  try {
+    return await native.getAuthorizationStatus();
+  } catch {
+    return "unavailable";
+  }
+}
+
+/** Prompt for workout write access. Best-effort: resolves false on any failure. */
+export async function requestHealthAuthorization(): Promise<boolean> {
+  if (native === null) {
+    return false;
+  }
+  try {
+    return await native.requestAuthorization();
   } catch {
     return false;
   }

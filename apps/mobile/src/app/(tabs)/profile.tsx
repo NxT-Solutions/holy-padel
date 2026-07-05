@@ -1,13 +1,113 @@
 import { computeProfileStats, countMatches, databaseSizeBytes, getOwner } from "@holy-padel/db";
+import { useFocusEffect } from "expo-router";
 import type { ReactNode } from "react";
-import { ScrollView } from "react-native";
+import { useCallback, useState } from "react";
+import { Platform, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
-import { ChevronRight } from "@/components/icons.tsx";
+import { ChevronRight, Heart } from "@/components/icons.tsx";
 import { Avatar, Body, Card, Display, Overline, Pill, ResultBadge } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
+import {
+  getHealthStatus,
+  type HealthStatus,
+  requestHealthAuthorization,
+} from "@/health/health-log.ts";
 import { megabytesLabel } from "@/lib/format.ts";
-import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
+
+const HEALTH_PLATFORM = Platform.OS === "android" ? "Health Connect" : "Apple Health";
+
+/**
+ * Opt-in prompt to connect the platform health store. Rendered only when the
+ * status is actionable ("undetermined", or "denied" with a softer Settings
+ * hint); "granted" and "unavailable" render nothing. Connecting never gates
+ * anything else on the screen — it's purely additive.
+ */
+function HealthBanner(): ReactNode {
+  const [status, setStatus] = useState<HealthStatus>("unavailable");
+  const [busy, setBusy] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void getHealthStatus().then((next) => {
+        if (active) {
+          setStatus(next);
+        }
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  if (status === "granted" || status === "unavailable") {
+    return null;
+  }
+
+  const denied = status === "denied";
+
+  const connect = (): void => {
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    void requestHealthAuthorization()
+      .then(() => getHealthStatus())
+      .then(setStatus)
+      .finally(() => {
+        setBusy(false);
+      });
+  };
+
+  return (
+    <Card
+      flexDirection="row"
+      alignItems="center"
+      gap={13}
+      borderRadius={18}
+      paddingVertical={14}
+      paddingHorizontal={16}
+    >
+      <View
+        width={40}
+        height={40}
+        borderRadius={20}
+        backgroundColor={limeAlpha(0.22)}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Heart size={19} color={colors.limeInk} strokeWidth={2.4} />
+      </View>
+      <YStack flex={1} gap={2}>
+        <Body fontSize={14.5} fontWeight="800">
+          {`Connect ${HEALTH_PLATFORM}`}
+        </Body>
+        <Body fontSize={11.5} fontWeight="600" color={inkAlpha(0.45)}>
+          {denied
+            ? "Re-enable workout access in Settings — optional"
+            : "Save your matches as workouts — optional"}
+        </Body>
+      </YStack>
+      {denied ? null : (
+        <Pill
+          backgroundColor={colors.ink}
+          paddingVertical={9}
+          paddingHorizontal={15}
+          pressStyle={{ opacity: 0.7 }}
+          opacity={busy ? 0.6 : 1}
+          role="button"
+          onPress={connect}
+        >
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.lime}>
+            CONNECT
+          </Body>
+        </Pill>
+      )}
+    </Card>
+  );
+}
 
 function StatTile({
   value,
@@ -98,6 +198,8 @@ export default function ProfileScreen(): ReactNode {
           </Body>
         </Pill>
       </XStack>
+
+      <HealthBanner />
 
       <XStack gap={8}>
         <StatTile value={String(stats.played)} label="PLAYED" variant="ink" />

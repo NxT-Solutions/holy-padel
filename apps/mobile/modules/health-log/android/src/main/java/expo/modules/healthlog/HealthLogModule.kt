@@ -88,6 +88,26 @@ class HealthLogModule : Module() {
       }.getOrDefault(false)
     }
 
+    // Coarse permission state for the Profile banner. Health Connect has no
+    // "denied" the way iOS does — a permission is either granted or has to be
+    // asked for again — so map to "granted" / "undetermined" and let
+    // "unavailable" cover a missing or disabled Health Connect.
+    AsyncFunction("getAuthorizationStatus") Coroutine { ->
+      val client = client() ?: return@Coroutine "unavailable"
+      runCatching {
+        val granted = client.permissionController.getGrantedPermissions()
+        if (granted.containsAll(writePermissions)) "granted" else "undetermined"
+      }.getOrDefault("undetermined")
+    }
+
+    // Drive the same permission prompt `logWorkout` would. Best-effort and
+    // non-throwing: resolves true only when every write permission ends up
+    // granted, false on any refusal or wiring failure.
+    AsyncFunction("requestAuthorization") Coroutine { ->
+      val client = client() ?: return@Coroutine false
+      runCatching { ensurePermission(client) }.getOrDefault(false)
+    }
+
     AsyncFunction("logWorkout") Coroutine { startMs: Double, endMs: Double ->
       val client = client() ?: return@Coroutine false
       if (!ensurePermission(client)) {

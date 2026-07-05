@@ -1,6 +1,7 @@
 package com.holypadel.wear
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.holypadel.wear.ui.WatchApp
 import kotlinx.coroutines.launch
@@ -26,10 +28,14 @@ class MainActivity : ComponentActivity() {
     private var lastPaused = false
     private var pendingStartedAt = 0L
 
+    /** Ask for the sensor permission at most once per process — never nag. */
+    private var permissionRequested = false
+
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-            // Start regardless of the exact grants — Health Services simply omits
-            // streams it has no permission for; a scoreboard with no bpm is fine.
+            // Start regardless of the exact grants — the tracker self-gates on the
+            // heart-rate permission and simply stays idle if it was declined; a
+            // scoreboard with no bpm is completely fine.
             if (grants.values.any { it }) {
                 tracker.start(pendingStartedAt)
             }
@@ -83,9 +89,21 @@ class MainActivity : ComponentActivity() {
         } else {
             Manifest.permission.BODY_SENSORS
         }
-        permissionLauncher.launch(
-            arrayOf(heartRatePermission, Manifest.permission.ACTIVITY_RECOGNITION),
-        )
+        val granted = ContextCompat.checkSelfPermission(this, heartRatePermission) ==
+            PackageManager.PERMISSION_GRANTED
+        // Already granted (e.g. a previous match): start straight away, no prompt.
+        // Otherwise ask exactly once per process; if it's declined we simply never
+        // ask again and the scoreboard runs on without any fitness data. Either
+        // way the UI is already up and fully interactive — nothing gates on this.
+        when {
+            granted -> tracker.start(startedAt)
+            !permissionRequested -> {
+                permissionRequested = true
+                permissionLauncher.launch(
+                    arrayOf(heartRatePermission, Manifest.permission.ACTIVITY_RECOGNITION),
+                )
+            }
+        }
     }
 
     override fun onResume() {

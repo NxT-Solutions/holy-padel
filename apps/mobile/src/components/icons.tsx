@@ -3,6 +3,7 @@ import {
   Check as LucideCheck,
   ChevronLeft as LucideChevronLeft,
   ChevronRight as LucideChevronRight,
+  Heart as LucideHeart,
   Pause as LucidePause,
   Play as LucidePlay,
   Plus as LucidePlus,
@@ -71,4 +72,8 @@ export function Pause({ size = 15, color = colors.ink, strokeWidth = 2.6 }: Icon
 
 export function Play({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
   return <LucidePlay size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+export function Heart({ size = 15, color = colors.ink, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucideHeart size={size} color={color} strokeWidth={strokeWidth} />;
 }

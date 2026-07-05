@@ -1,6 +1,10 @@
 package com.holypadel.wear
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.health.services.client.ExerciseUpdateCallback
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.data.Availability
@@ -33,7 +37,8 @@ import org.json.JSONObject
 class ExerciseTracker(context: Context) {
     data class LiveStats(val bpm: Int, val kcal: Double, val tracking: Boolean)
 
-    private val client = HealthServices.getClient(context.applicationContext).exerciseClient
+    private val appContext = context.applicationContext
+    private val client = HealthServices.getClient(appContext).exerciseClient
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val statsFlow = MutableStateFlow(LiveStats(bpm = 0, kcal = 0.0, tracking = false))
@@ -75,9 +80,29 @@ class ExerciseTracker(context: Context) {
         override fun onRegistrationFailed(throwable: Throwable) = Unit
     }
 
+    /**
+     * True once the heart-rate permission has actually been granted. Health
+     * Services throws SecurityException if we start an exercise that streams
+     * HEART_RATE_BPM without it — checking here keeps the whole thing opt-in and
+     * lets the scoreboard run untouched when the grant is missing.
+     */
+    private fun hasHeartRatePermission(): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= 36) {
+            // Wear OS 6 (API 36) replaces BODY_SENSORS with granular health permissions.
+            "android.permission.health.READ_HEART_RATE"
+        } else {
+            Manifest.permission.BODY_SENSORS
+        }
+        return ContextCompat.checkSelfPermission(appContext, permission) ==
+            PackageManager.PERMISSION_GRANTED
+    }
+
     /** Start tracking; safe to call when unsupported — it just stays idle. */
     fun start(startedAt: Long) {
         if (statsFlow.value.tracking) return
+        // Opt-in only: with no sensor permission the exercise would fail to start
+        // (or throw), so skip it silently — the scoreboard never depends on it.
+        if (!hasHeartRatePermission()) return
         matchStartedAt = if (startedAt > 0) startedAt else System.currentTimeMillis()
         maxBpm = 0
         samples.clear()

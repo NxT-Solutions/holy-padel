@@ -18,6 +18,33 @@ public class HealthLogModule: Module {
       HKHealthStore.isHealthDataAvailable()
     }
 
+    // Coarse share-authorization state for the workout type, mapped to the
+    // strings the Profile banner drives off. HealthKit deliberately never
+    // reveals a denial for reads, but workouts are write-only here so the
+    // sharing status is honest enough to decide whether to offer "Connect".
+    Function("getAuthorizationStatus") { () -> String in
+      guard HKHealthStore.isHealthDataAvailable() else { return "unavailable" }
+      switch self.store.authorizationStatus(for: HKObjectType.workoutType()) {
+      case .sharingAuthorized: return "granted"
+      case .sharingDenied: return "denied"
+      default: return "undetermined"
+      }
+    }
+
+    // Prompt for the same share types `logWorkout` writes. Non-throwing to JS:
+    // resolves true only when the request completed without error. A true here
+    // means the sheet was handled, not necessarily that sharing was granted —
+    // the caller re-reads getAuthorizationStatus afterwards.
+    AsyncFunction("requestAuthorization") { () async -> Bool in
+      guard HKHealthStore.isHealthDataAvailable() else { return false }
+      do {
+        try await self.store.requestAuthorization(toShare: [HKObjectType.workoutType()], read: [])
+        return true
+      } catch {
+        return false
+      }
+    }
+
     AsyncFunction("logWorkout") { (startMs: Double, endMs: Double) async -> Bool in
       guard HKHealthStore.isHealthDataAvailable() else { return false }
 
