@@ -30,7 +30,12 @@ export function isWatchBridgeAvailable(): boolean {
 
 /** Push the latest match state to the watch (already-serialised JSON). */
 export function pushWatchStateJson(json: string): void {
-  native?.pushState(json);
+  // Best-effort: a missing watch / Play services must never break the phone app.
+  try {
+    native?.pushState(json);
+  } catch {
+    // swallow — the next point self-heals the sync
+  }
 }
 
 export function pushWatchState(state: WatchState): void {
@@ -44,10 +49,16 @@ export function addIntentListener(listener: (intent: WatchIntent) => void): () =
       // no native bridge (e.g. web) — nothing to unsubscribe
     };
   }
-  const subscription = native.addListener("onIntent", (payload) => {
-    listener({ path: payload.path, body: payload.body });
-  });
-  return () => {
-    subscription.remove();
-  };
+  try {
+    const subscription = native.addListener("onIntent", (payload) => {
+      listener({ path: payload.path, body: payload.body });
+    });
+    return () => {
+      subscription.remove();
+    };
+  } catch {
+    return () => {
+      // subscribing failed — best-effort, nothing to unsubscribe
+    };
+  }
 }
