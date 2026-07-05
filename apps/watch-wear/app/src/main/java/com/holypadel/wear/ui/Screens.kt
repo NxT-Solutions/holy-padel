@@ -15,9 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -45,6 +51,8 @@ fun WatchApp(
     onUndo: () -> Unit,
     onStartLast: () -> Unit,
     onPause: () -> Unit,
+    onStop: () -> Unit,
+    onCancel: () -> Unit,
     onEnd: () -> Unit,
 ) {
     Box(
@@ -53,7 +61,7 @@ fun WatchApp(
     ) {
         when (state.phase) {
             Phase.IDLE -> IdleScreen(state, onStartLast)
-            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onUndo, onPause, onEnd)
+            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onUndo, onPause, onStop, onCancel)
             Phase.WON -> MatchWonScreen(state, onEnd)
         }
     }
@@ -95,6 +103,12 @@ private fun IdleScreen(state: MatchState, onStartLast: () -> Unit) {
     }
 }
 
+/**
+ * Two sideways pages, like the Wear/Apple workout app: swipe between the
+ * **controls** (undo, pause, stop-and-save, cancel) and the **score face** (tap a
+ * team to score). Separating them keeps the score clean and makes an accidental
+ * stop impossible while you're tapping points every rally.
+ */
 @Composable
 private fun LiveScoreScreen(
     state: MatchState,
@@ -102,10 +116,32 @@ private fun LiveScoreScreen(
     onScore: (String) -> Unit,
     onUndo: () -> Unit,
     onPause: () -> Unit,
-    onEnd: () -> Unit,
+    onStop: () -> Unit,
+    onCancel: () -> Unit,
 ) {
+    // Land on the score face (page 1) — the surface you touch every rally.
+    val pagerState = rememberPagerState(initialPage = 1) { 2 }
+    Box(modifier = Modifier.fillMaxSize()) {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+            if (page == 0) {
+                ControlsPage(state, onUndo, onPause, onStop, onCancel)
+            } else {
+                ScorePage(state, liveBpm, onScore)
+            }
+        }
+        PagerDots(
+            count = 2,
+            current = pagerState.currentPage,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp),
+        )
+    }
+}
+
+/** The score face — nothing but the two tappable team halves plus a compact header. */
+@Composable
+private fun ScorePage(state: MatchState, liveBpm: Int, onScore: (String) -> Unit) {
     val paused = state.paused
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
         // Header: clock (or live bpm) · set/games · LIVE (or PAUSED)
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -156,22 +192,110 @@ private fun LiveScoreScreen(
             point = state.pointB,
             serving = state.teamB.serving,
         )
+    }
+}
 
-        // Footer: undo · pause/resume · end — icon controls (compact, no wrapping text)
+/** The actions face — undo, pause/resume, the square stop-and-save, and a guarded full cancel. */
+@Composable
+private fun ControlsPage(
+    state: MatchState,
+    onUndo: () -> Unit,
+    onPause: () -> Unit,
+    onStop: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val paused = state.paused
+    var confirmingCancel by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(9.dp, Alignment.CenterVertically),
+    ) {
+        LabelText(
+            if (paused) "PAUSED" else "CONTROLS",
+            color = if (paused) CourtColors.White45 else CourtColors.Lime,
+            sizeSp = 11,
+        )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+            horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CircleIconButton(ControlIcon.UNDO, onClick = onUndo, enabled = !paused)
-            // Pause is the primary mid-match action — larger + lime.
-            CircleIconButton(
-                if (paused) ControlIcon.PLAY else ControlIcon.PAUSE,
-                onClick = onPause,
-                accent = true,
-                diameterDp = 44,
+            LabeledControl("UNDO") {
+                CircleIconButton(ControlIcon.UNDO, onClick = onUndo, enabled = !paused)
+            }
+            LabeledControl(if (paused) "RESUME" else "PAUSE") {
+                CircleIconButton(
+                    if (paused) ControlIcon.PLAY else ControlIcon.PAUSE,
+                    onClick = onPause,
+                    accent = true,
+                    diameterDp = 44,
+                )
+            }
+        }
+        if (confirmingCancel) {
+            // Inline confirm — no dialog dependency; discard is one deliberate tap away.
+            LabelText("DISCARD? SCORE LOST", color = CourtColors.White45, sizeSp = 9)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PillButton("DISCARD", CourtColors.White.copy(alpha = 0.14f), CourtColors.White, onCancel)
+                PillButton("KEEP", CourtColors.Lime, CourtColors.Ink) { confirmingCancel = false }
+            }
+        } else {
+            // Stop AND save — the filled square, "court time's up, don't lose the score".
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(CourtColors.Lime)
+                    .clickable { onStop() }
+                    .padding(vertical = 9.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(12.dp).clip(RoundedCornerShape(2.dp)).background(CourtColors.Ink))
+                DisplayText("STOP & SAVE", sizeSp = 14, color = CourtColors.Ink)
+            }
+            Box(
+                modifier = Modifier.clickable { confirmingCancel = true }.padding(vertical = 2.dp),
+            ) {
+                LabelText("CANCEL MATCH", color = CourtColors.White.copy(alpha = 0.55f), sizeSp = 12)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LabeledControl(title: String, content: @Composable () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        content()
+        LabelText(title, color = CourtColors.White45, sizeSp = 9)
+    }
+}
+
+@Composable
+private fun PillButton(label: String, background: Color, text: Color, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(background)
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+    ) {
+        LabelText(label, color = text, sizeSp = 11)
+    }
+}
+
+/** Two-page swipe indicator, drawn from the shared [Dot]. */
+@Composable
+private fun PagerDots(count: Int, current: Int, modifier: Modifier = Modifier) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        for (index in 0 until count) {
+            Dot(
+                sizeDp = 5,
+                color = if (index == current) CourtColors.Lime else CourtColors.White.copy(alpha = 0.3f),
             )
-            CircleIconButton(ControlIcon.CLOSE, onClick = onEnd)
         }
     }
 }

@@ -19,6 +19,8 @@ object SyncPaths {
     const val UNDO = "/holy-padel/undo"
     const val START_LAST = "/holy-padel/start-last"
     const val PAUSE = "/holy-padel/pause"
+    const val STOP = "/holy-padel/stop"
+    const val CANCEL = "/holy-padel/cancel"
     const val END = "/holy-padel/end"
     const val WORKOUT = "/holy-padel/workout"
     const val STATE_KEY = "json"
@@ -112,7 +114,13 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
     /** Toggle pause<->resume — the phone owns the pause state. */
     fun pause() = tap(SyncPaths.PAUSE, "")
 
-    /** End the match — the phone decides to persist the win or discard. */
+    /** Stop AND save — the phone credits the leader if the match isn't finished. */
+    fun stop() = tap(SyncPaths.STOP, "")
+
+    /** Discard the match entirely — nothing is saved. */
+    fun cancel() = tap(SyncPaths.CANCEL, "")
+
+    /** Legacy alias kept for the won screen's DONE (the phone treats it as `stop`). */
     fun end() = tap(SyncPaths.END, "")
 
     /** Ship the finished exercise summary — the phone writes it to Health Connect. */

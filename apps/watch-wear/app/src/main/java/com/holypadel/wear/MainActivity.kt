@@ -76,6 +76,8 @@ class MainActivity : ComponentActivity() {
                 onUndo = { sync.undo() },
                 onStartLast = { sync.startLast() },
                 onPause = { sync.pause() },
+                onStop = { sync.stop() },
+                onCancel = { sync.cancel() },
                 onEnd = { sync.end() },
             )
         }
