@@ -1,4 +1,6 @@
-import { createMatch, createPlayer, getOwner, listRoster } from "@holy-padel/db";
+import type { SqlDriver } from "@holy-padel/db";
+import { createMatch, createPlayer, getOwner, listMatches, listRoster } from "@holy-padel/db";
+import type { RosterEntry } from "@holy-padel/db/src/players.ts";
 import type { DeuceMode, SquashTiebreak, TeamId, ThirdSetMode } from "@holy-padel/scoring";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
@@ -97,14 +99,20 @@ export default function NewMatchScreen(): ReactNode {
   const [teamA1, setTeamA1] = useState<string>(ownerId);
   const [teamB, setTeamB] = useState<readonly string[]>([]);
   const [picking, setPicking] = useState<TeamId | undefined>(undefined);
-  const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
-  const [thirdSet, setThirdSet] = useState<ThirdSetMode>("superTieBreak");
-  const [deuceMode, setDeuceMode] = useState<DeuceMode>("advantage");
+
+  const lastMatch = useDbQuery(listMatches)?.[0];
+  const c = lastMatch?.config;
+  const isP = c?.sport === "padel" || c?.sport === undefined;
+  const isS = c?.sport === "squash";
+
+  const [bestOf, setBestOf] = useState<1 | 3 | 5>(c?.bestOf ?? 3);
+  const [thirdSet, setThirdSet] = useState<ThirdSetMode>(isP && c?.thirdSet ? c.thirdSet : "superTieBreak");
+  const [deuceMode, setDeuceMode] = useState<DeuceMode>(isP && c?.deuceMode ? c.deuceMode : "advantage");
   const [firstServe, setFirstServe] = useState<TeamId | "undecided">("undecided");
-  const [sport, setSport] = useState<"padel" | "squash">("padel");
-  const [squashMode, setSquashMode] = useState<"par" | "hiho">("par");
-  const [squashTarget, setSquashTarget] = useState<number>(11);
-  const [squashTiebreak, setSquashTiebreak] = useState<SquashTiebreak>("winByTwo");
+  const [sport, setSport] = useState<"padel" | "squash">(c?.sport ?? "padel");
+  const [squashMode, setSquashMode] = useState<"par" | "hiho">(isS && c?.squashMode ? c.squashMode : "par");
+  const [squashTarget, setSquashTarget] = useState<number>(isS && c?.squashTarget ? c.squashTarget : 11);
+  const [squashTiebreak, setSquashTiebreak] = useState<SquashTiebreak>(isS && c?.squashTiebreak ? c.squashTiebreak : "winByTwo");
 
   const nameOf = (id: string | undefined): string =>
     id === undefined ? "" : (roster.find((entry) => entry.id === id)?.name ?? owner?.name ?? "");
@@ -251,6 +259,7 @@ export default function NewMatchScreen(): ReactNode {
               setSport(val);
             }}
           />
+
           {sport === "squash" ? (
             <>
               <SegmentedRow
@@ -300,8 +309,9 @@ export default function NewMatchScreen(): ReactNode {
                 options={[
                   { value: 1, label: "1" },
                   { value: 3, label: "3" },
+                  { value: 5, label: "5" },
                 ]}
-                value={bestOf === 5 ? 3 : bestOf}
+                value={bestOf}
                 onChange={setBestOf}
               />
               <SegmentedRow
@@ -400,13 +410,13 @@ function MatchPickerSheet({
 }: {
   picking: TeamId;
   format: "singles" | "doubles";
-  roster: readonly any[];
+  roster: readonly RosterEntry[];
   teamA1: string;
   teamB: readonly string[];
   ownerId: string;
   partnerSelection: readonly string[];
   togglePick: (id: string) => void;
-  mutate: any;
+  mutate: (fn: (driver: SqlDriver) => void) => void;
   setPicking: (team: TeamId | undefined) => void;
 }) {
   const isSingles = format === "singles";
@@ -443,7 +453,7 @@ function MatchPickerSheet({
       onToggle={togglePick}
       onCreate={(name) => {
         const id = `player-${String(Date.now())}`;
-        mutate((driver: any) => {
+        mutate((driver: SqlDriver) => {
           createPlayer(driver, { id, name, createdAt: Date.now() });
         });
       }}

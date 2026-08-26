@@ -20,7 +20,7 @@ export type SquashTiebreak = "winByTwo" | "setOne" | "setTwo";
 export type MatchConfig =
   | {
       readonly sport?: "padel";
-      readonly bestOf: 1 | 3;
+      readonly bestOf: 1 | 3 | 5;
       readonly deuceMode: DeuceMode;
       readonly thirdSet: ThirdSetMode;
       /** Team serving the first game of the match. */

@@ -95,10 +95,13 @@ function parseConfig(row: SqlRow): MatchConfig {
     };
   }
 
-  const bestOf = expectNumber(row, "best_of");
-  if (bestOf !== SINGLE_SET && bestOf !== BEST_OF_THREE) {
-    throw new Error(`invalid best_of: ${String(bestOf)}`);
+  const rawBestOf = expectNumber(row, "best_of");
+  const padelBestOf = optionalNumber(row, "padel_best_of");
+  const bestOf = padelBestOf ?? rawBestOf;
+  if (bestOf !== SINGLE_SET && bestOf !== BEST_OF_THREE && bestOf !== BEST_OF_FIVE) {
+    throw new Error(`invalid best_of for padel: ${String(bestOf)}`);
   }
+
   const deuceMode = expectString(row, "deuce_mode");
   if (deuceMode !== "advantage" && deuceMode !== "starPoint" && deuceMode !== "goldenPoint") {
     throw new Error(`invalid deuce_mode: ${deuceMode}`);
@@ -107,9 +110,10 @@ function parseConfig(row: SqlRow): MatchConfig {
   if (thirdSet !== "fullSet" && thirdSet !== "advantageSet" && thirdSet !== "superTieBreak") {
     throw new Error(`invalid third_set: ${thirdSet}`);
   }
+
   return {
     sport: "padel",
-    bestOf,
+    bestOf: bestOf as 1 | 3 | 5,
     deuceMode,
     thirdSet,
     firstServe: parseTeam(expectString(row, "first_serve")),
@@ -168,14 +172,14 @@ export function createMatch(driver: SqlDriver, match: NewMatch): void {
   driver.execute(
     `INSERT INTO matches (
        id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending,
-       squash_mode, squash_target, squash_tiebreak, squash_best_of,
+       squash_mode, squash_target, squash_tiebreak, squash_best_of, padel_best_of,
        team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
        court, location, started_at
-     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       match.id,
       config.sport ?? "padel",
-      config.sport === "squash" ? SINGLE_SET : config.bestOf, // dummy padel value to satisfy sqlite constraint
+      config.sport === "squash" || config.bestOf === 5 ? SINGLE_SET : config.bestOf, // dummy padel value to satisfy sqlite constraint
       config.sport === "squash" ? "advantage" : config.deuceMode, // dummy padel value to satisfy sqlite constraint
       config.sport === "squash" ? "fullSet" : config.thirdSet, // dummy padel value
       config.firstServePending ? "A" : config.firstServe, // dummy value if pending
@@ -184,6 +188,7 @@ export function createMatch(driver: SqlDriver, match: NewMatch): void {
       config.sport === "squash" ? config.squashTarget : null,
       config.sport === "squash" ? config.squashTiebreak : null,
       config.sport === "squash" ? config.bestOf : null,
+      (config.sport === undefined || config.sport === "padel") ? config.bestOf : null,
       players.A[0],
       players.A[1],
       players.B[0],

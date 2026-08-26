@@ -77,6 +77,10 @@ const MIGRATIONS: readonly Migration[] = [
     version: 5,
     statements: ["ALTER TABLE matches ADD COLUMN first_serve_pending INTEGER NOT NULL DEFAULT 0"],
   },
+  {
+    version: 6,
+    statements: ["ALTER TABLE matches ADD COLUMN padel_best_of INTEGER CHECK (padel_best_of IN (1, 3, 5))"],
+  },
 ];
 
 /** Bring a database up to the latest schema. Safe to call on every launch. */
