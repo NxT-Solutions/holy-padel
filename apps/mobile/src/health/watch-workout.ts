@@ -32,8 +32,8 @@ function parseSamples(value: unknown): { t: number; bpm: number }[] {
       return [];
     }
     const record = sample as Record<string, unknown>;
-    const t = record["t"];
-    const bpm = record["bpm"];
+    const t = record.t;
+    const bpm = record.bpm;
     return isFiniteNumber(t) && isFiniteNumber(bpm) && bpm > 0 ? [{ t, bpm }] : [];
   });
 }
@@ -50,13 +50,13 @@ export function parseWorkoutSummary(body: string): WatchWorkoutSummary | undefin
     return;
   }
   const record = raw as Record<string, unknown>;
-  const startedAt = record["startedAt"];
-  const endedAt = record["endedAt"];
+  const startedAt = record.startedAt;
+  const endedAt = record.endedAt;
   if (!(isFiniteNumber(startedAt) && isFiniteNumber(endedAt)) || endedAt <= startedAt) {
     return;
   }
-  const kcal = numberOr(record["kcal"], 0);
-  const samples = parseSamples(record["samples"]);
+  const kcal = numberOr(record.kcal, 0);
+  const samples = parseSamples(record.samples);
   if (kcal <= 0 && samples.length === 0) {
     // Nothing measurable — not worth a health entry.
     return;
@@ -65,8 +65,8 @@ export function parseWorkoutSummary(body: string): WatchWorkoutSummary | undefin
     startedAt,
     endedAt,
     kcal,
-    avgBpm: numberOr(record["avgBpm"], 0),
-    maxBpm: numberOr(record["maxBpm"], 0),
+    avgBpm: numberOr(record.avgBpm, 0),
+    maxBpm: numberOr(record.maxBpm, 0),
     samples,
   };
 }

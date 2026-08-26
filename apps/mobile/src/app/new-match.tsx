@@ -247,7 +247,6 @@ export default function NewMatchScreen(): ReactNode {
             value={sport}
             onChange={(val) => {
               setSport(val);
-              if (val === "squash" && bestOf === 1) setBestOf(3); // Squash is typically best of 3 or 5
             }}
           />
           {sport === "squash" ? (
@@ -335,7 +334,6 @@ export default function NewMatchScreen(): ReactNode {
         </Card>
       </ScrollView>
 
-      {/* Fixed footer — START MATCH is always reachable, never scrolled off. */}
       <YStack
         gap={8}
         paddingHorizontal={16}
@@ -368,44 +366,85 @@ export default function NewMatchScreen(): ReactNode {
       </YStack>
 
       {picking === undefined ? null : (
-        <PickerSheet
-          team={picking}
-          stepLabel={
-            picking === "A"
-              ? format === "singles"
-                ? "PLAYER A"
-                : "1 OF 2"
-              : format === "singles"
-                ? "PLAYER B"
-                : "2 OF 2"
-          }
+        <MatchPickerSheet
+          picking={picking}
+          format={format}
           roster={roster}
-          selected={
-            picking === "A"
-              ? format === "singles"
-                ? [teamA1]
-                : partnerSelection
-              : format === "singles"
-                ? teamB.slice(0, 1)
-                : teamB
-          }
-          taken={
-            picking === "A"
-              ? (format === "singles" ? teamB.slice(0, 1) : [ownerId, ...teamB])
-              : (format === "singles" ? [teamA1] : [ownerId, ...partnerSelection])
-          }
-          onToggle={togglePick}
-          onCreate={(name) => {
-            const id = `player-${String(Date.now())}`;
-            mutate((driver) => {
-              createPlayer(driver, { id, name, createdAt: Date.now() });
-            });
-          }}
-          onDone={() => {
-            setPicking(undefined);
-          }}
+          teamA1={teamA1}
+          teamB={teamB}
+          ownerId={ownerId}
+          partnerSelection={partnerSelection}
+          togglePick={togglePick}
+          mutate={mutate}
+          setPicking={setPicking}
         />
       )}
     </View>
+  );
+}
+
+function MatchPickerSheet({
+  picking,
+  format,
+  roster,
+  teamA1,
+  teamB,
+  ownerId,
+  partnerSelection,
+  togglePick,
+  mutate,
+  setPicking,
+}: {
+  picking: TeamId;
+  format: "singles" | "doubles";
+  roster: readonly any[];
+  teamA1: string;
+  teamB: readonly string[];
+  ownerId: string;
+  partnerSelection: readonly string[];
+  togglePick: (id: string) => void;
+  mutate: any;
+  setPicking: (team: TeamId | undefined) => void;
+}) {
+  const isSingles = format === "singles";
+  const isTeamA = picking === "A";
+
+  let stepLabel = "";
+  if (isSingles) {
+    stepLabel = isTeamA ? "PLAYER A" : "PLAYER B";
+  } else {
+    stepLabel = isTeamA ? "1 OF 2" : "2 OF 2";
+  }
+
+  let selected: readonly string[] = [];
+  if (isTeamA) {
+    selected = isSingles ? [teamA1] : partnerSelection;
+  } else {
+    selected = isSingles ? teamB.slice(0, 1) : teamB;
+  }
+
+  let taken: readonly string[] = [];
+  if (isTeamA) {
+    taken = isSingles ? teamB.slice(0, 1) : [ownerId, ...teamB];
+  } else {
+    taken = isSingles ? [teamA1] : [ownerId, ...partnerSelection];
+  }
+
+  return (
+    <PickerSheet
+      team={picking}
+      stepLabel={stepLabel}
+      roster={roster}
+      selected={selected}
+      taken={taken}
+      onToggle={togglePick}
+      onCreate={(name) => {
+        const id = `player-${String(Date.now())}`;
+        mutate((driver: any) => {
+          createPlayer(driver, { id, name, createdAt: Date.now() });
+        });
+      }}
+      onDone={() => setPicking(undefined)}
+    />
   );
 }

@@ -1,4 +1,4 @@
-import type { SqlDriver, SqlRow } from "./driver.ts";
+import type { SqlDriver, SqlRow, SqlValue } from "./driver.ts";
 import { expectNumber, expectString, optionalString, queryOne } from "./driver.ts";
 
 export type CourtSide = "left" | "right";
@@ -59,12 +59,25 @@ export function createPlayer(driver: SqlDriver, player: NewPlayer): void {
 export function updatePlayer(
   driver: SqlDriver,
   id: string,
-  changes: { readonly name?: string; readonly club?: string; readonly side?: CourtSide },
+  changes: { readonly name?: string; readonly club?: string; readonly side?: CourtSide | null },
 ): void {
-  driver.execute(
-    "UPDATE players SET name = COALESCE(?, name), club = COALESCE(?, club), side = COALESCE(?, side) WHERE id = ?",
-    [changes.name ?? null, changes.club ?? null, changes.side ?? null, id],
-  );
+  const sets: string[] = [];
+  const params: SqlValue[] = [];
+  if (changes.name !== undefined) {
+    sets.push("name = ?");
+    params.push(changes.name);
+  }
+  if (changes.club !== undefined) {
+    sets.push("club = ?");
+    params.push(changes.club);
+  }
+  if (changes.side !== undefined) {
+    sets.push("side = ?");
+    params.push(changes.side);
+  }
+  if (sets.length === 0) return;
+  params.push(id);
+  driver.execute(`UPDATE players SET ${sets.join(", ")} WHERE id = ?`, params);
 }
 
 export function getPlayer(driver: SqlDriver, id: string): Player | undefined {

@@ -1,5 +1,5 @@
 import type { CourtSide } from "@holy-padel/db";
-import { getOwner, updatePlayer } from "@holy-padel/db";
+import { createPlayer, getOwner, updatePlayer } from "@holy-padel/db";
 import { Redirect } from "expo-router";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -32,9 +32,7 @@ export default function EditProfileScreen(): ReactNode {
   const [club, setClub] = useState(owner?.club ?? "");
   const [side, setSide] = useState<CourtSide>(owner?.side ?? "left");
 
-  if (owner === undefined) {
-    return <Redirect href="/" />;
-  }
+
 
   const save = (): void => {
     const trimmed = name.trim();
@@ -42,7 +40,19 @@ export default function EditProfileScreen(): ReactNode {
       return;
     }
     mutate((driver) => {
-      updatePlayer(driver, owner.id, { name: trimmed, club: club.trim(), side });
+      if (owner === undefined) {
+        // Create a new owner if one doesn't exist.
+        createPlayer(driver, {
+          id: `owner-${String(Date.now())}`,
+          name: trimmed,
+          club: club.trim(),
+          side,
+          isOwner: true,
+          createdAt: Date.now(),
+        });
+      } else {
+        updatePlayer(driver, owner.id, { name: trimmed, club: club.trim(), side });
+      }
     });
     goBack();
   };

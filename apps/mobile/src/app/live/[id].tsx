@@ -139,7 +139,6 @@ function TeamCard({
               boxShadow={serving ? `0 0 0 3px ${limeAlpha(0.3)}` : "unset"}
               testID={`${testID}-serve${serving ? "-on" : "-off"}`}
             />
-
           </XStack>
           <Display fontSize={23}>{name.toUpperCase()}</Display>
         </XStack>
@@ -376,7 +375,6 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "A")}
             testID="point-A"
             serving={snapshot.servingTeam === "A"}
-
             onScore={() => {
               scorePoint("A");
             }}
@@ -386,7 +384,6 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "B")}
             testID="point-B"
             serving={snapshot.servingTeam === "B"}
-
             onScore={() => {
               scorePoint("B");
             }}
