@@ -96,6 +96,7 @@ private struct ScoreTab: View {
                 short: state.teamA.short,
                 point: state.pointA,
                 serving: state.teamA.serving,
+                servingSide: state.teamA.servingSide,
                 paused: state.paused,
                 onTap: { onScore("A") }
             )
@@ -104,6 +105,7 @@ private struct ScoreTab: View {
                 short: state.teamB.short,
                 point: state.pointB,
                 serving: state.teamB.serving,
+                servingSide: state.teamB.servingSide,
                 paused: state.paused,
                 onTap: { onScore("B") }
             )
@@ -250,6 +252,7 @@ private struct TeamScoreRow: View {
     let short: String
     let point: String
     let serving: Bool
+    let servingSide: String?
     let paused: Bool
     let onTap: () -> Void
 
@@ -257,7 +260,7 @@ private struct TeamScoreRow: View {
         Button(action: onTap) {
             HStack {
                 HStack(spacing: 6) {
-                    ServingDot(active: serving && !paused)
+                    ServingDot(active: serving && !paused, side: servingSide)
                     Text(short)
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Court.white)
@@ -320,11 +323,20 @@ struct WonView: View {
 
 private struct ServingDot: View {
     let active: Bool
+    var side: String? = nil
 
     var body: some View {
-        Circle()
-            .fill(active ? Court.lime : Color.clear)
-            .frame(width: 8, height: 8)
+        ZStack {
+            Circle()
+                .fill(active ? Court.lime : Color.clear)
+                .frame(width: side != nil ? 14 : 8, height: side != nil ? 14 : 8)
+            
+            if active, let side = side {
+                Text(side == "right" ? "R" : "L")
+                    .font(.system(size: 8, weight: .black))
+                    .foregroundColor(Court.ink)
+            }
+        }
     }
 }
 

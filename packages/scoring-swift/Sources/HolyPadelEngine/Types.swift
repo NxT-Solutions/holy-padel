@@ -153,6 +153,8 @@ public struct MatchSnapshot: Sendable, Equatable {
     public let currentGame: CurrentGame?
     /// Team serving the point in play (tie-break rotation included).
     public let servingTeam: TeamId
+    /// Side of the court the server is serving from.
+    public let servingSide: String
 
     public let moment: Moment
     /// Rally points won over the whole match.

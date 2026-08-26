@@ -340,6 +340,13 @@ function servingTeamOf(state: FoldState): TeamId {
   return state.gameServer;
 }
 
+function servingSideOf(state: FoldState, config: MatchConfig): "right" | "left" {
+  if (config.sport === "squash") {
+    return state.serverConsecutivePoints % 2 === 0 ? "right" : "left";
+  }
+  return (state.points.A + state.points.B) % 2 === 0 ? "right" : "left";
+}
+
 function toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot {
   return {
     config,
@@ -350,6 +357,7 @@ function toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot {
     currentSetGames: state.finished ? ZERO : state.setGames,
     currentGame: currentGameOf(state, config),
     servingTeam: servingTeamOf(state),
+    servingSide: servingSideOf(state, config),
 
     moment: deriveMoment(state, config),
     totalPoints: state.totalPoints,

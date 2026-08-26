@@ -13,6 +13,7 @@ enum Phase: String, Decodable {
 struct TeamState: Decodable {
     var short: String = ""
     var serving: Bool = false
+    var servingSide: String?
 }
 
 struct WonState: Decodable {

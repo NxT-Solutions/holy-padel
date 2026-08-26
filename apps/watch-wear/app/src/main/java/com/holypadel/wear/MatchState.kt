@@ -5,7 +5,7 @@ import org.json.JSONObject
 /** Which screen the watch shows — driven entirely by the phone's payload. */
 enum class Phase { IDLE, LIVE, WON }
 
-data class TeamState(val short: String, val serving: Boolean)
+data class TeamState(val short: String, val serving: Boolean, val servingSide: String?)
 
 data class WonState(val winnerShort: String, val scoreLine: String, val duration: String)
 
@@ -39,8 +39,8 @@ data class MatchState(
             clock = "",
             court = "",
             setLabel = "",
-            teamA = TeamState("N&J", serving = false),
-            teamB = TeamState("M&L", serving = false),
+            teamA = TeamState("N&J", serving = false, servingSide = null),
+            teamB = TeamState("M&L", serving = false, servingSide = null),
             pointA = "",
             pointB = "",
             games = "",
@@ -61,8 +61,9 @@ data class MatchState(
             val team = { key: String ->
                 val obj = root.optJSONObject(key) ?: JSONObject()
                 TeamState(
-                    short = obj.optString("short"), 
-                    serving = obj.optBoolean("serving", false)
+                    short = obj.optString("short"),
+                    serving = obj.optBoolean("serving", false),
+                    servingSide = if (obj.has("servingSide") && !obj.isNull("servingSide")) obj.getString("servingSide") else null
                 )
             }
             val won = root.optJSONObject("won")?.let {

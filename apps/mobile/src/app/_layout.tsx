@@ -7,6 +7,7 @@ import {
   Archivo_800ExtraBold,
 } from "@expo-google-fonts/archivo";
 import { Stack } from "expo-router";
+import { Text, View } from "react-native";
 import { hideAsync, preventAutoHideAsync } from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
@@ -27,7 +28,7 @@ export const unstable_settings = {
 
 export default function RootLayout(): ReactNode {
   // biome-ignore-start lint/style/useNamingConvention: Google Fonts registry names
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Anton_400Regular,
     Archivo_400Regular,
     Archivo_500Medium,
@@ -38,13 +39,21 @@ export default function RootLayout(): ReactNode {
   // biome-ignore-end lint/style/useNamingConvention: Google Fonts registry names
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
       void hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return null;
+  }
+
+  if (fontError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: 'red', justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: 'white' }}>Font Error: {fontError.message}</Text>
+      </View>
+    );
   }
 
   return (

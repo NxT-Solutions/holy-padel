@@ -100,6 +100,7 @@ function TeamCard({
   name,
   point,
   serving,
+  servingSide,
 
   onScore,
   testID,
@@ -107,6 +108,7 @@ function TeamCard({
   readonly name: string;
   readonly point: string;
   readonly serving: boolean;
+  readonly servingSide?: "right" | "left";
 
   readonly onScore: () => void;
   readonly testID: string;
@@ -132,13 +134,21 @@ function TeamCard({
         <XStack alignItems="center" gap={8}>
           <XStack alignItems="center" gap={6} opacity={serving ? 1 : 0}>
             <View
-              width={12}
-              height={12}
-              borderRadius={6}
+              width={20}
+              height={20}
+              borderRadius={10}
               backgroundColor={colors.lime}
-              boxShadow={serving ? `0 0 0 3px ${limeAlpha(0.3)}` : "unset"}
+              alignItems="center"
+              justifyContent="center"
+              boxShadow={serving ? `0 0 0 4px ${limeAlpha(0.3)}` : "unset"}
               testID={`${testID}-serve${serving ? "-on" : "-off"}`}
-            />
+            >
+              {Boolean(serving && servingSide) && (
+                <Body fontSize={12} fontWeight="900" color={colors.white}>
+                  {servingSide === "right" ? "R" : "L"}
+                </Body>
+              )}
+            </View>
           </XStack>
           <Display fontSize={23}>{name.toUpperCase()}</Display>
         </XStack>
@@ -375,6 +385,7 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "A")}
             testID="point-A"
             serving={snapshot.servingTeam === "A"}
+            servingSide={snapshot.servingSide}
             onScore={() => {
               scorePoint("A");
             }}
@@ -384,6 +395,7 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "B")}
             testID="point-B"
             serving={snapshot.servingTeam === "B"}
+            servingSide={snapshot.servingSide}
             onScore={() => {
               scorePoint("B");
             }}

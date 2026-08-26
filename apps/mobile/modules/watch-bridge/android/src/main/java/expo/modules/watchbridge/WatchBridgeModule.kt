@@ -34,14 +34,18 @@ class WatchBridgeModule : Module(), MessageClient.OnMessageReceivedListener {
     Events("onIntent")
 
     OnCreate {
-      runCatching { messageClient()?.addListener(this@WatchBridgeModule) }
+      Thread {
+        runCatching { messageClient()?.addListener(this@WatchBridgeModule) }
+      }.start()
     }
 
     OnDestroy {
-      runCatching { messageClient()?.removeListener(this@WatchBridgeModule) }
+      Thread {
+        runCatching { messageClient()?.removeListener(this@WatchBridgeModule) }
+      }.start()
     }
 
-    Function("pushState") { json: String ->
+    AsyncFunction("pushState") { json: String ->
       lastState = json
       putState(json)
     }

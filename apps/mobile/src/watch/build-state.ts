@@ -102,10 +102,12 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     teamA: {
       short: shorts.A,
       serving: snapshot.servingTeam === "A",
+      servingSide: snapshot.servingTeam === "A" ? snapshot.servingSide : null,
     },
     teamB: {
       short: shorts.B,
       serving: snapshot.servingTeam === "B",
+      servingSide: snapshot.servingTeam === "B" ? snapshot.servingSide : null,
     },
     pointA: pointDisplay(snapshot, "A"),
     pointB: pointDisplay(snapshot, "B"),

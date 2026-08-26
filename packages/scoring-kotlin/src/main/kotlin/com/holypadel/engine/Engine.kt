@@ -286,6 +286,12 @@ private fun servingTeamOf(state: FoldState): TeamId {
     return state.gameServer
 }
 
+private fun servingSideOf(state: FoldState, config: MatchConfig): String {
+    if (config is MatchConfig.Squash) {
+        return if (state.serverConsecutivePoints % 2 == 0) "right" else "left"
+    }
+    return if ((state.points.a + state.points.b) % 2 == 0) "right" else "left"
+}
 
 
 private fun toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot =
@@ -298,6 +304,7 @@ private fun toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot =
         currentSetGames = if (state.finished) ZERO else state.setGames,
         currentGame = currentGameOf(state, config),
         servingTeam = servingTeamOf(state),
+        servingSide = servingSideOf(state, config),
 
         moment = deriveMoment(state, config),
         totalPoints = state.totalPoints,

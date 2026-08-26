@@ -176,6 +176,7 @@ private fun ScorePage(state: MatchState, liveBpm: Int, onScore: (String) -> Unit
             short = state.teamA.short,
             point = state.pointA,
             serving = state.teamA.serving,
+            servingSide = state.teamA.servingSide,
         )
         Box(
             modifier = Modifier
@@ -191,6 +192,7 @@ private fun ScorePage(state: MatchState, liveBpm: Int, onScore: (String) -> Unit
             short = state.teamB.short,
             point = state.pointB,
             serving = state.teamB.serving,
+            servingSide = state.teamB.servingSide,
         )
     }
 }
@@ -376,7 +378,7 @@ private fun DrawScope.drawControlIcon(icon: ControlIcon, color: Color) {
 }
 
 @Composable
-private fun TeamRow(modifier: Modifier, short: String, point: String, serving: Boolean) {
+private fun TeamRow(modifier: Modifier, short: String, point: String, serving: Boolean, servingSide: String?) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -384,7 +386,11 @@ private fun TeamRow(modifier: Modifier, short: String, point: String, serving: B
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (serving) 1f else 0f)) {
-                Dot(sizeDp = 8, visible = true)
+                Dot(
+                    sizeDp = if (servingSide != null) 14 else 8, 
+                    visible = true, 
+                    label = if (servingSide == "right") "R" else if (servingSide == "left") "L" else null
+                )
             }
             Spacer(Modifier.width(7.dp))
             DisplayText(short, sizeSp = 20, color = CourtColors.White)

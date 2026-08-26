@@ -139,6 +139,8 @@ data class MatchSnapshot(
     val currentGame: CurrentGame?,
     /** Team serving the point in play (tie-break rotation included). */
     val servingTeam: TeamId,
+    /** Side of the court the server is serving from. */
+    val servingSide: String,
 
     val moment: Moment,
     /** Rally points won over the whole match. */

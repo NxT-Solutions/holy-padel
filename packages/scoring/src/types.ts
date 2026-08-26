@@ -108,7 +108,7 @@ export interface MatchSnapshot {
   /** Team serving the point in play (tie-break rotation included). */
   readonly servingTeam: TeamId;
   /** Side of the court the server is serving from. */
-
+  readonly servingSide: "right" | "left";
   readonly moment: Moment;
   /** Rally points won over the whole match. */
   readonly totalPoints: TeamValues<number>;
