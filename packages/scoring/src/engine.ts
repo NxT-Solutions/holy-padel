@@ -333,14 +333,20 @@ function currentGameOf(state: FoldState, config: MatchConfig): CurrentGame | und
   };
 }
 
-function servingTeamOf(state: FoldState): TeamId {
+function servingTeamOf(state: FoldState, config: MatchConfig): TeamId | undefined {
+  if (config.firstServePending && state.totalPoints.A === 0 && state.totalPoints.B === 0) {
+    return;
+  }
   if (state.tieBreak !== undefined) {
     return tieBreakServer(state.tieBreakStarter, state.points.A + state.points.B);
   }
   return state.gameServer;
 }
 
-function servingSideOf(state: FoldState, config: MatchConfig): "right" | "left" {
+function servingSideOf(state: FoldState, config: MatchConfig): "right" | "left" | undefined {
+  if (config.firstServePending && state.totalPoints.A === 0 && state.totalPoints.B === 0) {
+    return;
+  }
   if (config.sport === "squash") {
     return state.serverConsecutivePoints % 2 === 0 ? "right" : "left";
   }
@@ -356,7 +362,7 @@ function toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot {
     setNumber: state.finished ? state.completedSets.length : state.setNumber,
     currentSetGames: state.finished ? ZERO : state.setGames,
     currentGame: currentGameOf(state, config),
-    servingTeam: servingTeamOf(state),
+    servingTeam: servingTeamOf(state, config),
     servingSide: servingSideOf(state, config),
 
     moment: deriveMoment(state, config),

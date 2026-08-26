@@ -307,14 +307,20 @@ private func currentGameOf(_ state: FoldState, _ config: MatchConfig) -> Current
     return .standard(points: state.points, calls: pointCalls(state.points))
 }
 
-private func servingTeamOf(_ state: FoldState) -> TeamId {
+private func servingTeamOf(_ state: FoldState, _ config: MatchConfig) -> TeamId? {
+    if config.firstServePending == true && state.totalPoints.A == 0 && state.totalPoints.B == 0 {
+        return nil
+    }
     if state.tieBreak != nil {
         return Rules.tieBreakServer(state.tieBreakStarter, state.points.A + state.points.B)
     }
     return state.gameServer
 }
 
-private func servingSideOf(_ state: FoldState, _ config: MatchConfig) -> String {
+private func servingSideOf(_ state: FoldState, _ config: MatchConfig) -> String? {
+    if config.firstServePending == true && state.totalPoints.A == 0 && state.totalPoints.B == 0 {
+        return nil
+    }
     if case .squash = config {
         return state.serverConsecutivePoints % 2 == 0 ? "right" : "left"
     }
@@ -332,7 +338,7 @@ private func toSnapshot(_ state: FoldState, _ config: MatchConfig) -> MatchSnaps
         setNumber: state.finished ? state.completedSets.count : state.setNumber,
         currentSetGames: state.finished ? ZERO : state.setGames,
         currentGame: currentGameOf(state, config),
-        servingTeam: servingTeamOf(state),
+        servingTeam: servingTeamOf(state, config),
         servingSide: servingSideOf(state, config),
 
         moment: deriveMoment(state, config),

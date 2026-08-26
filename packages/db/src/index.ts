@@ -17,6 +17,7 @@ export {
   reopenMatch,
   resumeMatch,
   scorePoint,
+  updateFirstServe,
 } from "./matches.ts";
 export type { CourtSide, NewPlayer, Player, RosterEntry } from "./players.ts";
 export {

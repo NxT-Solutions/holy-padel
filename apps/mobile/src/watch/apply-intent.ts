@@ -8,6 +8,8 @@ import {
   removeLastEvent,
   resumeMatch,
   scorePoint,
+  updateFirstServe,
+  loadEvents,
 } from "@holy-padel/db";
 import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 
@@ -45,6 +47,13 @@ function applyScore(driver: SqlDriver, body: string, now: number): void {
   // scorePoint re-reads fresh state and refuses if paused/finished, so a burst
   // of fast watch taps can't append past match point.
   if (live !== undefined) {
+    if (live.config.firstServePending) {
+      const events = loadEvents(driver, live.id);
+      if (events.length === 0) {
+        updateFirstServe(driver, live.id, body as "A" | "B");
+        return;
+      }
+    }
     scorePoint(driver, live.id, body, now);
   }
 }

@@ -51,8 +51,8 @@ describe("buildWatchState", () => {
     });
 
     expect(state.phase).toBe("live");
-    expect(state.teamA).toEqual({ short: "N&J", serving: true });
-    expect(state.teamB).toEqual({ short: "M&L", serving: false });
+    expect(state.teamA).toEqual({ short: "N&J", serving: true, servingSide: "right" });
+    expect(state.teamB).toEqual({ short: "M&L", serving: false, servingSide: null });
     expect(state.pointA).toBe("40");
     expect(state.pointB).toBe("15");
     expect(state.games).toBe("0-0");

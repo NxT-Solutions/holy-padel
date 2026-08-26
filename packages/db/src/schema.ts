@@ -73,6 +73,10 @@ const MIGRATIONS: readonly Migration[] = [
       "ALTER TABLE matches ADD COLUMN squash_best_of INTEGER CHECK (squash_best_of IN (1, 3, 5))",
     ],
   },
+  {
+    version: 5,
+    statements: ["ALTER TABLE matches ADD COLUMN first_serve_pending INTEGER NOT NULL DEFAULT 0"],
+  },
 ];
 
 /** Bring a database up to the latest schema. Safe to call on every launch. */

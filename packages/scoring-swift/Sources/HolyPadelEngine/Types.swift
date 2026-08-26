@@ -43,19 +43,25 @@ public enum SquashTiebreak: String, Sendable, Equatable {
 }
 
 public enum MatchConfig: Sendable, Equatable {
-    case padel(bestOf: BestOf, deuceMode: DeuceMode, thirdSet: ThirdSetMode, firstServe: TeamId)
-    case squash(bestOf: BestOf, squashMode: SquashMode, squashTarget: Int, squashTiebreak: SquashTiebreak, firstServe: TeamId)
+    case padel(bestOf: BestOf, deuceMode: DeuceMode, thirdSet: ThirdSetMode, firstServe: TeamId, firstServePending: Bool? = nil)
+    case squash(bestOf: BestOf, squashMode: SquashMode, squashTarget: Int, squashTiebreak: SquashTiebreak, firstServe: TeamId, firstServePending: Bool? = nil)
 
     public var bestOf: BestOf {
         switch self {
-        case .padel(let bestOf, _, _, _): return bestOf
-        case .squash(let bestOf, _, _, _, _): return bestOf
+        case .padel(let bestOf, _, _, _, _): return bestOf
+        case .squash(let bestOf, _, _, _, _, _): return bestOf
         }
     }
     public var firstServe: TeamId {
         switch self {
-        case .padel(_, _, _, let firstServe): return firstServe
-        case .squash(_, _, _, _, let firstServe): return firstServe
+        case .padel(_, _, _, let firstServe, _): return firstServe
+        case .squash(_, _, _, _, let firstServe, _): return firstServe
+        }
+    }
+    public var firstServePending: Bool? {
+        switch self {
+        case .padel(_, _, _, _, let pending): return pending
+        case .squash(_, _, _, _, _, let pending): return pending
         }
     }
 }
@@ -152,9 +158,9 @@ public struct MatchSnapshot: Sendable, Equatable {
     /// The game in play; nil once the match is finished.
     public let currentGame: CurrentGame?
     /// Team serving the point in play (tie-break rotation included).
-    public let servingTeam: TeamId
+    public let servingTeam: TeamId?
     /// Side of the court the server is serving from.
-    public let servingSide: String
+    public let servingSide: String?
 
     public let moment: Moment
     /// Rally points won over the whole match.

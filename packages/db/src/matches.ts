@@ -91,6 +91,7 @@ function parseConfig(row: SqlRow): MatchConfig {
       squashTarget,
       squashTiebreak: squashTiebreak as "winByTwo" | "setOne" | "setTwo",
       firstServe: parseTeam(expectString(row, "first_serve")),
+      firstServePending: expectNumber(row, "first_serve_pending") === 1,
     };
   }
 
@@ -112,6 +113,7 @@ function parseConfig(row: SqlRow): MatchConfig {
     deuceMode,
     thirdSet,
     firstServe: parseTeam(expectString(row, "first_serve")),
+    firstServePending: expectNumber(row, "first_serve_pending") === 1,
   };
 }
 
@@ -165,18 +167,19 @@ export function createMatch(driver: SqlDriver, match: NewMatch): void {
   const { config, players } = match;
   driver.execute(
     `INSERT INTO matches (
-       id, status, sport, best_of, deuce_mode, third_set, first_serve,
+       id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending,
        squash_mode, squash_target, squash_tiebreak, squash_best_of,
        team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
        court, location, started_at
-     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       match.id,
       config.sport ?? "padel",
       config.sport === "squash" ? SINGLE_SET : config.bestOf, // dummy padel value to satisfy sqlite constraint
       config.sport === "squash" ? "advantage" : config.deuceMode, // dummy padel value to satisfy sqlite constraint
       config.sport === "squash" ? "fullSet" : config.thirdSet, // dummy padel value
-      config.firstServe,
+      config.firstServePending ? "A" : config.firstServe, // dummy value if pending
+      config.firstServePending ? 1 : 0,
       config.sport === "squash" ? config.squashMode : null,
       config.sport === "squash" ? config.squashTarget : null,
       config.sport === "squash" ? config.squashTiebreak : null,
@@ -215,6 +218,13 @@ export function deleteMatch(driver: SqlDriver, id: string): void {
     driver.execute("DELETE FROM match_events WHERE match_id = ?", [id]);
     driver.execute("DELETE FROM matches WHERE id = ?", [id]);
   });
+}
+
+export function updateFirstServe(driver: SqlDriver, id: string, team: TeamId): void {
+  driver.execute("UPDATE matches SET first_serve = ?, first_serve_pending = 0 WHERE id = ?", [
+    team,
+    id,
+  ]);
 }
 
 export function loadEvents(driver: SqlDriver, matchId: string): PointEvent[] {

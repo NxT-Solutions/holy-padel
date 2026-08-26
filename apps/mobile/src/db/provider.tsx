@@ -1,8 +1,17 @@
 import type { SqlDriver } from "@holy-padel/db";
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { openAppDatabase } from "./database.ts";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Text, View } from "react-native";
+import { openAppDatabase } from "./database.ts";
 
 interface DbStore {
   readonly driver: SqlDriver;
@@ -26,31 +35,44 @@ export function DbProvider({ children }: { readonly children: ReactNode }): Reac
       .catch((e) => {
         if (!cancelled) setError(e);
       });
-    return (): void => { cancelled = true; };
+    return (): void => {
+      cancelled = true;
+    };
   }, []);
 
   const versionRef = useRef(0);
   const listenersRef = useRef(new Set<() => void>());
 
   const store = useMemo<DbStore | undefined>(
-    () => driver === undefined ? undefined : {
-      driver,
-      version: () => versionRef.current,
-      subscribe: (listener: () => void) => {
-        listenersRef.current.add(listener);
-        return () => { listenersRef.current.delete(listener); };
-      },
-      mutate: (write: (target: SqlDriver) => void) => {
-        write(driver);
-        versionRef.current += 1;
-        for (const listener of listenersRef.current) listener();
-      },
-    },
+    () =>
+      driver === undefined
+        ? undefined
+        : {
+            driver,
+            version: () => versionRef.current,
+            subscribe: (listener: () => void) => {
+              listenersRef.current.add(listener);
+              return () => {
+                listenersRef.current.delete(listener);
+              };
+            },
+            mutate: (write: (target: SqlDriver) => void) => {
+              write(driver);
+              versionRef.current += 1;
+              for (const listener of listenersRef.current) listener();
+            },
+          },
     [driver],
   );
 
   if (error !== undefined) {
-    return <View style={{ flex: 1, backgroundColor: 'red', justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: 'white' }}>DB Error: {error.message}</Text></View>;
+    return (
+      <View
+        style={{ flex: 1, backgroundColor: "red", justifyContent: "center", alignItems: "center" }}
+      >
+        <Text style={{ color: "white" }}>DB Error: {error.message}</Text>
+      </View>
+    );
   }
 
   if (store === undefined) {
@@ -81,5 +103,10 @@ export function useDbQuery<T>(query: (driver: SqlDriver) => T): T {
 
 export function useDbMutation(): (write: (driver: SqlDriver) => void) => void {
   const store = useDbStore();
-  return useCallback((write: (driver: SqlDriver) => void) => { store.mutate(write); }, [store]);
+  return useCallback(
+    (write: (driver: SqlDriver) => void) => {
+      store.mutate(write);
+    },
+    [store],
+  );
 }

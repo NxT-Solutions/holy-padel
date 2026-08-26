@@ -34,8 +34,8 @@ export interface SerializedSnapshot {
         readonly kind: "squash";
         readonly points: { readonly A: number; readonly B: number };
       };
-  readonly servingTeam: "A" | "B";
-
+  readonly servingTeam: "A" | "B" | undefined;
+  readonly servingSide: "right" | "left" | undefined;
   readonly moment: Record<string, unknown>;
   readonly totalGames: { readonly A: number; readonly B: number };
   readonly totalPoints: { readonly A: number; readonly B: number };
@@ -62,7 +62,7 @@ export function serializeSnapshot(snap: MatchSnapshot): SerializedSnapshot {
     currentSetGames: { A: snap.currentSetGames.A, B: snap.currentSetGames.B },
     currentGame: serializeGame(snap),
     servingTeam: snap.servingTeam,
-
+    servingSide: snap.servingSide,
     moment: { ...snap.moment },
     totalGames: { A: snap.totalGames.A, B: snap.totalGames.B },
     totalPoints: { A: snap.totalPoints.A, B: snap.totalPoints.B },

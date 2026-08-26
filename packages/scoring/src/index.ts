@@ -20,9 +20,9 @@ export type {
   PointCall,
   PointEvent,
   SetSummary,
+  SquashTiebreak,
   TeamId,
   TeamValues,
   ThirdSetMode,
   TieBreakKind,
-  SquashTiebreak,
 } from "./types.ts";

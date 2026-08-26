@@ -25,6 +25,7 @@ export type MatchConfig =
       readonly thirdSet: ThirdSetMode;
       /** Team serving the first game of the match. */
       readonly firstServe: TeamId;
+      readonly firstServePending?: boolean;
     }
   | {
       readonly sport: "squash";
@@ -33,6 +34,7 @@ export type MatchConfig =
       readonly squashTarget: number;
       readonly squashTiebreak: SquashTiebreak;
       readonly firstServe: TeamId;
+      readonly firstServePending?: boolean;
     };
 
 /** The only mutating event of a match: a rally ended and `winner` won it. */
@@ -106,9 +108,9 @@ export interface MatchSnapshot {
   /** The game in play; undefined once the match is finished. */
   readonly currentGame: CurrentGame | undefined;
   /** Team serving the point in play (tie-break rotation included). */
-  readonly servingTeam: TeamId;
+  readonly servingTeam: TeamId | undefined;
   /** Side of the court the server is serving from. */
-  readonly servingSide: "right" | "left";
+  readonly servingSide: "right" | "left" | undefined;
   readonly moment: Moment;
   /** Rally points won over the whole match. */
   readonly totalPoints: TeamValues<number>;

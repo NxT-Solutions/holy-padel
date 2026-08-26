@@ -32,8 +32,6 @@ export default function EditProfileScreen(): ReactNode {
   const [club, setClub] = useState(owner?.club ?? "");
   const [side, setSide] = useState<CourtSide>(owner?.side ?? "left");
 
-
-
   const save = (): void => {
     const trimmed = name.trim();
     if (trimmed === "") {

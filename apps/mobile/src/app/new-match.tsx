@@ -100,7 +100,7 @@ export default function NewMatchScreen(): ReactNode {
   const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
   const [thirdSet, setThirdSet] = useState<ThirdSetMode>("superTieBreak");
   const [deuceMode, setDeuceMode] = useState<DeuceMode>("advantage");
-  const [firstServe, setFirstServe] = useState<TeamId>("A");
+  const [firstServe, setFirstServe] = useState<TeamId | "undecided">("undecided");
   const [sport, setSport] = useState<"padel" | "squash">("padel");
   const [squashMode, setSquashMode] = useState<"par" | "hiho">("par");
   const [squashTarget, setSquashTarget] = useState<number>(11);
@@ -148,14 +148,16 @@ export default function NewMatchScreen(): ReactNode {
               squashMode,
               squashTarget,
               squashTiebreak,
-              firstServe,
+              firstServe: firstServe === "undecided" ? "A" : firstServe,
+              firstServePending: firstServe === "undecided",
             }
           : {
               sport: "padel" as const,
               bestOf: bestOf === 5 ? 3 : bestOf,
               deuceMode,
               thirdSet,
-              firstServe,
+              firstServe: firstServe === "undecided" ? "A" : firstServe,
+              firstServePending: firstServe === "undecided",
             };
       createMatch(driver, {
         id,
@@ -325,11 +327,12 @@ export default function NewMatchScreen(): ReactNode {
           <SegmentedRow
             label="First serve"
             options={[
+              { value: "undecided", label: "Undecided" },
               { value: "A", label: "Team A" },
               { value: "B", label: "Team B" },
             ]}
             value={firstServe}
-            onChange={setFirstServe}
+            onChange={setFirstServe as (val: string) => void}
           />
         </Card>
       </ScrollView>

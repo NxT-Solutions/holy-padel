@@ -90,7 +90,7 @@ function openGameIfNeeded(recorder: Recorder, before: MatchSnapshot, at: number)
     setNumber: before.setNumber,
     gameNumber: recorder.setGameCount,
     kind: gameKindOf(before),
-    server: before.servingTeam,
+    server: before.servingTeam ?? "A",
     points: { A: 0, B: 0 },
     startedAt: at,
   };

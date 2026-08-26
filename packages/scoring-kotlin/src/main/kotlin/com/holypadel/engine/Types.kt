@@ -33,12 +33,14 @@ enum class SquashTiebreak { winByTwo, setOne, setTwo }
 sealed class MatchConfig {
     abstract val bestOf: Int
     abstract val firstServe: TeamId
+    abstract val firstServePending: Boolean?
 
     data class Padel(
         override val bestOf: Int,
         val deuceMode: DeuceMode,
         val thirdSet: ThirdSetMode,
         override val firstServe: TeamId,
+        override val firstServePending: Boolean? = null,
     ) : MatchConfig()
 
     data class Squash(
@@ -47,6 +49,7 @@ sealed class MatchConfig {
         val squashTarget: Int,
         val squashTiebreak: SquashTiebreak,
         override val firstServe: TeamId,
+        override val firstServePending: Boolean? = null,
     ) : MatchConfig()
 }
 
@@ -138,9 +141,9 @@ data class MatchSnapshot(
     /** The game in play; null once the match is finished. */
     val currentGame: CurrentGame?,
     /** Team serving the point in play (tie-break rotation included). */
-    val servingTeam: TeamId,
+    val servingTeam: TeamId?,
     /** Side of the court the server is serving from. */
-    val servingSide: String,
+    val servingSide: String?,
 
     val moment: Moment,
     /** Rally points won over the whole match. */

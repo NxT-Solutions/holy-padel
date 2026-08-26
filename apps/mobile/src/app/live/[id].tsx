@@ -9,6 +9,7 @@ import {
   removeLastEvent,
   resumeMatch,
   scorePoint as scorePointDb,
+  updateFirstServe,
 } from "@holy-padel/db";
 import type { MatchSnapshot, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
@@ -102,6 +103,7 @@ function TeamCard({
   serving,
   servingSide,
 
+  onTapName,
   onScore,
   testID,
 }: {
@@ -387,7 +389,15 @@ export default function LiveScreen(): ReactNode {
             serving={snapshot.servingTeam === "A"}
             servingSide={snapshot.servingSide}
             onScore={() => {
-              scorePoint("A");
+              if (
+                snapshot.config.firstServePending &&
+                snapshot.totalPoints.A === 0 &&
+                snapshot.totalPoints.B === 0
+              ) {
+                mutate((db) => updateFirstServe(db, id, "A"));
+              } else {
+                scorePoint("A");
+              }
             }}
           />
           <TeamCard
@@ -397,7 +407,15 @@ export default function LiveScreen(): ReactNode {
             serving={snapshot.servingTeam === "B"}
             servingSide={snapshot.servingSide}
             onScore={() => {
-              scorePoint("B");
+              if (
+                snapshot.config.firstServePending &&
+                snapshot.totalPoints.A === 0 &&
+                snapshot.totalPoints.B === 0
+              ) {
+                mutate((db) => updateFirstServe(db, id, "B"));
+              } else {
+                scorePoint("B");
+              }
             }}
           />
         </YStack>
