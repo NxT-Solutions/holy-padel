@@ -28,20 +28,35 @@ public enum ThirdSetMode: String, Sendable, Equatable {
 public enum BestOf: Int, Sendable, Equatable {
     case one = 1
     case three = 3
+    case five = 5
 }
 
-public struct MatchConfig: Sendable, Equatable {
-    public let bestOf: BestOf
-    public let deuceMode: DeuceMode
-    public let thirdSet: ThirdSetMode
-    /// Team serving the first game of the match.
-    public let firstServe: TeamId
+public enum SquashMode: String, Sendable, Equatable {
+    case par
+    case hiho
+}
 
-    public init(bestOf: BestOf, deuceMode: DeuceMode, thirdSet: ThirdSetMode, firstServe: TeamId) {
-        self.bestOf = bestOf
-        self.deuceMode = deuceMode
-        self.thirdSet = thirdSet
-        self.firstServe = firstServe
+public enum SquashTiebreak: String, Sendable, Equatable {
+    case winByTwo
+    case setOne
+    case setTwo
+}
+
+public enum MatchConfig: Sendable, Equatable {
+    case padel(bestOf: BestOf, deuceMode: DeuceMode, thirdSet: ThirdSetMode, firstServe: TeamId)
+    case squash(bestOf: BestOf, squashMode: SquashMode, squashTarget: Int, squashTiebreak: SquashTiebreak, firstServe: TeamId)
+
+    public var bestOf: BestOf {
+        switch self {
+        case .padel(let bestOf, _, _, _): return bestOf
+        case .squash(let bestOf, _, _, _, _): return bestOf
+        }
+    }
+    public var firstServe: TeamId {
+        switch self {
+        case .padel(_, _, _, let firstServe): return firstServe
+        case .squash(_, _, _, _, let firstServe): return firstServe
+        }
     }
 }
 
@@ -119,7 +134,10 @@ public enum Moment: Sendable, Equatable {
 public enum CurrentGame: Sendable, Equatable {
     case standard(points: TeamValues<Int>, calls: TeamValues<PointCall>)
     case tieBreak(tieBreakKind: TieBreakKind, target: Int, points: TeamValues<Int>)
+    case squash(points: TeamValues<Int>)
 }
+
+
 
 /// Everything the UI needs about a match, derived from config + events.
 public struct MatchSnapshot: Sendable, Equatable {
@@ -135,6 +153,7 @@ public struct MatchSnapshot: Sendable, Equatable {
     public let currentGame: CurrentGame?
     /// Team serving the point in play (tie-break rotation included).
     public let servingTeam: TeamId
+
     public let moment: Moment
     /// Rally points won over the whole match.
     public let totalPoints: TeamValues<Int>

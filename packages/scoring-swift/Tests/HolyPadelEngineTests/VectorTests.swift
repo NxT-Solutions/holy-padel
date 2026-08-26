@@ -47,6 +47,7 @@ private struct SerializedSnapshot: Codable, Equatable {
     let currentSetGames: IntPair
     let currentGame: SerializedGame?
     let servingTeam: String
+
     let moment: SerializedMoment
     let totalGames: IntPair
     let totalPoints: IntPair
@@ -54,10 +55,14 @@ private struct SerializedSnapshot: Codable, Equatable {
 }
 
 private struct SerializedConfig: Codable, Equatable {
+    let sport: String?
     let bestOf: Int
-    let deuceMode: String
-    let thirdSet: String
+    let deuceMode: String?
+    let thirdSet: String?
     let firstServe: String
+    let squashMode: String?
+    let squashTarget: Int?
+    let squashTiebreak: String?
 }
 
 private struct GoldenVector: Codable {
@@ -90,6 +95,14 @@ private func serialize(_ game: CurrentGame?) -> SerializedGame? {
             points: serialize(points),
             tieBreakKind: tieBreakKind.rawValue,
             target: target
+        )
+    case let .squash(points):
+        return SerializedGame(
+            kind: "squash",
+            calls: nil,
+            points: serialize(points),
+            tieBreakKind: nil,
+            target: nil
         )
     }
 }
@@ -138,6 +151,7 @@ private func serialize(_ snap: MatchSnapshot) -> SerializedSnapshot {
         currentSetGames: serialize(snap.currentSetGames),
         currentGame: serialize(snap.currentGame),
         servingTeam: snap.servingTeam.rawValue,
+
         moment: serialize(snap.moment),
         totalGames: serialize(snap.totalGames),
         totalPoints: serialize(snap.totalPoints),
@@ -148,11 +162,22 @@ private func serialize(_ snap: MatchSnapshot) -> SerializedSnapshot {
 // MARK: - Config / events from the vector
 
 private func decodeConfig(_ c: SerializedConfig) -> MatchConfig {
-    MatchConfig(
-        bestOf: c.bestOf == 1 ? .one : .three,
-        deuceMode: DeuceMode(rawValue: c.deuceMode)!,
-        thirdSet: ThirdSetMode(rawValue: c.thirdSet)!,
-        firstServe: TeamId(rawValue: c.firstServe)!
+    let bestOf: BestOf = c.bestOf == 1 ? .one : (c.bestOf == 5 ? .five : .three)
+    let firstServe = TeamId(rawValue: c.firstServe)!
+    if c.sport == "squash" {
+        return .squash(
+            bestOf: bestOf,
+            squashMode: SquashMode(rawValue: c.squashMode!)!,
+            squashTarget: c.squashTarget!,
+            squashTiebreak: SquashTiebreak(rawValue: c.squashTiebreak!)!,
+            firstServe: firstServe
+        )
+    }
+    return .padel(
+        bestOf: bestOf,
+        deuceMode: DeuceMode(rawValue: c.deuceMode!)!,
+        thirdSet: ThirdSetMode(rawValue: c.thirdSet!)!,
+        firstServe: firstServe
     )
 }
 
@@ -185,7 +210,7 @@ final class VectorTests: XCTestCase {
         let data = try Data(contentsOf: url)
         let vectors = try JSONDecoder().decode([GoldenVector].self, from: data)
 
-        XCTAssertEqual(vectors.count, 972, "expected 972 golden vectors")
+        XCTAssertEqual(vectors.count, 3888, "expected 3888 golden vectors")
 
         var passed = 0
         var failures: [String] = []

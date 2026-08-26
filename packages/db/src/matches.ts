@@ -60,8 +60,40 @@ function parseTeam(value: string): TeamId {
 
 const SINGLE_SET = 1;
 const BEST_OF_THREE = 3;
+const BEST_OF_FIVE = 5;
 
 function parseConfig(row: SqlRow): MatchConfig {
+  const sport = (optionalString(row, "sport") as "padel" | "squash" | undefined) ?? "padel";
+
+  if (sport === "squash") {
+    const rawSquashBestOf = optionalNumber(row, "squash_best_of");
+    const bestOf = rawSquashBestOf === undefined ? expectNumber(row, "best_of") : rawSquashBestOf;
+    if (bestOf !== SINGLE_SET && bestOf !== BEST_OF_THREE && bestOf !== BEST_OF_FIVE) {
+      throw new Error(`invalid best_of for squash: ${String(bestOf)}`);
+    }
+    const squashMode = expectString(row, "squash_mode");
+    if (squashMode !== "par" && squashMode !== "hiho") {
+      throw new Error(`invalid squash_mode: ${squashMode}`);
+    }
+    const squashTarget = expectNumber(row, "squash_target");
+    const squashTiebreak = expectString(row, "squash_tiebreak");
+    if (
+      squashTiebreak !== "winByTwo" &&
+      squashTiebreak !== "setOne" &&
+      squashTiebreak !== "setTwo"
+    ) {
+      throw new Error(`invalid squash_tiebreak: ${squashTiebreak}`);
+    }
+    return {
+      sport: "squash",
+      bestOf: bestOf as 1 | 3 | 5,
+      squashMode,
+      squashTarget,
+      squashTiebreak: squashTiebreak as "winByTwo" | "setOne" | "setTwo",
+      firstServe: parseTeam(expectString(row, "first_serve")),
+    };
+  }
+
   const bestOf = expectNumber(row, "best_of");
   if (bestOf !== SINGLE_SET && bestOf !== BEST_OF_THREE) {
     throw new Error(`invalid best_of: ${String(bestOf)}`);
@@ -74,7 +106,13 @@ function parseConfig(row: SqlRow): MatchConfig {
   if (thirdSet !== "fullSet" && thirdSet !== "advantageSet" && thirdSet !== "superTieBreak") {
     throw new Error(`invalid third_set: ${thirdSet}`);
   }
-  return { bestOf, deuceMode, thirdSet, firstServe: parseTeam(expectString(row, "first_serve")) };
+  return {
+    sport: "padel",
+    bestOf,
+    deuceMode,
+    thirdSet,
+    firstServe: parseTeam(expectString(row, "first_serve")),
+  };
 }
 
 function toStoredMatch(row: SqlRow): StoredMatch {
@@ -127,16 +165,22 @@ export function createMatch(driver: SqlDriver, match: NewMatch): void {
   const { config, players } = match;
   driver.execute(
     `INSERT INTO matches (
-       id, status, best_of, deuce_mode, third_set, first_serve,
+       id, status, sport, best_of, deuce_mode, third_set, first_serve,
+       squash_mode, squash_target, squash_tiebreak, squash_best_of,
        team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
        court, location, started_at
-     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       match.id,
-      config.bestOf,
-      config.deuceMode,
-      config.thirdSet,
+      config.sport ?? "padel",
+      config.sport === "squash" ? SINGLE_SET : config.bestOf, // dummy padel value to satisfy sqlite constraint
+      config.sport === "squash" ? "advantage" : config.deuceMode, // dummy padel value to satisfy sqlite constraint
+      config.sport === "squash" ? "fullSet" : config.thirdSet, // dummy padel value
       config.firstServe,
+      config.sport === "squash" ? config.squashMode : null,
+      config.sport === "squash" ? config.squashTarget : null,
+      config.sport === "squash" ? config.squashTiebreak : null,
+      config.sport === "squash" ? config.bestOf : null,
       players.A[0],
       players.A[1],
       players.B[0],

@@ -52,7 +52,7 @@ describe("players", () => {
     expect(marta?.matchesWithOwner).toBe(2);
     const ana = roster.find((entry) => entry.id === "ana");
     expect(ana?.matchesWithOwner).toBe(0);
-    expect(roster.some((entry) => entry.id === "nico")).toBe(false);
+    expect(roster.some((entry) => entry.id === "nico")).toBe(true);
   });
 });
 

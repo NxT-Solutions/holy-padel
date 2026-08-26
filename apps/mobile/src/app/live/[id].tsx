@@ -100,12 +100,14 @@ function TeamCard({
   name,
   point,
   serving,
+
   onScore,
   testID,
 }: {
   readonly name: string;
   readonly point: string;
   readonly serving: boolean;
+
   readonly onScore: () => void;
   readonly testID: string;
 }): ReactNode {
@@ -128,15 +130,17 @@ function TeamCard({
     >
       <YStack gap={7}>
         <XStack alignItems="center" gap={8}>
-          <View
-            width={12}
-            height={12}
-            borderRadius={6}
-            backgroundColor={colors.lime}
-            opacity={serving ? 1 : 0}
-            boxShadow={serving ? `0 0 0 3px ${limeAlpha(0.3)}` : "unset"}
-            testID={`${testID}-serve${serving ? "-on" : "-off"}`}
-          />
+          <XStack alignItems="center" gap={6} opacity={serving ? 1 : 0}>
+            <View
+              width={12}
+              height={12}
+              borderRadius={6}
+              backgroundColor={colors.lime}
+              boxShadow={serving ? `0 0 0 3px ${limeAlpha(0.3)}` : "unset"}
+              testID={`${testID}-serve${serving ? "-on" : "-off"}`}
+            />
+
+          </XStack>
           <Display fontSize={23}>{name.toUpperCase()}</Display>
         </XStack>
         <Body fontSize={10} fontWeight="800" letterSpacing={1.6} color={inkAlpha(0.35)}>
@@ -190,9 +194,10 @@ function SetChips({
   readonly snapshot: MatchSnapshot;
 }): ReactNode {
   const chips: ReactNode[] = [];
+  const isSquash = match.config.sport === "squash";
   for (let setIndex = 0; setIndex < match.config.bestOf; setIndex += 1) {
     const completed = snapshot.completedSets[setIndex];
-    const setLabel = `SET ${String(setIndex + 1)}`;
+    const setLabel = isSquash ? `GAME ${String(setIndex + 1)}` : `SET ${String(setIndex + 1)}`;
     if (completed !== undefined) {
       chips.push(
         <SetChip
@@ -349,7 +354,12 @@ export default function LiveScreen(): ReactNode {
             </Body>
           </Pill>
           <Body fontSize={11} fontWeight="700" letterSpacing={1.8} color={inkAlpha(0.55)}>
-            {[match.court?.toUpperCase(), `SET ${String(snapshot.setNumber)}`]
+            {[
+              match.court?.toUpperCase(),
+              match.config.sport === "squash"
+                ? `GAME ${String(snapshot.setNumber)}`
+                : `SET ${String(snapshot.setNumber)}`,
+            ]
               .filter((part): part is string => part !== undefined)
               .join(" · ")}
           </Body>
@@ -366,6 +376,7 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "A")}
             testID="point-A"
             serving={snapshot.servingTeam === "A"}
+
             onScore={() => {
               scorePoint("A");
             }}
@@ -375,6 +386,7 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "B")}
             testID="point-B"
             serving={snapshot.servingTeam === "B"}
+
             onScore={() => {
               scorePoint("B");
             }}

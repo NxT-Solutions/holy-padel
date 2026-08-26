@@ -24,6 +24,5 @@ export async function openAppDatabase(): Promise<SqlDriver> {
   const database = await openDatabaseAsync("holy-padel.db");
   const driver = expoDriver(database);
   migrate(driver);
-  seedIfEmpty(driver);
   return driver;
 }

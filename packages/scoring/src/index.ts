@@ -24,4 +24,5 @@ export type {
   TeamValues,
   ThirdSetMode,
   TieBreakKind,
+  SquashTiebreak,
 } from "./types.ts";

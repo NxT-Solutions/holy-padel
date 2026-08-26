@@ -97,7 +97,6 @@ export function listRoster(driver: SqlDriver): RosterEntry[] {
        AND p.id IN (m.team_a_player_1, m.team_a_player_2, m.team_b_player_1, m.team_b_player_2)
      ) AS matches_with_owner
      FROM players p
-     WHERE p.is_owner = 0
      ORDER BY matches_with_owner DESC, p.name`,
   );
   return rows.map((row) => ({

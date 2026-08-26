@@ -39,13 +39,26 @@ class VectorTest {
 
     private fun parseTeam(s: String): TeamId = if (s == "A") TeamId.A else TeamId.B
 
-    private fun parseConfig(obj: JsonObject): MatchConfig =
-        MatchConfig(
-            bestOf = obj.getValue("bestOf").jsonPrimitive.content.toInt(),
+    private fun parseConfig(obj: JsonObject): MatchConfig {
+        val sport = obj["sport"]?.jsonPrimitive?.content ?: "padel"
+        val bestOf = obj.getValue("bestOf").jsonPrimitive.content.toInt()
+        val firstServe = parseTeam(obj.getValue("firstServe").jsonPrimitive.content)
+        if (sport == "squash") {
+            return MatchConfig.Squash(
+                bestOf = bestOf,
+                squashMode = SquashMode.valueOf(obj.getValue("squashMode").jsonPrimitive.content),
+                squashTarget = obj.getValue("squashTarget").jsonPrimitive.content.toInt(),
+                squashTiebreak = SquashTiebreak.valueOf(obj.getValue("squashTiebreak").jsonPrimitive.content),
+                firstServe = firstServe,
+            )
+        }
+        return MatchConfig.Padel(
+            bestOf = bestOf,
             deuceMode = DeuceMode.valueOf(obj.getValue("deuceMode").jsonPrimitive.content),
             thirdSet = ThirdSetMode.valueOf(obj.getValue("thirdSet").jsonPrimitive.content),
-            firstServe = parseTeam(obj.getValue("firstServe").jsonPrimitive.content),
+            firstServe = firstServe,
         )
+    }
 
     private fun eventsFrom(winners: String): List<PointEvent> =
         winners.mapIndexed { i, c -> PointEvent(winner = parseTeam(c.toString()), at = i.toLong()) }
@@ -54,7 +67,7 @@ class VectorTest {
     fun everyGoldenVectorMatches() {
         val file = goldenFile()
         val root = json.parseToJsonElement(file.readText()) as JsonArray
-        assertEquals(972, root.size, "expected 972 golden vectors")
+        assertEquals(3888, root.size, "expected 3888 golden vectors")
 
         var pass = 0
         val failures = mutableListOf<String>()
@@ -80,10 +93,10 @@ class VectorTest {
 
         if (failures.isNotEmpty()) {
             val shown = failures.take(5).joinToString("\n")
-            System.err.println("FAILED ${failures.size}/972 vectors. First few:\n$shown")
+            System.err.println("FAILED ${failures.size}/3888 vectors. First few:\n$shown")
         }
-        assertTrue(failures.isEmpty(), "${failures.size} vector mismatch(es); ${pass}/972 passed")
-        assertEquals(972, pass, "all 972 vectors must pass")
-        println("scoring-kotlin: $pass/972 golden vectors passed")
+        assertTrue(failures.isEmpty(), "${failures.size} vector mismatch(es); ${pass}/3888 passed")
+        assertEquals(3888, pass, "all 3888 vectors must pass")
+        println("scoring-kotlin: $pass/3888 golden vectors passed")
     }
 }

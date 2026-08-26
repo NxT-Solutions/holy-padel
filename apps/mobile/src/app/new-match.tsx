@@ -1,5 +1,5 @@
 import { createMatch, createPlayer, getOwner, listRoster } from "@holy-padel/db";
-import type { DeuceMode, TeamId, ThirdSetMode } from "@holy-padel/scoring";
+import type { DeuceMode, SquashTiebreak, TeamId, ThirdSetMode } from "@holy-padel/scoring";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
@@ -92,23 +92,36 @@ export default function NewMatchScreen(): ReactNode {
   const roster = useDbQuery(listRoster);
   const ownerId = owner?.id ?? "nico";
 
+  const [format, setFormat] = useState<"singles" | "doubles">("doubles");
   const [partner, setPartner] = useState<string | undefined>(undefined);
+  const [teamA1, setTeamA1] = useState<string>(ownerId);
   const [teamB, setTeamB] = useState<readonly string[]>([]);
   const [picking, setPicking] = useState<TeamId | undefined>(undefined);
-  const [bestOf, setBestOf] = useState<1 | 3>(3);
+  const [bestOf, setBestOf] = useState<1 | 3 | 5>(3);
   const [thirdSet, setThirdSet] = useState<ThirdSetMode>("superTieBreak");
   const [deuceMode, setDeuceMode] = useState<DeuceMode>("advantage");
   const [firstServe, setFirstServe] = useState<TeamId>("A");
+  const [sport, setSport] = useState<"padel" | "squash">("padel");
+  const [squashMode, setSquashMode] = useState<"par" | "hiho">("par");
+  const [squashTarget, setSquashTarget] = useState<number>(11);
+  const [squashTiebreak, setSquashTiebreak] = useState<SquashTiebreak>("winByTwo");
 
   const nameOf = (id: string | undefined): string =>
     id === undefined ? "" : (roster.find((entry) => entry.id === id)?.name ?? owner?.name ?? "");
 
-  const ready = partner !== undefined && teamB.length === 2;
+  const ready =
+    format === "singles" ? teamB.length > 0 : partner !== undefined && teamB.length === 2;
   const partnerSelection = partner === undefined ? [] : [partner];
 
   const started = useRef(false);
   const startMatch = (): void => {
-    if (partner === undefined || teamB[0] === undefined || teamB[1] === undefined) {
+    if (
+      format === "doubles" &&
+      (partner === undefined || teamB[0] === undefined || teamB[1] === undefined)
+    ) {
+      return;
+    }
+    if (format === "singles" && teamB[0] === undefined) {
       return;
     }
     if (started.current) {
@@ -116,14 +129,37 @@ export default function NewMatchScreen(): ReactNode {
     }
     started.current = true;
     const id = newMatchId();
-    const players = {
-      A: [ownerId, partner] as const,
-      B: [teamB[0], teamB[1]] as const,
-    };
+    const players =
+      format === "singles"
+        ? {
+            A: [teamA1, teamA1] as const,
+            B: [teamB[0], teamB[0]] as const,
+          }
+        : {
+            A: [ownerId, partner] as const,
+            B: [teamB[0], teamB[1]] as const,
+          };
     mutate((driver) => {
+      const config =
+        sport === "squash"
+          ? {
+              sport: "squash" as const,
+              bestOf,
+              squashMode,
+              squashTarget,
+              squashTiebreak,
+              firstServe,
+            }
+          : {
+              sport: "padel" as const,
+              bestOf: bestOf === 5 ? 3 : bestOf,
+              deuceMode,
+              thirdSet,
+              firstServe,
+            };
       createMatch(driver, {
         id,
-        config: { bestOf, deuceMode, thirdSet, firstServe },
+        config,
         players,
         location: owner?.club ?? "Club Padel Norte",
         startedAt: Date.now(),
@@ -134,12 +170,17 @@ export default function NewMatchScreen(): ReactNode {
 
   const togglePick = (id: string): void => {
     if (picking === "A") {
-      setPartner((current) => (current === id ? undefined : id));
+      if (format === "singles") {
+        setTeamA1(id);
+        setPicking(undefined);
+      } else {
+        setPartner((current) => (current === id ? undefined : id));
+      }
     } else {
       setTeamB((current) =>
         current.includes(id)
           ? current.filter((memberId) => memberId !== id)
-          : [...current, id].slice(-2),
+          : [...current, id].slice(format === "singles" ? -1 : -2),
       );
     }
   };
@@ -150,7 +191,7 @@ export default function NewMatchScreen(): ReactNode {
       <YStack paddingTop={insets.top + 12} paddingHorizontal={16} paddingBottom={6} gap={4}>
         <ModalHeader title="NEW MATCH" onClose={goBack} label="Cancel" titleSize={30} />
         <Body fontSize={12.5} fontWeight="600" color={inkAlpha(0.45)} marginLeft={52}>
-          Doubles · FIP scoring
+          Doubles · {sport === "squash" ? "Squash scoring" : "FIP scoring"}
         </Body>
       </YStack>
 
@@ -167,8 +208,11 @@ export default function NewMatchScreen(): ReactNode {
             setPicking("A");
           }}
         >
-          <PlayerRow name={owner?.name ?? "Nico"} teamColor="ink" />
-          <PlayerRow name={nameOf(partner)} teamColor="ink" />
+          <PlayerRow
+            name={format === "singles" ? nameOf(teamA1) : (owner?.name ?? "Nico")}
+            teamColor="ink"
+          />
+          {format === "doubles" && <PlayerRow name={nameOf(partner)} teamColor="ink" />}
         </TeamCard>
 
         <TeamCard
@@ -178,37 +222,107 @@ export default function NewMatchScreen(): ReactNode {
           }}
         >
           <PlayerRow name={nameOf(teamB[0])} teamColor="blue" />
-          <PlayerRow name={nameOf(teamB[1])} teamColor="blue" />
+          {format === "doubles" && <PlayerRow name={nameOf(teamB[1])} teamColor="blue" />}
         </TeamCard>
 
         <Card borderRadius={20} padding={16} gap={13}>
           <SegmentedRow
-            label="Sets"
+            label="Format"
             options={[
-              { value: 1, label: "1" },
-              { value: 3, label: "3" },
+              { value: "singles", label: "Singles" },
+              { value: "doubles", label: "Doubles" },
             ]}
-            value={bestOf}
-            onChange={setBestOf}
+            value={format}
+            onChange={(val) => {
+              setFormat(val);
+              setPicking(undefined);
+            }}
           />
           <SegmentedRow
-            label="Third set"
+            label="Sport"
             options={[
-              { value: "fullSet", label: "Full set" },
-              { value: "superTieBreak", label: "Super TB" },
+              { value: "padel", label: "Padel" },
+              { value: "squash", label: "Squash" },
             ]}
-            value={thirdSet}
-            onChange={setThirdSet}
+            value={sport}
+            onChange={(val) => {
+              setSport(val);
+              if (val === "squash" && bestOf === 1) setBestOf(3); // Squash is typically best of 3 or 5
+            }}
           />
-          <SegmentedRow
-            label="At deuce"
-            options={[
-              { value: "advantage", label: "Advantage" },
-              { value: "goldenPoint", label: "Golden pt" },
-            ]}
-            value={deuceMode}
-            onChange={setDeuceMode}
-          />
+          {sport === "squash" ? (
+            <>
+              <SegmentedRow
+                label="Mode"
+                options={[
+                  { value: "par", label: "PAR" },
+                  { value: "hiho", label: "HIHO" },
+                ]}
+                value={squashMode}
+                onChange={setSquashMode}
+              />
+              <SegmentedRow
+                label="Target"
+                options={[
+                  { value: 9, label: "9" },
+                  { value: 11, label: "11" },
+                  { value: 15, label: "15" },
+                ]}
+                value={squashTarget}
+                onChange={setSquashTarget}
+              />
+              <SegmentedRow
+                label="Tiebreak"
+                options={[
+                  { value: "winByTwo", label: "Win by 2" },
+                  { value: "setOne", label: "Set 1" },
+                  { value: "setTwo", label: "Set 2" },
+                ]}
+                value={squashTiebreak}
+                onChange={setSquashTiebreak}
+              />
+              <SegmentedRow
+                label="Games"
+                options={[
+                  { value: 1, label: "1" },
+                  { value: 3, label: "3" },
+                  { value: 5, label: "5" },
+                ]}
+                value={bestOf}
+                onChange={setBestOf}
+              />
+            </>
+          ) : (
+            <>
+              <SegmentedRow
+                label="Sets"
+                options={[
+                  { value: 1, label: "1" },
+                  { value: 3, label: "3" },
+                ]}
+                value={bestOf === 5 ? 3 : bestOf}
+                onChange={setBestOf}
+              />
+              <SegmentedRow
+                label="Third set"
+                options={[
+                  { value: "fullSet", label: "Full set" },
+                  { value: "superTieBreak", label: "Super TB" },
+                ]}
+                value={thirdSet}
+                onChange={setThirdSet}
+              />
+              <SegmentedRow
+                label="At deuce"
+                options={[
+                  { value: "advantage", label: "Advantage" },
+                  { value: "goldenPoint", label: "Golden pt" },
+                ]}
+                value={deuceMode}
+                onChange={setDeuceMode}
+              />
+            </>
+          )}
           <SegmentedRow
             label="First serve"
             options={[
@@ -256,10 +370,30 @@ export default function NewMatchScreen(): ReactNode {
       {picking === undefined ? null : (
         <PickerSheet
           team={picking}
-          stepLabel={picking === "A" ? "1 OF 2" : "2 OF 2"}
+          stepLabel={
+            picking === "A"
+              ? format === "singles"
+                ? "PLAYER A"
+                : "1 OF 2"
+              : format === "singles"
+                ? "PLAYER B"
+                : "2 OF 2"
+          }
           roster={roster}
-          selected={picking === "A" ? partnerSelection : teamB}
-          taken={picking === "A" ? teamB : partnerSelection}
+          selected={
+            picking === "A"
+              ? format === "singles"
+                ? [teamA1]
+                : partnerSelection
+              : format === "singles"
+                ? teamB.slice(0, 1)
+                : teamB
+          }
+          taken={
+            picking === "A"
+              ? (format === "singles" ? teamB.slice(0, 1) : [ownerId, ...teamB])
+              : (format === "singles" ? [teamA1] : [ownerId, ...partnerSelection])
+          }
           onToggle={togglePick}
           onCreate={(name) => {
             const id = `player-${String(Date.now())}`;

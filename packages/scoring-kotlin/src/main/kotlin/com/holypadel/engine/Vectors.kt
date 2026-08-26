@@ -43,6 +43,11 @@ private fun serializeGame(game: CurrentGame?): JsonElement =
                 put("target", game.target)
                 put("points", teamValues(game.points))
             }
+        is CurrentGame.Squash ->
+            buildJsonObject {
+                put("kind", "squash")
+                put("points", teamValues(game.points))
+            }
     }
 
 private fun serializeMoment(moment: Moment): JsonElement =
@@ -93,6 +98,7 @@ fun serializeSnapshot(snap: MatchSnapshot): JsonElement =
         put("currentSetGames", teamValues(snap.currentSetGames))
         put("currentGame", serializeGame(snap.currentGame))
         put("servingTeam", team(snap.servingTeam))
+
         put("moment", serializeMoment(snap.moment))
         put("totalGames", teamValues(snap.totalGames))
         put("totalPoints", teamValues(snap.totalPoints))

@@ -5,6 +5,7 @@ import {
   SUPER_TIE_BREAK_TARGET,
   setsToWin,
   setWon,
+  squashGameWon,
   standardGameWon,
   TIE_BREAK_TARGET,
   thirdSetWithoutTieBreak,
@@ -33,6 +34,8 @@ interface FoldState {
   tieBreakStarter: TeamId;
   /** Server of the current standard game; after a game, the next game's server. */
   gameServer: TeamId;
+  /** Consecutive points won by the current gameServer in their current serving term (for squash). */
+  serverConsecutivePoints: number;
   setNumber: number;
   finished: boolean;
   winner: TeamId | undefined;
@@ -58,6 +61,7 @@ function initialState(config: MatchConfig): FoldState {
     tieBreak: undefined,
     tieBreakStarter: config.firstServe,
     gameServer: config.firstServe,
+    serverConsecutivePoints: 0,
     setNumber: 1,
     finished: false,
     winner: undefined,
@@ -70,17 +74,19 @@ function initialState(config: MatchConfig): FoldState {
 const DECIDING_SET = 3;
 
 function isDecidingSet(config: MatchConfig, setNumber: number): boolean {
-  return config.bestOf === DECIDING_SET && setNumber === DECIDING_SET;
+  return config.sport !== "squash" && config.bestOf === DECIDING_SET && setNumber === DECIDING_SET;
 }
 
 /** Is the set being played one that runs without a tie-break at 6-6? */
 function currentSetHasTieBreak(config: MatchConfig, setNumber: number): boolean {
+  if (config.sport === "squash") return false;
   return !(isDecidingSet(config, setNumber) && thirdSetWithoutTieBreak(config.thirdSet));
 }
 
 function startNextSet(state: FoldState, config: MatchConfig): FoldState {
   const setNumber = state.setNumber + 1;
   const superTieBreakDue =
+    config.sport !== "squash" &&
     isDecidingSet(config, setNumber) &&
     config.thirdSet === "superTieBreak" &&
     setsWonBy(state.completedSets, "A") === setsWonBy(state.completedSets, "B");
@@ -135,6 +141,9 @@ function applyTieBreakPoint(state: FoldState, config: MatchConfig, winner: TeamI
 }
 
 function applyStandardPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+  if (config.sport === "squash") {
+    throw new Error("applyStandardPoint called for squash match");
+  }
   const points = bump(state.points, winner);
   const loser = otherTeam(winner);
   if (!standardGameWon(config.deuceMode, points[winner], points[loser])) {
@@ -160,11 +169,40 @@ function applyStandardPoint(state: FoldState, config: MatchConfig, winner: TeamI
   return afterGame;
 }
 
+function applySquashPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+  if (config.sport !== "squash") {
+    throw new Error("applySquashPoint called for padel match");
+  }
+  const isPar = config.squashMode === "par";
+  const points = isPar || winner === state.gameServer ? bump(state.points, winner) : state.points;
+  const loser = otherTeam(winner);
+
+  const serverConsecutivePoints =
+    winner === state.gameServer ? state.serverConsecutivePoints + 1 : 0;
+
+  if (!squashGameWon(config.squashTiebreak, config.squashTarget, points[winner], points[loser])) {
+    return { ...state, points, gameServer: winner, serverConsecutivePoints };
+  }
+
+  const summary: SetSummary = { games: points, winner, kind: "set" };
+  const afterGame: FoldState = {
+    ...state,
+    points: ZERO,
+    gameServer: winner,
+    serverConsecutivePoints: 0,
+    totalGames: bump(state.totalGames, winner),
+  };
+  return completeSet(afterGame, config, summary);
+}
+
 function applyPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
   if (state.finished) {
     throw new Error("cannot score a point: the match is already finished");
   }
   const counted: FoldState = { ...state, totalPoints: bump(state.totalPoints, winner) };
+  if (config.sport === "squash") {
+    return applySquashPoint(counted, config, winner);
+  }
   if (counted.tieBreak !== undefined) {
     return applyTieBreakPoint(counted, config, winner);
   }
@@ -194,6 +232,9 @@ function leaderOf(points: TeamValues<number>): TeamId | undefined {
 }
 
 function standardGameMoment(state: FoldState, config: MatchConfig): Moment {
+  if (config.sport === "squash") {
+    return squashMoment(state, config);
+  }
   const { points, setGames, setNumber, completedSets } = state;
   if (isDecidingPoint(config.deuceMode, points.A, points.B)) {
     return config.deuceMode === "goldenPoint" ? { kind: "goldenPoint" } : { kind: "starPoint" };
@@ -224,6 +265,33 @@ function standardGameMoment(state: FoldState, config: MatchConfig): Moment {
   return { kind: "setPoint", team: leader };
 }
 
+function squashMoment(state: FoldState, config: MatchConfig): Moment {
+  if (config.sport !== "squash") throw new Error("not squash");
+  const { points, completedSets } = state;
+  const leader = leaderOf(points);
+  if (leader === undefined) return { kind: "normal" };
+
+  const loser = otherTeam(leader);
+  const potentialPoints = bump(points, leader);
+  if (
+    !squashGameWon(
+      config.squashTiebreak,
+      config.squashTarget,
+      potentialPoints[leader],
+      potentialPoints[loser],
+    )
+  ) {
+    return { kind: "normal" };
+  }
+
+  const gamesAfter = setsWonBy(completedSets, leader) + 1;
+  if (gamesAfter === setsToWin(config.bestOf)) {
+    return { kind: "matchPoint", team: leader };
+  }
+  // In squash we just use gamePoint for game-point, as there are no sets above games.
+  return { kind: "gamePoint", team: leader };
+}
+
 function deriveMoment(state: FoldState, config: MatchConfig): Moment {
   if (state.finished) {
     if (state.winner === undefined) {
@@ -240,9 +308,15 @@ function deriveMoment(state: FoldState, config: MatchConfig): Moment {
   return standardGameMoment(state, config);
 }
 
-function currentGameOf(state: FoldState): CurrentGame | undefined {
+function currentGameOf(state: FoldState, config: MatchConfig): CurrentGame | undefined {
   if (state.finished) {
     return;
+  }
+  if (config.sport === "squash") {
+    return {
+      kind: "squash",
+      points: state.points,
+    };
   }
   if (state.tieBreak !== undefined) {
     return {
@@ -274,8 +348,9 @@ function toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot {
     completedSets: state.completedSets,
     setNumber: state.finished ? state.completedSets.length : state.setNumber,
     currentSetGames: state.finished ? ZERO : state.setGames,
-    currentGame: currentGameOf(state),
+    currentGame: currentGameOf(state, config),
     servingTeam: servingTeamOf(state),
+
     moment: deriveMoment(state, config),
     totalPoints: state.totalPoints,
     totalGames: state.totalGames,

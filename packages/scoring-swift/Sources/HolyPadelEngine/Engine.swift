@@ -17,6 +17,7 @@ private struct FoldState {
     var tieBreakStarter: TeamId
     /// Server of the current standard game; after a game, the next game's server.
     var gameServer: TeamId
+    var serverConsecutivePoints: Int
     var setNumber: Int
     var finished: Bool
     var winner: TeamId?
@@ -40,6 +41,7 @@ private func initialState(_ config: MatchConfig) -> FoldState {
         tieBreak: nil,
         tieBreakStarter: config.firstServe,
         gameServer: config.firstServe,
+        serverConsecutivePoints: 0,
         setNumber: 1,
         finished: false,
         winner: nil,
@@ -49,19 +51,29 @@ private func initialState(_ config: MatchConfig) -> FoldState {
 }
 
 private func isDecidingSet(_ config: MatchConfig, _ setNumber: Int) -> Bool {
-    config.bestOf == .three && setNumber == DECIDING_SET
+    if case .squash = config { return false }
+    return config.bestOf == .three && setNumber == DECIDING_SET
 }
 
 /// Is the set being played one that runs without a tie-break at 6-6?
 private func currentSetHasTieBreak(_ config: MatchConfig, _ setNumber: Int) -> Bool {
-    !(isDecidingSet(config, setNumber) && Rules.thirdSetWithoutTieBreak(config.thirdSet))
+    if case .squash = config { return false }
+    let thirdSet = {
+        if case let .padel(_, _, third, _) = config { return third }
+        return ThirdSetMode.fullSet
+    }()
+    return !(isDecidingSet(config, setNumber) && Rules.thirdSetWithoutTieBreak(thirdSet))
 }
 
 private func startNextSet(_ state: FoldState, _ config: MatchConfig) -> FoldState {
     let setNumber = state.setNumber + 1
+    let isSuperTieBreak = {
+        if case let .padel(_, _, third, _) = config { return third == .superTieBreak }
+        return false
+    }()
     let superTieBreakDue =
         isDecidingSet(config, setNumber)
-        && config.thirdSet == .superTieBreak
+        && isSuperTieBreak
         && setsWonBy(state.completedSets, .A) == setsWonBy(state.completedSets, .B)
     var next = state
     next.setNumber = setNumber
@@ -118,9 +130,12 @@ private func applyTieBreakPoint(_ state: FoldState, _ config: MatchConfig, _ win
 }
 
 private func applyStandardPoint(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId) -> FoldState {
+    guard case let .padel(_, deuceMode, _, _) = config else {
+        fatalError("applyStandardPoint called for squash")
+    }
     let points = bump(state.points, winner)
     let loser = Rules.otherTeam(winner)
-    if !Rules.standardGameWon(config.deuceMode, points[winner], points[loser]) {
+    if !Rules.standardGameWon(deuceMode, points[winner], points[loser]) {
         var next = state
         next.points = points
         return next
@@ -147,12 +162,41 @@ private func applyStandardPoint(_ state: FoldState, _ config: MatchConfig, _ win
     return afterGame
 }
 
+private func applySquashPoint(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId) -> FoldState {
+    guard case let .squash(_, squashMode, squashTarget, squashTiebreak, _) = config else {
+        fatalError("applySquashPoint called for padel")
+    }
+    let isPar = squashMode == .par
+    let points = (isPar || winner == state.gameServer) ? bump(state.points, winner) : state.points
+    let loser = Rules.otherTeam(winner)
+    
+    let serverConsecutivePoints = winner == state.gameServer ? state.serverConsecutivePoints + 1 : 0
+    
+    if !Rules.squashGameWon(squashTiebreak, squashTarget, points[winner], points[loser]) {
+        var next = state
+        next.points = points
+        next.gameServer = winner
+        next.serverConsecutivePoints = serverConsecutivePoints
+        return next
+    }
+    let summary = SetSummary(games: points, tieBreak: nil, winner: winner, kind: .set)
+    var afterGame = state
+    afterGame.points = ZERO
+    afterGame.gameServer = winner
+    afterGame.serverConsecutivePoints = 0
+    afterGame.totalGames = bump(state.totalGames, winner)
+    return completeSet(afterGame, config, summary)
+}
+
 private func applyPoint(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId) -> FoldState {
     if state.finished {
         fatalError("cannot score a point: the match is already finished")
     }
     var counted = state
     counted.totalPoints = bump(state.totalPoints, winner)
+    if case .squash = config {
+        return applySquashPoint(counted, config, winner)
+    }
     if counted.tieBreak != nil {
         return applyTieBreakPoint(counted, config, winner)
     }
@@ -177,14 +221,34 @@ private func leaderOf(_ points: TeamValues<Int>) -> TeamId? {
     return points.A > points.B ? .A : .B
 }
 
+private func squashMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
+    guard case let .squash(bestOf, _, squashTarget, squashTiebreak, _) = config else {
+        return .normal
+    }
+    let points = state.points
+    guard let leader = leaderOf(points) else { return .normal }
+    let loser = Rules.otherTeam(leader)
+    let potentialPoints = bump(points, leader)
+    if !Rules.squashGameWon(squashTiebreak, squashTarget, potentialPoints[leader], potentialPoints[loser]) {
+        return .normal
+    }
+    let gamesAfter = setsWonBy(state.completedSets, leader) + 1
+    if gamesAfter == Rules.setsToWin(bestOf) {
+        return .matchPoint(team: leader)
+    }
+    return .gamePoint(team: leader)
+}
+
 private func standardGameMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
+    if case .squash = config { return squashMoment(state, config) }
+    guard case let .padel(bestOf, deuceMode, _, _) = config else { return .normal }
     let points = state.points
     let setGames = state.setGames
     let setNumber = state.setNumber
     let completedSets = state.completedSets
 
-    if Rules.isDecidingPoint(config.deuceMode, points.A, points.B) {
-        return config.deuceMode == .goldenPoint ? .goldenPoint : .starPoint
+    if Rules.isDecidingPoint(deuceMode, points.A, points.B) {
+        return deuceMode == .goldenPoint ? .goldenPoint : .starPoint
     }
     if points.A >= Rules.deucePoints && points.B >= Rules.deucePoints {
         guard let leader = leaderOf(points) else {
@@ -196,7 +260,7 @@ private func standardGameMoment(_ state: FoldState, _ config: MatchConfig) -> Mo
         return .normal
     }
     let loser = Rules.otherTeam(leader)
-    if !Rules.standardGameWon(config.deuceMode, points[leader] + 1, points[loser]) {
+    if !Rules.standardGameWon(deuceMode, points[leader] + 1, points[loser]) {
         return .normal
     }
     let withTieBreak = currentSetHasTieBreak(config, setNumber)
@@ -204,7 +268,7 @@ private func standardGameMoment(_ state: FoldState, _ config: MatchConfig) -> Mo
         return .gamePoint(team: leader)
     }
     let setsAfter = setsWonBy(completedSets, leader) + 1
-    if setsAfter == Rules.setsToWin(config.bestOf) {
+    if setsAfter == Rules.setsToWin(bestOf) {
         return .matchPoint(team: leader)
     }
     return .setPoint(team: leader)
@@ -226,9 +290,12 @@ private func deriveMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
     return standardGameMoment(state, config)
 }
 
-private func currentGameOf(_ state: FoldState) -> CurrentGame? {
+private func currentGameOf(_ state: FoldState, _ config: MatchConfig) -> CurrentGame? {
     if state.finished {
         return nil
+    }
+    if case .squash = config {
+        return .squash(points: state.points)
     }
     if let tieBreak = state.tieBreak {
         return .tieBreak(
@@ -247,6 +314,8 @@ private func servingTeamOf(_ state: FoldState) -> TeamId {
     return state.gameServer
 }
 
+
+
 private func toSnapshot(_ state: FoldState, _ config: MatchConfig) -> MatchSnapshot {
     MatchSnapshot(
         config: config,
@@ -255,8 +324,9 @@ private func toSnapshot(_ state: FoldState, _ config: MatchConfig) -> MatchSnaps
         completedSets: state.completedSets,
         setNumber: state.finished ? state.completedSets.count : state.setNumber,
         currentSetGames: state.finished ? ZERO : state.setGames,
-        currentGame: currentGameOf(state),
+        currentGame: currentGameOf(state, config),
         servingTeam: servingTeamOf(state),
+
         moment: deriveMoment(state, config),
         totalPoints: state.totalPoints,
         totalGames: state.totalGames

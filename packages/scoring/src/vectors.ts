@@ -29,8 +29,13 @@ export interface SerializedSnapshot {
         readonly tieBreakKind: string;
         readonly target: number;
         readonly points: { readonly A: number; readonly B: number };
+      }
+    | {
+        readonly kind: "squash";
+        readonly points: { readonly A: number; readonly B: number };
       };
   readonly servingTeam: "A" | "B";
+
   readonly moment: Record<string, unknown>;
   readonly totalGames: { readonly A: number; readonly B: number };
   readonly totalPoints: { readonly A: number; readonly B: number };
@@ -57,6 +62,7 @@ export function serializeSnapshot(snap: MatchSnapshot): SerializedSnapshot {
     currentSetGames: { A: snap.currentSetGames.A, B: snap.currentSetGames.B },
     currentGame: serializeGame(snap),
     servingTeam: snap.servingTeam,
+
     moment: { ...snap.moment },
     totalGames: { A: snap.totalGames.A, B: snap.totalGames.B },
     totalPoints: { A: snap.totalPoints.A, B: snap.totalPoints.B },
@@ -78,6 +84,12 @@ function serializeGame(snap: MatchSnapshot): SerializedSnapshot["currentGame"] {
     return {
       kind: "standard",
       calls: { A: game.calls.A, B: game.calls.B },
+      points: { A: game.points.A, B: game.points.B },
+    };
+  }
+  if (game.kind === "squash") {
+    return {
+      kind: "squash",
       points: { A: game.points.A, B: game.points.B },
     };
   }
@@ -126,7 +138,7 @@ export function goldenVectors(): GoldenVector[] {
     for (const deuceMode of DEUCE_MODES) {
       for (const thirdSet of THIRD_SETS) {
         for (const firstServe of SERVES) {
-          const config: MatchConfig = { bestOf, deuceMode, thirdSet, firstServe };
+          const config: MatchConfig = { sport: "padel", bestOf, deuceMode, thirdSet, firstServe };
           for (const bias of BIASES) {
             seed += 1;
             const full = winnerSequence(seed, 240, bias);
@@ -147,5 +159,46 @@ export function goldenVectors(): GoldenVector[] {
       }
     }
   }
+
+  // Squash vectors
+  const SquashModes = ["par", "hiho"] as const;
+  const SquashTargets = [9, 11, 15] as const;
+  const SquashBestOfs = [1, 3, 5] as const;
+  const SquashTiebreaks = ["winByTwo", "setOne", "setTwo"] as const;
+  for (const bestOf of SquashBestOfs) {
+    for (const squashMode of SquashModes) {
+      for (const squashTarget of SquashTargets) {
+        for (const squashTiebreak of SquashTiebreaks) {
+          for (const firstServe of SERVES) {
+            const config: MatchConfig = {
+              sport: "squash",
+              bestOf,
+              squashMode,
+              squashTarget,
+              squashTiebreak,
+              firstServe,
+            };
+            for (const bias of BIASES) {
+              seed += 1;
+              const full = winnerSequence(seed, 240, bias);
+              for (const prefix of PREFIXES) {
+                const winners = full.slice(0, prefix);
+                const events = [...winners].map((w, i) => ({
+                  winner: w === "A" ? ("A" as const) : ("B" as const),
+                  at: i,
+                }));
+                vectors.push({
+                  config,
+                  winners,
+                  snapshot: serializeSnapshot(computeMatch(config, events)),
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   return vectors;
 }

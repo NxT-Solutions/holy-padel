@@ -16,6 +16,7 @@ private data class FoldState(
     val tieBreakStarter: TeamId,
     /** Server of the current standard game; after a game, the next game's server. */
     val gameServer: TeamId,
+    val serverConsecutivePoints: Int,
     val setNumber: Int,
     val finished: Boolean,
     val winner: TeamId?,
@@ -39,6 +40,7 @@ private fun initialState(config: MatchConfig): FoldState =
         tieBreak = null,
         tieBreakStarter = config.firstServe,
         gameServer = config.firstServe,
+        serverConsecutivePoints = 0,
         setNumber = 1,
         finished = false,
         winner = null,
@@ -50,15 +52,19 @@ private fun initialState(config: MatchConfig): FoldState =
 private const val DECIDING_SET = 3
 
 private fun isDecidingSet(config: MatchConfig, setNumber: Int): Boolean =
-    config.bestOf == DECIDING_SET && setNumber == DECIDING_SET
+    config !is MatchConfig.Squash && config.bestOf == DECIDING_SET && setNumber == DECIDING_SET
 
 /** Is the set being played one that runs without a tie-break at 6-6? */
-private fun currentSetHasTieBreak(config: MatchConfig, setNumber: Int): Boolean =
-    !(isDecidingSet(config, setNumber) && thirdSetWithoutTieBreak(config.thirdSet))
+private fun currentSetHasTieBreak(config: MatchConfig, setNumber: Int): Boolean {
+    if (config is MatchConfig.Squash) return false
+    val thirdSet = (config as? MatchConfig.Padel)?.thirdSet ?: ThirdSetMode.fullSet
+    return !(isDecidingSet(config, setNumber) && thirdSetWithoutTieBreak(thirdSet))
+}
 
 private fun startNextSet(state: FoldState, config: MatchConfig): FoldState {
     val setNumber = state.setNumber + 1
     val superTieBreakDue =
+        config is MatchConfig.Padel &&
         isDecidingSet(config, setNumber) &&
             config.thirdSet == ThirdSetMode.superTieBreak &&
             setsWonBy(state.completedSets, TeamId.A) == setsWonBy(state.completedSets, TeamId.B)
@@ -109,9 +115,11 @@ private fun applyTieBreakPoint(state: FoldState, config: MatchConfig, winner: Te
 }
 
 private fun applyStandardPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+    if (config is MatchConfig.Squash) throw IllegalStateException("not padel")
+    val padelConfig = config as MatchConfig.Padel
     val points = bump(state.points, winner)
     val loser = otherTeam(winner)
-    if (!standardGameWon(config.deuceMode, points[winner], points[loser])) {
+    if (!standardGameWon(padelConfig.deuceMode, points[winner], points[loser])) {
         return state.copy(points = points)
     }
     val setGames = bump(state.setGames, winner)
@@ -134,11 +142,35 @@ private fun applyStandardPoint(state: FoldState, config: MatchConfig, winner: Te
     return afterGame
 }
 
+private fun applySquashPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+    val squashConfig = config as MatchConfig.Squash
+    val isPar = squashConfig.squashMode == SquashMode.par
+    val points = if (isPar || winner == state.gameServer) bump(state.points, winner) else state.points
+    val loser = otherTeam(winner)
+    
+    val serverConsecutivePoints = if (winner == state.gameServer) state.serverConsecutivePoints + 1 else 0
+    
+    if (!squashGameWon(squashConfig.squashTiebreak, squashConfig.squashTarget, points[winner], points[loser])) {
+        return state.copy(points = points, gameServer = winner, serverConsecutivePoints = serverConsecutivePoints)
+    }
+    val summary = SetSummary(games = points, tieBreak = null, winner = winner, kind = SetKind.set)
+    val afterGame = state.copy(
+        points = ZERO,
+        gameServer = winner,
+        serverConsecutivePoints = 0,
+        totalGames = bump(state.totalGames, winner)
+    )
+    return completeSet(afterGame, config, summary)
+}
+
 private fun applyPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
     if (state.finished) {
         throw IllegalStateException("cannot score a point: the match is already finished")
     }
     val counted = state.copy(totalPoints = bump(state.totalPoints, winner))
+    if (config is MatchConfig.Squash) {
+        return applySquashPoint(counted, config, winner)
+    }
     if (counted.tieBreak != null) {
         return applyTieBreakPoint(counted, config, winner)
     }
@@ -166,13 +198,31 @@ private fun leaderOf(points: TeamValues<Int>): TeamId? {
     return if (points.a > points.b) TeamId.A else TeamId.B
 }
 
+private fun squashMoment(state: FoldState, config: MatchConfig): Moment {
+    val squashConfig = config as MatchConfig.Squash
+    val points = state.points
+    val leader = leaderOf(points) ?: return Moment.Normal
+    val loser = otherTeam(leader)
+    val potentialPoints = bump(points, leader)
+    if (!squashGameWon(squashConfig.squashTiebreak, squashConfig.squashTarget, potentialPoints[leader], potentialPoints[loser])) {
+        return Moment.Normal
+    }
+    val gamesAfter = setsWonBy(state.completedSets, leader) + 1
+    if (gamesAfter == setsToWin(config.bestOf)) {
+        return Moment.MatchPoint(leader)
+    }
+    return Moment.GamePoint(leader)
+}
+
 private fun standardGameMoment(state: FoldState, config: MatchConfig): Moment {
+    if (config is MatchConfig.Squash) return squashMoment(state, config)
+    val padelConfig = config as MatchConfig.Padel
     val points = state.points
     val setGames = state.setGames
     val setNumber = state.setNumber
     val completedSets = state.completedSets
-    if (isDecidingPoint(config.deuceMode, points.a, points.b)) {
-        return if (config.deuceMode == DeuceMode.goldenPoint) Moment.GoldenPoint else Moment.StarPoint
+    if (isDecidingPoint(padelConfig.deuceMode, points.a, points.b)) {
+        return if (padelConfig.deuceMode == DeuceMode.goldenPoint) Moment.GoldenPoint else Moment.StarPoint
     }
     if (points.a >= DEUCE_POINTS && points.b >= DEUCE_POINTS) {
         val leader = leaderOf(points) ?: return Moment.Deuce
@@ -180,7 +230,7 @@ private fun standardGameMoment(state: FoldState, config: MatchConfig): Moment {
     }
     val leader = leaderOf(points) ?: return Moment.Normal
     val loser = otherTeam(leader)
-    if (!standardGameWon(config.deuceMode, points[leader] + 1, points[loser])) {
+    if (!standardGameWon(padelConfig.deuceMode, points[leader] + 1, points[loser])) {
         return Moment.Normal
     }
     val withTieBreak = currentSetHasTieBreak(config, setNumber)
@@ -208,9 +258,12 @@ private fun deriveMoment(state: FoldState, config: MatchConfig): Moment {
     return standardGameMoment(state, config)
 }
 
-private fun currentGameOf(state: FoldState): CurrentGame? {
+private fun currentGameOf(state: FoldState, config: MatchConfig): CurrentGame? {
     if (state.finished) {
         return null
+    }
+    if (config is MatchConfig.Squash) {
+        return CurrentGame.Squash(points = state.points)
     }
     val tb = state.tieBreak
     if (tb != null) {
@@ -233,6 +286,8 @@ private fun servingTeamOf(state: FoldState): TeamId {
     return state.gameServer
 }
 
+
+
 private fun toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot =
     MatchSnapshot(
         config = config,
@@ -241,8 +296,9 @@ private fun toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot =
         completedSets = state.completedSets,
         setNumber = if (state.finished) state.completedSets.size else state.setNumber,
         currentSetGames = if (state.finished) ZERO else state.setGames,
-        currentGame = currentGameOf(state),
+        currentGame = currentGameOf(state, config),
         servingTeam = servingTeamOf(state),
+
         moment = deriveMoment(state, config),
         totalPoints = state.totalPoints,
         totalGames = state.totalGames,

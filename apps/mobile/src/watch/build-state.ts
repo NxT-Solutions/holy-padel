@@ -27,6 +27,7 @@ const SCHEMA_VERSION = 1;
 export interface WatchTeam {
   readonly short: string;
   readonly serving: boolean;
+
 }
 
 export interface WatchWon {
@@ -99,8 +100,16 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     clock: durationLabel(playedMs(match, now)),
     ...courtField(match),
     setLabel: watchSetLabel(snapshot),
-    teamA: { short: shorts.A, serving: snapshot.servingTeam === "A" },
-    teamB: { short: shorts.B, serving: snapshot.servingTeam === "B" },
+    teamA: {
+      short: shorts.A,
+      serving: snapshot.servingTeam === "A",
+
+    },
+    teamB: {
+      short: shorts.B,
+      serving: snapshot.servingTeam === "B",
+
+    },
     pointA: pointDisplay(snapshot, "A"),
     pointB: pointDisplay(snapshot, "B"),
     games: liveScoreLine(snapshot),

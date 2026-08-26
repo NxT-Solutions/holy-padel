@@ -20,11 +20,13 @@ const MONTHS = [
 
 /** "Nico & Javi" */
 export function pairLabel(names: readonly [string, string]): string {
+  if (names[0] === names[1]) return names[0];
   return `${names[0]} & ${names[1]}`;
 }
 
 /** "N&J" */
 export function pairInitials(names: readonly [string, string]): string {
+  if (names[0] === names[1]) return names[0].substring(0, 2).toUpperCase();
   return `${names[0].charAt(0).toUpperCase()}&${names[1].charAt(0).toUpperCase()}`;
 }
 
@@ -168,13 +170,14 @@ export function pointDisplay(snapshot: MatchSnapshot, team: TeamId): string {
   return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
 }
 
-/** "SET 2" / "SUPER TB" — the set in play, in the watch header's compact style. */
+/** "SET 2" / "SUPER TB" / "GAME 1" — the set in play, in the watch header's compact style. */
 export function watchSetLabel(snapshot: MatchSnapshot): string {
   const game = snapshot.currentGame;
   if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
     return "SUPER TB";
   }
-  return `SET ${String(snapshot.setNumber)}`;
+  const isSquash = snapshot.config.sport === "squash";
+  return `${isSquash ? "GAME" : "SET"} ${String(snapshot.setNumber)}`;
 }
 
 /** "1.2 MB" */

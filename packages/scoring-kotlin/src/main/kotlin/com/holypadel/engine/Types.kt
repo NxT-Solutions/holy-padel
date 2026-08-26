@@ -27,13 +27,28 @@ enum class DeuceMode { advantage, starPoint, goldenPoint }
  */
 enum class ThirdSetMode { fullSet, advantageSet, superTieBreak }
 
-data class MatchConfig(
-    val bestOf: Int, // 1 or 3
-    val deuceMode: DeuceMode,
-    val thirdSet: ThirdSetMode,
-    /** Team serving the first game of the match. */
-    val firstServe: TeamId,
-)
+enum class SquashMode { par, hiho }
+enum class SquashTiebreak { winByTwo, setOne, setTwo }
+
+sealed class MatchConfig {
+    abstract val bestOf: Int
+    abstract val firstServe: TeamId
+
+    data class Padel(
+        override val bestOf: Int,
+        val deuceMode: DeuceMode,
+        val thirdSet: ThirdSetMode,
+        override val firstServe: TeamId,
+    ) : MatchConfig()
+
+    data class Squash(
+        override val bestOf: Int,
+        val squashMode: SquashMode,
+        val squashTarget: Int,
+        val squashTiebreak: SquashTiebreak,
+        override val firstServe: TeamId,
+    ) : MatchConfig()
+}
 
 /** The only mutating event of a match: a rally ended and `winner` won it. */
 data class PointEvent(
@@ -102,7 +117,13 @@ sealed class CurrentGame {
         val target: Int,
         val points: TeamValues<Int>,
     ) : CurrentGame()
+
+    data class Squash(
+        val points: TeamValues<Int>,
+    ) : CurrentGame()
 }
+
+
 
 /** Everything the UI needs about a match, derived from config + events. */
 data class MatchSnapshot(
@@ -118,6 +139,7 @@ data class MatchSnapshot(
     val currentGame: CurrentGame?,
     /** Team serving the point in play (tie-break rotation included). */
     val servingTeam: TeamId,
+
     val moment: Moment,
     /** Rally points won over the whole match. */
     val totalPoints: TeamValues<Int>,

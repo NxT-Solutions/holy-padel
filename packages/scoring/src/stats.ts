@@ -71,10 +71,10 @@ interface Recorder {
 
 function gameKindOf(snapshot: MatchSnapshot): GameKind {
   const game = snapshot.currentGame;
-  if (game === undefined || game.kind === "standard") {
-    return "standard";
+  if (game === undefined || game.kind === "standard" || game.kind === "squash") {
+    return "standard"; // We'll track squash games as 'standard' for stats purposes (service held/broken, etc.)
   }
-  if (game.tieBreakKind === "superTieBreak") {
+  if (game.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
     return "superTieBreak";
   }
   return "tieBreak";

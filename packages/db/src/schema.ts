@@ -56,6 +56,23 @@ const MIGRATIONS: readonly Migration[] = [
       "ALTER TABLE matches ADD COLUMN paused_at INTEGER",
     ],
   },
+  {
+    // Squash support: sport discriminator
+    version: 3,
+    statements: [
+      "ALTER TABLE matches ADD COLUMN sport TEXT NOT NULL DEFAULT 'padel' CHECK (sport IN ('padel', 'squash'))",
+    ],
+  },
+  {
+    // Squash scoring configurations and best_of bypass.
+    version: 4,
+    statements: [
+      "ALTER TABLE matches ADD COLUMN squash_mode TEXT CHECK (squash_mode IN ('par', 'hiho'))",
+      "ALTER TABLE matches ADD COLUMN squash_target INTEGER",
+      "ALTER TABLE matches ADD COLUMN squash_tiebreak TEXT CHECK (squash_tiebreak IN ('winByTwo', 'setOne', 'setTwo'))",
+      "ALTER TABLE matches ADD COLUMN squash_best_of INTEGER CHECK (squash_best_of IN (1, 3, 5))",
+    ],
+  },
 ];
 
 /** Bring a database up to the latest schema. Safe to call on every launch. */

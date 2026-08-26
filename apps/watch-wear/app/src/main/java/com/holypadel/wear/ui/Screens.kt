@@ -383,7 +383,9 @@ private fun TeamRow(modifier: Modifier, short: String, point: String, serving: B
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Dot(sizeDp = 8, visible = serving)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (serving) 1f else 0f)) {
+                Dot(sizeDp = 8, visible = true)
+            }
             Spacer(Modifier.width(7.dp))
             DisplayText(short, sizeSp = 20, color = CourtColors.White)
         }

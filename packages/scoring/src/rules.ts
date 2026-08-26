@@ -89,12 +89,31 @@ export function tieBreakServer(starter: TeamId, pointIndex: number): TeamId {
   return serverBlock % WIN_BY_TWO === 0 ? starter : otherTeam(starter);
 }
 
+/** Has a squash game been won based on tiebreak setting? */
+export function squashGameWon(
+  tiebreak: "winByTwo" | "setOne" | "setTwo",
+  target: number,
+  winnerPoints: number,
+  loserPoints: number,
+): boolean {
+  if (tiebreak === "winByTwo") {
+    return winnerPoints >= target && winnerPoints - loserPoints >= WIN_BY_TWO;
+  }
+  if (tiebreak === "setOne") {
+    return winnerPoints >= target; // "low" - first to target
+  }
+  // "setTwo" / "high"
+  return winnerPoints >= target + 1;
+}
+
 /** Does the third set of this configuration run without a tie-break? */
 export function thirdSetWithoutTieBreak(mode: ThirdSetMode): boolean {
   return mode === "advantageSet";
 }
 
 /** Sets a team must win to take the match. */
-export function setsToWin(bestOf: 1 | 3): number {
-  return bestOf === 1 ? 1 : WIN_BY_TWO;
+export function setsToWin(bestOf: 1 | 3 | 5): number {
+  if (bestOf === 1) return 1;
+  if (bestOf === 3) return WIN_BY_TWO;
+  return 3;
 }

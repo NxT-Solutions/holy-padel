@@ -15,13 +15,25 @@ export type DeuceMode = "advantage" | "starPoint" | "goldenPoint";
  */
 export type ThirdSetMode = "fullSet" | "advantageSet" | "superTieBreak";
 
-export interface MatchConfig {
-  readonly bestOf: 1 | 3;
-  readonly deuceMode: DeuceMode;
-  readonly thirdSet: ThirdSetMode;
-  /** Team serving the first game of the match. */
-  readonly firstServe: TeamId;
-}
+export type SquashTiebreak = "winByTwo" | "setOne" | "setTwo";
+
+export type MatchConfig =
+  | {
+      readonly sport?: "padel";
+      readonly bestOf: 1 | 3;
+      readonly deuceMode: DeuceMode;
+      readonly thirdSet: ThirdSetMode;
+      /** Team serving the first game of the match. */
+      readonly firstServe: TeamId;
+    }
+  | {
+      readonly sport: "squash";
+      readonly bestOf: 1 | 3 | 5;
+      readonly squashMode: "par" | "hiho";
+      readonly squashTarget: number;
+      readonly squashTiebreak: SquashTiebreak;
+      readonly firstServe: TeamId;
+    };
 
 /** The only mutating event of a match: a rally ended and `winner` won it. */
 export interface PointEvent {
@@ -75,6 +87,10 @@ export type CurrentGame =
       readonly tieBreakKind: TieBreakKind;
       readonly target: number;
       readonly points: TeamValues<number>;
+    }
+  | {
+      readonly kind: "squash";
+      readonly points: TeamValues<number>;
     };
 
 /** Everything the UI needs about a match, derived from config + events. */
@@ -91,6 +107,8 @@ export interface MatchSnapshot {
   readonly currentGame: CurrentGame | undefined;
   /** Team serving the point in play (tie-break rotation included). */
   readonly servingTeam: TeamId;
+  /** Side of the court the server is serving from. */
+
   readonly moment: Moment;
   /** Rally points won over the whole match. */
   readonly totalPoints: TeamValues<number>;

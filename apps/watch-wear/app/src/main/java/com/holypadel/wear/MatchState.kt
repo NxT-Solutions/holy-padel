@@ -60,7 +60,10 @@ data class MatchState(
             }
             val team = { key: String ->
                 val obj = root.optJSONObject(key) ?: JSONObject()
-                TeamState(obj.optString("short"), obj.optBoolean("serving", false))
+                TeamState(
+                    short = obj.optString("short"), 
+                    serving = obj.optBoolean("serving", false)
+                )
             }
             val won = root.optJSONObject("won")?.let {
                 WonState(it.optString("winnerShort"), it.optString("scoreLine"), it.optString("duration"))
