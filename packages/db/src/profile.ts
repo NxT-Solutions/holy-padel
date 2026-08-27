@@ -89,8 +89,9 @@ function headToHeadRecords(results: readonly OwnedResult[]): HeadToHeadRecord[] 
   for (const { match, ownerTeam, won } of results) {
     const opponentTeam: TeamId = ownerTeam === "A" ? "B" : "A";
     const names = match.names[opponentTeam];
-    const key = [...match.players[opponentTeam]].sort().join("+");
-    const entry = byOpponents.get(key) ?? { label: names.join(" & "), won: 0, lost: 0 };
+    const label = names.filter((n): n is string => n !== undefined).join(" & ");
+    const key = [...match.players[opponentTeam]].filter((p): p is string => p !== undefined).sort().join("+");
+    const entry = byOpponents.get(key) ?? { label, won: 0, lost: 0 };
     if (won) {
       entry.won += 1;
     } else {

@@ -17,6 +17,8 @@ private struct SerializedGame: Codable, Equatable {
     // tieBreak
     let tieBreakKind: String?
     let target: Int?
+    // pickleball
+    let serverNumber: Int?
 }
 
 private struct SerializedCalls: Codable, Equatable {
@@ -46,7 +48,8 @@ private struct SerializedSnapshot: Codable, Equatable {
     let setNumber: Int
     let currentSetGames: IntPair
     let currentGame: SerializedGame?
-    let servingTeam: String
+    let servingTeam: String?
+    let servingSide: String?
 
     let moment: SerializedMoment
     let totalGames: IntPair
@@ -63,6 +66,9 @@ private struct SerializedConfig: Codable, Equatable {
     let squashMode: String?
     let squashTarget: Int?
     let squashTiebreak: String?
+    let pbType: String?
+    let pbTarget: Int?
+    let pbTiebreak: String?
 }
 
 private struct GoldenVector: Codable {
@@ -86,7 +92,8 @@ private func serialize(_ game: CurrentGame?) -> SerializedGame? {
             calls: SerializedCalls(A: calls.A.rawValue, B: calls.B.rawValue),
             points: serialize(points),
             tieBreakKind: nil,
-            target: nil
+            target: nil,
+            serverNumber: nil
         )
     case let .tieBreak(tieBreakKind, target, points):
         return SerializedGame(
@@ -94,7 +101,8 @@ private func serialize(_ game: CurrentGame?) -> SerializedGame? {
             calls: nil,
             points: serialize(points),
             tieBreakKind: tieBreakKind.rawValue,
-            target: target
+            target: target,
+            serverNumber: nil
         )
     case let .squash(points):
         return SerializedGame(
@@ -102,7 +110,17 @@ private func serialize(_ game: CurrentGame?) -> SerializedGame? {
             calls: nil,
             points: serialize(points),
             tieBreakKind: nil,
-            target: nil
+            target: nil,
+            serverNumber: nil
+        )
+    case let .pickleball(points, serverNumber):
+        return SerializedGame(
+            kind: "pickleball",
+            calls: nil,
+            points: serialize(points),
+            tieBreakKind: nil,
+            target: nil,
+            serverNumber: serverNumber
         )
     }
 }
@@ -150,7 +168,8 @@ private func serialize(_ snap: MatchSnapshot) -> SerializedSnapshot {
         setNumber: snap.setNumber,
         currentSetGames: serialize(snap.currentSetGames),
         currentGame: serialize(snap.currentGame),
-        servingTeam: snap.servingTeam.rawValue,
+        servingTeam: snap.servingTeam?.rawValue,
+        servingSide: snap.servingSide,
 
         moment: serialize(snap.moment),
         totalGames: serialize(snap.totalGames),
@@ -170,6 +189,15 @@ private func decodeConfig(_ c: SerializedConfig) -> MatchConfig {
             squashMode: SquashMode(rawValue: c.squashMode!)!,
             squashTarget: c.squashTarget!,
             squashTiebreak: SquashTiebreak(rawValue: c.squashTiebreak!)!,
+            firstServe: firstServe
+        )
+    }
+    if c.sport == "pickleball" {
+        return .pickleball(
+            bestOf: bestOf,
+            pbType: PbType(rawValue: c.pbType!)!,
+            pbTarget: c.pbTarget!,
+            pbTiebreak: PbTiebreak(rawValue: c.pbTiebreak!)!,
             firstServe: firstServe
         )
     }
@@ -210,7 +238,7 @@ final class VectorTests: XCTestCase {
         let data = try Data(contentsOf: url)
         let vectors = try JSONDecoder().decode([GoldenVector].self, from: data)
 
-        XCTAssertEqual(vectors.count, 3888, "expected 3888 golden vectors")
+        XCTAssertEqual(vectors.count, 5832, "expected 5832 golden vectors")
 
         var passed = 0
         var failures: [String] = []

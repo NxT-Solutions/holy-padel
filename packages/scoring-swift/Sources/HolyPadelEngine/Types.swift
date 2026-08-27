@@ -42,26 +42,40 @@ public enum SquashTiebreak: String, Sendable, Equatable {
     case setTwo
 }
 
+public enum PbType: String, Sendable, Equatable {
+    case singles
+    case doubles
+}
+
+public enum PbTiebreak: String, Sendable, Equatable {
+    case winByTwo
+    case winByOne
+}
+
 public enum MatchConfig: Sendable, Equatable {
     case padel(bestOf: BestOf, deuceMode: DeuceMode, thirdSet: ThirdSetMode, firstServe: TeamId, firstServePending: Bool? = nil)
     case squash(bestOf: BestOf, squashMode: SquashMode, squashTarget: Int, squashTiebreak: SquashTiebreak, firstServe: TeamId, firstServePending: Bool? = nil)
+    case pickleball(bestOf: BestOf, pbType: PbType, pbTarget: Int, pbTiebreak: PbTiebreak, firstServe: TeamId, firstServePending: Bool? = nil)
 
     public var bestOf: BestOf {
         switch self {
         case .padel(let bestOf, _, _, _, _): return bestOf
         case .squash(let bestOf, _, _, _, _, _): return bestOf
+        case .pickleball(let bestOf, _, _, _, _, _): return bestOf
         }
     }
     public var firstServe: TeamId {
         switch self {
         case .padel(_, _, _, let firstServe, _): return firstServe
         case .squash(_, _, _, _, let firstServe, _): return firstServe
+        case .pickleball(_, _, _, _, let firstServe, _): return firstServe
         }
     }
     public var firstServePending: Bool? {
         switch self {
         case .padel(_, _, _, _, let pending): return pending
         case .squash(_, _, _, _, _, let pending): return pending
+        case .pickleball(_, _, _, _, _, let pending): return pending
         }
     }
 }
@@ -141,6 +155,7 @@ public enum CurrentGame: Sendable, Equatable {
     case standard(points: TeamValues<Int>, calls: TeamValues<PointCall>)
     case tieBreak(tieBreakKind: TieBreakKind, target: Int, points: TeamValues<Int>)
     case squash(points: TeamValues<Int>)
+    case pickleball(points: TeamValues<Int>, serverNumber: Int?)
 }
 
 

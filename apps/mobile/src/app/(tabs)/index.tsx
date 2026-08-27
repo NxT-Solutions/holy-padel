@@ -9,9 +9,9 @@ import {
 } from "@holy-padel/db";
 import type { MatchSnapshot } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
@@ -125,11 +125,13 @@ function LiveCard({
 function RecentRow({
   match,
   now,
+  ownerId,
 }: {
   readonly match: MatchSummary;
   readonly now: number;
+  readonly ownerId: string;
 }): ReactNode {
-  const ownerTeam = ownerTeamOf(match, "nico");
+  const ownerTeam = ownerTeamOf(match, ownerId);
   const won = match.winner === ownerTeam;
   return (
     <Card
@@ -164,11 +166,12 @@ export default function HomeScreen(): ReactNode {
   const mutate = useDbMutation();
 
   const owner = useDbQuery(getOwner);
+  const ownerId = owner?.id ?? "nico";
   const live = useDbQuery(getLiveMatch);
   const liveSnapshot = useDbQuery((driver) =>
     live === undefined ? undefined : computeMatch(live.config, loadEvents(driver, live.id)),
   );
-  const stats = useDbQuery((driver) => computeProfileStats(driver, "nico"));
+  const stats = useDbQuery((driver) => computeProfileStats(driver, ownerId));
   const recent = useDbQuery((driver) =>
     listMatches(driver)
       .filter((match) => match.status === "finished")
@@ -177,6 +180,12 @@ export default function HomeScreen(): ReactNode {
   const [lastFinished] = recent;
 
   const rematchStarted = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      rematchStarted.current = false;
+    }, []),
+  );
+
   const startRematch = (): void => {
     if (lastFinished === undefined || rematchStarted.current) {
       return;
@@ -186,7 +195,10 @@ export default function HomeScreen(): ReactNode {
     mutate((driver) => {
       createMatch(driver, {
         id,
-        config: lastFinished.config,
+        config: {
+          ...lastFinished.config,
+          firstServePending: lastFinished.config.firstServeOriginallyUndecided ?? false,
+        },
         players: lastFinished.players,
         ...(lastFinished.court === undefined ? {} : { court: lastFinished.court }),
         ...(lastFinished.location === undefined ? {} : { location: lastFinished.location }),
@@ -271,7 +283,7 @@ export default function HomeScreen(): ReactNode {
           <Body fontSize={10.5} fontWeight="700" color={inkAlpha(0.4)}>
             {lastFinished === undefined
               ? "no matches yet"
-              : `vs ${pairLabel(opponentsOf(lastFinished, ownerTeamOf(lastFinished, "nico")))}`}
+              : `vs ${pairLabel(opponentsOf(lastFinished, ownerTeamOf(lastFinished, ownerId)))}`}
           </Body>
         </YStack>
       </XStack>
@@ -298,7 +310,7 @@ export default function HomeScreen(): ReactNode {
 
       <YStack gap={8}>
         {recent.map((match) => (
-          <RecentRow key={match.id} match={match} now={now} />
+          <RecentRow key={match.id} match={match} now={now} ownerId={ownerId} />
         ))}
       </YStack>
     </ScrollView>

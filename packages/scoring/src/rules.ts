@@ -106,6 +106,19 @@ export function squashGameWon(
   return winnerPoints >= target + 1;
 }
 
+/** Has a pickleball game been won based on tiebreak setting? */
+export function pbGameWon(
+  tiebreak: "winByTwo" | "winByOne",
+  target: number,
+  winnerPoints: number,
+  loserPoints: number,
+): boolean {
+  if (tiebreak === "winByTwo") {
+    return winnerPoints >= target && winnerPoints - loserPoints >= WIN_BY_TWO;
+  }
+  return winnerPoints >= target;
+}
+
 /** Does the third set of this configuration run without a tie-break? */
 export function thirdSetWithoutTieBreak(mode: ThirdSetMode): boolean {
   return mode === "advantageSet";

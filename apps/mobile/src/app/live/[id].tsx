@@ -23,7 +23,14 @@ import { Pause, Play, Square, Undo } from "@/components/icons.tsx";
 import { MatchWon } from "@/components/match-won.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
+import {
+  currentSetScore,
+  durationLabel,
+  finalScoreLine,
+  playedMs,
+  pointDisplay,
+  teamNames,
+} from "@/lib/format.ts";
 import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
@@ -102,15 +109,16 @@ function TeamCard({
   point,
   serving,
   servingSide,
+  serverNumber,
 
-  onTapName,
   onScore,
   testID,
 }: {
   readonly name: string;
   readonly point: string;
   readonly serving: boolean;
-  readonly servingSide?: "right" | "left";
+  readonly servingSide?: "right" | "left" | null;
+  readonly serverNumber?: number | null;
 
   readonly onScore: () => void;
   readonly testID: string;
@@ -146,8 +154,12 @@ function TeamCard({
               testID={`${testID}-serve${serving ? "-on" : "-off"}`}
             >
               {Boolean(serving && servingSide) && (
-                <Body fontSize={12} fontWeight="900" color={colors.white}>
-                  {servingSide === "right" ? "R" : "L"}
+                <Body fontSize={11} fontWeight="900" color={colors.white}>
+                  {serverNumber
+                    ? `${serverNumber}${servingSide === "right" ? "R" : "L"}`
+                    : servingSide === "right"
+                      ? "R"
+                      : "L"}
                 </Body>
               )}
             </View>
@@ -205,10 +217,10 @@ function SetChips({
   readonly snapshot: MatchSnapshot;
 }): ReactNode {
   const chips: ReactNode[] = [];
-  const isSquash = match.config.sport === "squash";
+  const isGameBased = match.config.sport === "squash" || match.config.sport === "pickleball";
   for (let setIndex = 0; setIndex < match.config.bestOf; setIndex += 1) {
     const completed = snapshot.completedSets[setIndex];
-    const setLabel = isSquash ? `GAME ${String(setIndex + 1)}` : `SET ${String(setIndex + 1)}`;
+    const setLabel = isGameBased ? `GAME ${String(setIndex + 1)}` : `SET ${String(setIndex + 1)}`;
     if (completed !== undefined) {
       chips.push(
         <SetChip
@@ -223,7 +235,7 @@ function SetChips({
       const isSuperTieBreak = game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak";
       const score = isSuperTieBreak
         ? `${String(game.points.A)}–${String(game.points.B)}`
-        : `${String(snapshot.currentSetGames.A)}–${String(snapshot.currentSetGames.B)}`;
+        : currentSetScore(snapshot).replace("-", "–");
       chips.push(
         <SetChip
           key={setLabel}
@@ -283,7 +295,10 @@ export default function LiveScreen(): ReactNode {
           mutate((driver) => {
             createMatch(driver, {
               id: rematchId,
-              config: match.config,
+              config: {
+                ...match.config,
+                firstServePending: match.config.firstServeOriginallyUndecided ?? false,
+              },
               players: match.players,
               ...(match.court === undefined ? {} : { court: match.court }),
               ...(match.location === undefined ? {} : { location: match.location }),
@@ -388,6 +403,9 @@ export default function LiveScreen(): ReactNode {
             testID="point-A"
             serving={snapshot.servingTeam === "A"}
             servingSide={snapshot.servingSide}
+            serverNumber={
+              snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
+            }
             onScore={() => {
               if (
                 snapshot.config.firstServePending &&
@@ -406,6 +424,9 @@ export default function LiveScreen(): ReactNode {
             testID="point-B"
             serving={snapshot.servingTeam === "B"}
             servingSide={snapshot.servingSide}
+            serverNumber={
+              snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
+            }
             onScore={() => {
               if (
                 snapshot.config.firstServePending &&

@@ -1,7 +1,12 @@
-import type { SqlDriver } from "@holy-padel/db";
+import type { RosterEntry, SqlDriver } from "@holy-padel/db";
 import { createMatch, createPlayer, getOwner, listMatches, listRoster } from "@holy-padel/db";
-import type { RosterEntry } from "@holy-padel/db/src/players.ts";
-import type { DeuceMode, SquashTiebreak, TeamId, ThirdSetMode } from "@holy-padel/scoring";
+import type {
+  DeuceMode,
+  MatchConfig,
+  SquashTiebreak,
+  TeamId,
+  ThirdSetMode,
+} from "@holy-padel/scoring";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
@@ -94,25 +99,48 @@ export default function NewMatchScreen(): ReactNode {
   const roster = useDbQuery(listRoster);
   const ownerId = owner?.id ?? "nico";
 
-  const [format, setFormat] = useState<"singles" | "doubles">("doubles");
+  const lastMatch = useDbQuery(listMatches)?.[0];
+  const c = lastMatch?.config;
+
+  const [format, setFormat] = useState<"singles" | "doubles">(
+    c?.sport === "pickleball" && c.pbType === "singles" ? "singles" : "doubles",
+  );
   const [partner, setPartner] = useState<string | undefined>(undefined);
   const [teamA1, setTeamA1] = useState<string>(ownerId);
   const [teamB, setTeamB] = useState<readonly string[]>([]);
   const [picking, setPicking] = useState<TeamId | undefined>(undefined);
 
-  const lastMatch = useDbQuery(listMatches)?.[0];
-  const c = lastMatch?.config;
   const isP = c?.sport === "padel" || c?.sport === undefined;
   const isS = c?.sport === "squash";
 
   const [bestOf, setBestOf] = useState<1 | 3 | 5>(c?.bestOf ?? 3);
-  const [thirdSet, setThirdSet] = useState<ThirdSetMode>(isP && c?.thirdSet ? c.thirdSet : "superTieBreak");
-  const [deuceMode, setDeuceMode] = useState<DeuceMode>(isP && c?.deuceMode ? c.deuceMode : "advantage");
-  const [firstServe, setFirstServe] = useState<TeamId | "undecided">("undecided");
-  const [sport, setSport] = useState<"padel" | "squash">(c?.sport ?? "padel");
-  const [squashMode, setSquashMode] = useState<"par" | "hiho">(isS && c?.squashMode ? c.squashMode : "par");
-  const [squashTarget, setSquashTarget] = useState<number>(isS && c?.squashTarget ? c.squashTarget : 11);
-  const [squashTiebreak, setSquashTiebreak] = useState<SquashTiebreak>(isS && c?.squashTiebreak ? c.squashTiebreak : "winByTwo");
+  const [thirdSet, setThirdSet] = useState<ThirdSetMode>(
+    isP && c?.thirdSet ? c.thirdSet : "superTieBreak",
+  );
+  const [deuceMode, setDeuceMode] = useState<DeuceMode>(
+    isP && c?.deuceMode ? c.deuceMode : "advantage",
+  );
+  const [firstServe, setFirstServe] = useState<TeamId | "undecided">(
+    c?.firstServePending ? "undecided" : (c?.firstServe ?? "undecided"),
+  );
+  const [sport, setSport] = useState<"padel" | "squash" | "pickleball">(
+    c?.sport === "squash" ? "squash" : c?.sport === "pickleball" ? "pickleball" : "padel",
+  );
+  const [squashMode, setSquashMode] = useState<"par" | "hiho">(
+    isS && c?.squashMode ? c.squashMode : "par",
+  );
+  const [squashTarget, setSquashTarget] = useState<number>(
+    isS && c?.squashTarget ? c.squashTarget : 11,
+  );
+  const [squashTiebreak, setSquashTiebreak] = useState<SquashTiebreak>(
+    isS && c?.squashTiebreak ? c.squashTiebreak : "winByTwo",
+  );
+
+  const isPb = c?.sport === "pickleball";
+  const [pbTarget, setPbTarget] = useState<number>(isPb && c?.pbTarget ? c.pbTarget : 11);
+  const [pbTiebreak, setPbTiebreak] = useState<PbTiebreak>(
+    isPb && c?.pbTiebreak ? c.pbTiebreak : "winByTwo",
+  );
 
   const nameOf = (id: string | undefined): string =>
     id === undefined ? "" : (roster.find((entry) => entry.id === id)?.name ?? owner?.name ?? "");
@@ -148,25 +176,43 @@ export default function NewMatchScreen(): ReactNode {
             B: [teamB[0], teamB[1]] as const,
           };
     mutate((driver) => {
-      const config =
-        sport === "squash"
-          ? {
-              sport: "squash" as const,
-              bestOf,
-              squashMode,
-              squashTarget,
-              squashTiebreak,
-              firstServe: firstServe === "undecided" ? "A" : firstServe,
-              firstServePending: firstServe === "undecided",
-            }
-          : {
-              sport: "padel" as const,
-              bestOf: bestOf === 5 ? 3 : bestOf,
-              deuceMode,
-              thirdSet,
-              firstServe: firstServe === "undecided" ? "A" : firstServe,
-              firstServePending: firstServe === "undecided",
-            };
+      const firstServeId = firstServe === "undecided" ? "A" : firstServe;
+      const isFirstServePending = firstServe === "undecided";
+      let config: MatchConfig;
+
+      if (sport === "squash") {
+        config = {
+          sport: "squash" as const,
+          bestOf,
+          squashMode,
+          squashTarget,
+          squashTiebreak,
+          firstServe: firstServeId,
+          firstServePending: isFirstServePending,
+          firstServeOriginallyUndecided: isFirstServePending,
+        };
+      } else if (sport === "pickleball") {
+        config = {
+          sport: "pickleball" as const,
+          bestOf: bestOf === 5 ? 3 : bestOf,
+          pbType: format,
+          pbTarget,
+          pbTiebreak,
+          firstServe: firstServeId,
+          firstServePending: isFirstServePending,
+          firstServeOriginallyUndecided: isFirstServePending,
+        };
+      } else {
+        config = {
+          sport: "padel" as const,
+          bestOf: bestOf === 5 ? 3 : bestOf,
+          deuceMode,
+          thirdSet,
+          firstServe: firstServeId,
+          firstServePending: isFirstServePending,
+          firstServeOriginallyUndecided: isFirstServePending,
+        };
+      }
       createMatch(driver, {
         id,
         config,
@@ -253,6 +299,7 @@ export default function NewMatchScreen(): ReactNode {
             options={[
               { value: "padel", label: "Padel" },
               { value: "squash", label: "Squash" },
+              { value: "pickleball", label: "Pickleball" },
             ]}
             value={sport}
             onChange={(val) => {
@@ -302,6 +349,37 @@ export default function NewMatchScreen(): ReactNode {
                 onChange={setBestOf}
               />
             </>
+          ) : sport === "pickleball" ? (
+            <>
+              <SegmentedRow
+                label="Target"
+                options={[
+                  { value: 11, label: "11" },
+                  { value: 15, label: "15" },
+                  { value: 21, label: "21" },
+                ]}
+                value={pbTarget}
+                onChange={setPbTarget}
+              />
+              <SegmentedRow
+                label="Tiebreak"
+                options={[
+                  { value: "winByTwo", label: "Win by 2" },
+                  { value: "winByOne", label: "Win by 1" },
+                ]}
+                value={pbTiebreak}
+                onChange={setPbTiebreak}
+              />
+              <SegmentedRow
+                label="Games"
+                options={[
+                  { value: 1, label: "1" },
+                  { value: 3, label: "3" },
+                ]}
+                value={bestOf === 5 ? 3 : bestOf}
+                onChange={setBestOf}
+              />
+            </>
           ) : (
             <>
               <SegmentedRow
@@ -315,7 +393,7 @@ export default function NewMatchScreen(): ReactNode {
                 onChange={setBestOf}
               />
               <SegmentedRow
-                label="Third set"
+                label="Last set"
                 options={[
                   { value: "fullSet", label: "Full set" },
                   { value: "superTieBreak", label: "Super TB" },

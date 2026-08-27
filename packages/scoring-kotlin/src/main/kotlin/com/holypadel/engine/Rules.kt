@@ -100,3 +100,11 @@ fun squashGameWon(tiebreak: SquashTiebreak, target: Int, winnerPoints: Int, lose
     }
     return winnerPoints >= (target + 1)
 }
+
+/** Has a pickleball game been won based on tiebreak setting? */
+fun pbGameWon(tiebreak: PbTiebreak, target: Int, winnerPoints: Int, loserPoints: Int): Boolean {
+    if (tiebreak == PbTiebreak.winByTwo) {
+        return winnerPoints >= target && (winnerPoints - loserPoints) >= WIN_BY_TWO
+    }
+    return winnerPoints >= target
+}

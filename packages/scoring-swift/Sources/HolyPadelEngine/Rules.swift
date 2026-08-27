@@ -94,4 +94,12 @@ enum Rules {
         }
         return winnerPoints >= (target + 1)
     }
+
+    /// Has a pickleball game been won based on tiebreak setting?
+    static func pbGameWon(_ tiebreak: PbTiebreak, _ target: Int, _ winnerPoints: Int, _ loserPoints: Int) -> Bool {
+        if tiebreak == .winByTwo {
+            return winnerPoints >= target && (winnerPoints - loserPoints) >= winByTwo
+        }
+        return winnerPoints >= target
+    }
 }

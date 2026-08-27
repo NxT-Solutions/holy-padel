@@ -1,6 +1,4 @@
-import type { CourtSide } from "@holy-padel/db";
 import { createPlayer, getOwner, updatePlayer } from "@holy-padel/db";
-import { Redirect } from "expo-router";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { TextInput } from "react-native";

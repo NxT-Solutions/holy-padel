@@ -2,6 +2,7 @@ import {
   DEUCE_POINTS,
   isDecidingPoint,
   otherTeam,
+  pbGameWon,
   SUPER_TIE_BREAK_TARGET,
   setsToWin,
   setWon,
@@ -36,6 +37,10 @@ interface FoldState {
   gameServer: TeamId;
   /** Consecutive points won by the current gameServer in their current serving term (for squash). */
   serverConsecutivePoints: number;
+  /** Server number 1 or 2 for doubles (pickleball). */
+  pbServerNumber?: 1 | 2 | undefined;
+  /** Whether the current serving term is the first of the game (pickleball). */
+  isFirstTerm?: boolean | undefined;
   setNumber: number;
   finished: boolean;
   winner: TeamId | undefined;
@@ -62,6 +67,8 @@ function initialState(config: MatchConfig): FoldState {
     tieBreakStarter: config.firstServe,
     gameServer: config.firstServe,
     serverConsecutivePoints: 0,
+    pbServerNumber: config.sport === "pickleball" && config.pbType === "doubles" ? 2 : undefined,
+    isFirstTerm: config.sport === "pickleball",
     setNumber: 1,
     finished: false,
     winner: undefined,
@@ -79,7 +86,7 @@ function isDecidingSet(config: MatchConfig, setNumber: number): boolean {
 
 /** Is the set being played one that runs without a tie-break at 6-6? */
 function currentSetHasTieBreak(config: MatchConfig, setNumber: number): boolean {
-  if (config.sport === "squash") return false;
+  if (config.sport === "squash" || config.sport === "pickleball") return false;
   return !(isDecidingSet(config, setNumber) && thirdSetWithoutTieBreak(config.thirdSet));
 }
 
@@ -87,6 +94,7 @@ function startNextSet(state: FoldState, config: MatchConfig): FoldState {
   const setNumber = state.setNumber + 1;
   const superTieBreakDue =
     config.sport !== "squash" &&
+    config.sport !== "pickleball" &&
     isDecidingSet(config, setNumber) &&
     config.thirdSet === "superTieBreak" &&
     setsWonBy(state.completedSets, "A") === setsWonBy(state.completedSets, "B");
@@ -97,6 +105,8 @@ function startNextSet(state: FoldState, config: MatchConfig): FoldState {
     points: ZERO,
     tieBreak: superTieBreakDue ? "superTieBreak" : undefined,
     tieBreakStarter: state.gameServer,
+    pbServerNumber: config.sport === "pickleball" && config.pbType === "doubles" ? 2 : undefined,
+    isFirstTerm: config.sport === "pickleball",
   };
 }
 
@@ -141,8 +151,8 @@ function applyTieBreakPoint(state: FoldState, config: MatchConfig, winner: TeamI
 }
 
 function applyStandardPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
-  if (config.sport === "squash") {
-    throw new Error("applyStandardPoint called for squash match");
+  if (config.sport === "squash" || config.sport === "pickleball") {
+    throw new Error("applyStandardPoint called for non-padel match");
   }
   const points = bump(state.points, winner);
   const loser = otherTeam(winner);
@@ -195,6 +205,46 @@ function applySquashPoint(state: FoldState, config: MatchConfig, winner: TeamId)
   return completeSet(afterGame, config, summary);
 }
 
+function applyPickleballPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+  if (config.sport !== "pickleball") {
+    throw new Error("applyPickleballPoint called for non-pickleball match");
+  }
+
+  const isDoubles = config.pbType === "doubles";
+  const server = state.gameServer;
+  const isSideout = winner !== server;
+
+  if (!isSideout) {
+    const points = bump(state.points, winner);
+    const loser = otherTeam(winner);
+
+    if (pbGameWon(config.pbTiebreak, config.pbTarget, points[winner], points[loser])) {
+      const summary: SetSummary = { games: points, winner, kind: "set" };
+      const afterGame: FoldState = {
+        ...state,
+        points: ZERO,
+        gameServer: winner,
+        pbServerNumber: isDoubles ? 2 : undefined,
+        isFirstTerm: true,
+        totalGames: bump(state.totalGames, winner),
+      };
+      return completeSet(afterGame, config, summary);
+    }
+    return { ...state, points };
+  }
+
+  if (isDoubles && state.pbServerNumber === 1) {
+    return { ...state, pbServerNumber: 2 };
+  }
+
+  return {
+    ...state,
+    gameServer: otherTeam(server),
+    isFirstTerm: false,
+    pbServerNumber: isDoubles ? 1 : undefined,
+  };
+}
+
 function applyPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
   if (state.finished) {
     throw new Error("cannot score a point: the match is already finished");
@@ -202,6 +252,9 @@ function applyPoint(state: FoldState, config: MatchConfig, winner: TeamId): Fold
   const counted: FoldState = { ...state, totalPoints: bump(state.totalPoints, winner) };
   if (config.sport === "squash") {
     return applySquashPoint(counted, config, winner);
+  }
+  if (config.sport === "pickleball") {
+    return applyPickleballPoint(counted, config, winner);
   }
   if (counted.tieBreak !== undefined) {
     return applyTieBreakPoint(counted, config, winner);
@@ -232,8 +285,8 @@ function leaderOf(points: TeamValues<number>): TeamId | undefined {
 }
 
 function standardGameMoment(state: FoldState, config: MatchConfig): Moment {
-  if (config.sport === "squash") {
-    return squashMoment(state, config);
+  if (config.sport === "squash" || config.sport === "pickleball") {
+    throw new Error("standardGameMoment called for non-padel match");
   }
   const { points, setGames, setNumber, completedSets } = state;
   if (isDecidingPoint(config.deuceMode, points.A, points.B)) {
@@ -292,6 +345,27 @@ function squashMoment(state: FoldState, config: MatchConfig): Moment {
   return { kind: "gamePoint", team: leader };
 }
 
+function pickleballMoment(state: FoldState, config: MatchConfig): Moment {
+  if (config.sport !== "pickleball") throw new Error("not pickleball");
+  const { points, completedSets } = state;
+  const leader = leaderOf(points);
+  if (leader === undefined) return { kind: "normal" };
+
+  const loser = otherTeam(leader);
+  const potentialPoints = bump(points, leader);
+  if (
+    !pbGameWon(config.pbTiebreak, config.pbTarget, potentialPoints[leader], potentialPoints[loser])
+  ) {
+    return { kind: "normal" };
+  }
+
+  const gamesAfter = setsWonBy(completedSets, leader) + 1;
+  if (gamesAfter === setsToWin(config.bestOf)) {
+    return { kind: "matchPoint", team: leader };
+  }
+  return { kind: "gamePoint", team: leader };
+}
+
 function deriveMoment(state: FoldState, config: MatchConfig): Moment {
   if (state.finished) {
     if (state.winner === undefined) {
@@ -305,6 +379,12 @@ function deriveMoment(state: FoldState, config: MatchConfig): Moment {
   if (state.tieBreak === "setTieBreak") {
     return { kind: "tieBreak", setNumber: state.setNumber };
   }
+  if (config.sport === "squash") {
+    return squashMoment(state, config);
+  }
+  if (config.sport === "pickleball") {
+    return pickleballMoment(state, config);
+  }
   return standardGameMoment(state, config);
 }
 
@@ -316,6 +396,13 @@ function currentGameOf(state: FoldState, config: MatchConfig): CurrentGame | und
     return {
       kind: "squash",
       points: state.points,
+    };
+  }
+  if (config.sport === "pickleball") {
+    return {
+      kind: "pickleball",
+      points: { A: state.points.A, B: state.points.B },
+      ...(state.pbServerNumber !== undefined ? { serverNumber: state.pbServerNumber } : {}),
     };
   }
   if (state.tieBreak !== undefined) {
@@ -343,9 +430,21 @@ function servingTeamOf(state: FoldState, config: MatchConfig): TeamId | undefine
   return state.gameServer;
 }
 
+function pbServingSideOf(state: FoldState, config: MatchConfig): "right" | "left" {
+  if (config.sport !== "pickleball") throw new Error("not pickleball");
+  const score = state.points[state.gameServer];
+  if (state.pbServerNumber === 1 || state.isFirstTerm) {
+    return score % 2 === 0 ? "right" : "left";
+  }
+  return score % 2 === 0 ? "left" : "right";
+}
+
 function servingSideOf(state: FoldState, config: MatchConfig): "right" | "left" | undefined {
   if (config.firstServePending && state.totalPoints.A === 0 && state.totalPoints.B === 0) {
     return;
+  }
+  if (config.sport === "pickleball") {
+    return pbServingSideOf(state, config);
   }
   if (config.sport === "squash") {
     return state.serverConsecutivePoints % 2 === 0 ? "right" : "left";

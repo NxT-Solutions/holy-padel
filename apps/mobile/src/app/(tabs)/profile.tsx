@@ -163,7 +163,8 @@ function RecordBar({ won, lost }: { readonly won: number; readonly lost: number 
 export default function ProfileScreen(): ReactNode {
   const insets = useSafeAreaInsets();
   const owner = useDbQuery(getOwner);
-  const stats = useDbQuery((driver) => computeProfileStats(driver, "nico"));
+  const ownerId = owner?.id ?? "nico";
+  const stats = useDbQuery((driver) => computeProfileStats(driver, ownerId));
   const matchCount = useDbQuery(countMatches);
   const sizeBytes = useDbQuery(databaseSizeBytes);
 

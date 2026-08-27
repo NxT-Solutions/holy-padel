@@ -13,8 +13,8 @@ import {
 export type MatchStatus = "live" | "finished";
 
 export interface TeamPlayers {
-  readonly A: readonly [string, string];
-  readonly B: readonly [string, string];
+  readonly A: readonly [string, string | undefined];
+  readonly B: readonly [string, string | undefined];
 }
 
 export interface NewMatch {
@@ -46,8 +46,8 @@ export interface StoredMatch {
 /** A match row joined with the four player names, for list screens. */
 export interface MatchSummary extends StoredMatch {
   readonly names: {
-    readonly A: readonly [string, string];
-    readonly B: readonly [string, string];
+    readonly A: readonly [string, string | undefined];
+    readonly B: readonly [string, string | undefined];
   };
 }
 
@@ -58,47 +58,45 @@ function parseTeam(value: string): TeamId {
   return value;
 }
 
-const SINGLE_SET = 1;
-const BEST_OF_THREE = 3;
-const BEST_OF_FIVE = 5;
+
 
 function parseConfig(row: SqlRow): MatchConfig {
-  const sport = (optionalString(row, "sport") as "padel" | "squash" | undefined) ?? "padel";
+  const sport = optionalString(row, "sport") ?? "padel";
 
-  if (sport === "squash") {
-    const rawSquashBestOf = optionalNumber(row, "squash_best_of");
-    const bestOf = rawSquashBestOf === undefined ? expectNumber(row, "best_of") : rawSquashBestOf;
-    if (bestOf !== SINGLE_SET && bestOf !== BEST_OF_THREE && bestOf !== BEST_OF_FIVE) {
-      throw new Error(`invalid best_of for squash: ${String(bestOf)}`);
-    }
-    const squashMode = expectString(row, "squash_mode");
-    if (squashMode !== "par" && squashMode !== "hiho") {
-      throw new Error(`invalid squash_mode: ${squashMode}`);
-    }
-    const squashTarget = expectNumber(row, "squash_target");
-    const squashTiebreak = expectString(row, "squash_tiebreak");
-    if (
-      squashTiebreak !== "winByTwo" &&
-      squashTiebreak !== "setOne" &&
-      squashTiebreak !== "setTwo"
-    ) {
-      throw new Error(`invalid squash_tiebreak: ${squashTiebreak}`);
-    }
+  if (sport === "pickleball") {
     return {
-      sport: "squash",
-      bestOf: bestOf as 1 | 3 | 5,
-      squashMode,
-      squashTarget,
-      squashTiebreak: squashTiebreak as "winByTwo" | "setOne" | "setTwo",
+      sport: "pickleball",
+      bestOf: expectNumber(row, "pb_best_of") as 1 | 3 | 5,
+      deuceMode: "advantage",
+      thirdSet: "superTieBreak",
       firstServe: parseTeam(expectString(row, "first_serve")),
       firstServePending: expectNumber(row, "first_serve_pending") === 1,
+      firstServeOriginallyUndecided: expectNumber(row, "first_serve_originally_undecided") === 1,
+      pbType: (optionalString(row, "pb_type") as "singles" | "doubles" | undefined) ?? "doubles",
+      pbTarget: optionalNumber(row, "pb_target") ?? 11,
+      pbTiebreak: (optionalString(row, "pb_tiebreak") as "winByTwo" | "winByOne" | undefined) ?? "winByTwo",
+    };
+  }
+
+  if (sport === "squash") {
+    return {
+      sport: "squash",
+      bestOf: expectNumber(row, "squash_best_of") as 1 | 3 | 5,
+      deuceMode: "advantage",
+      thirdSet: "fullSet",
+      firstServe: parseTeam(expectString(row, "first_serve")),
+      firstServePending: expectNumber(row, "first_serve_pending") === 1,
+      firstServeOriginallyUndecided: expectNumber(row, "first_serve_originally_undecided") === 1,
+      squashMode: (optionalString(row, "squash_mode") as "par" | "hiho" | undefined) ?? "par",
+      squashTarget: optionalNumber(row, "squash_target") ?? 11,
+      squashTiebreak: (optionalString(row, "squash_tiebreak") as "winByTwo" | "setOne" | "setTwo" | undefined) ?? "winByTwo",
     };
   }
 
   const rawBestOf = expectNumber(row, "best_of");
   const padelBestOf = optionalNumber(row, "padel_best_of");
   const bestOf = padelBestOf ?? rawBestOf;
-  if (bestOf !== SINGLE_SET && bestOf !== BEST_OF_THREE && bestOf !== BEST_OF_FIVE) {
+  if (bestOf !== 1 && bestOf !== 3 && bestOf !== 5) {
     throw new Error(`invalid best_of for padel: ${String(bestOf)}`);
   }
 
@@ -118,6 +116,7 @@ function parseConfig(row: SqlRow): MatchConfig {
     thirdSet,
     firstServe: parseTeam(expectString(row, "first_serve")),
     firstServePending: expectNumber(row, "first_serve_pending") === 1,
+    firstServeOriginallyUndecided: expectNumber(row, "first_serve_originally_undecided") === 1,
   };
 }
 
@@ -132,8 +131,8 @@ function toStoredMatch(row: SqlRow): StoredMatch {
     status,
     config: parseConfig(row),
     players: {
-      A: [expectString(row, "team_a_player_1"), expectString(row, "team_a_player_2")],
-      B: [expectString(row, "team_b_player_1"), expectString(row, "team_b_player_2")],
+      A: [expectString(row, "team_a_player_1"), optionalString(row, "team_a_player_2")],
+      B: [expectString(row, "team_b_player_1"), optionalString(row, "team_b_player_2")],
     },
     court: optionalString(row, "court"),
     location: optionalString(row, "location"),
@@ -150,8 +149,8 @@ function toSummary(row: SqlRow): MatchSummary {
   return {
     ...toStoredMatch(row),
     names: {
-      A: [expectString(row, "name_a_1"), expectString(row, "name_a_2")],
-      B: [expectString(row, "name_b_1"), expectString(row, "name_b_2")],
+      A: [expectString(row, "name_a_1"), optionalString(row, "name_a_2")],
+      B: [expectString(row, "name_b_1"), optionalString(row, "name_b_2")],
     },
   };
 }
@@ -162,37 +161,100 @@ const SUMMARY_SELECT = `
          pb1.name AS name_b_1, pb2.name AS name_b_2
   FROM matches m
   JOIN players pa1 ON pa1.id = m.team_a_player_1
-  JOIN players pa2 ON pa2.id = m.team_a_player_2
+  LEFT JOIN players pa2 ON pa2.id = m.team_a_player_2
   JOIN players pb1 ON pb1.id = m.team_b_player_1
-  JOIN players pb2 ON pb2.id = m.team_b_player_2
+  LEFT JOIN players pb2 ON pb2.id = m.team_b_player_2
 `;
 
 export function createMatch(driver: SqlDriver, match: NewMatch): void {
   const { config, players } = match;
+
+  if (config.sport === "pickleball") {
+    driver.execute(
+      `INSERT INTO matches (
+         id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
+         pb_type, pb_target, pb_tiebreak, pb_best_of,
+         team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
+         court, location, started_at
+       ) VALUES (?, 'live', ?, ?, 'advantage', 'superTieBreak', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        match.id,
+        "pickleball",
+        config.bestOf,
+        config.firstServePending ? "A" : config.firstServe,
+        config.firstServePending ? 1 : 0,
+        config.firstServeOriginallyUndecided ? 1 : 0,
+        config.pbType,
+        config.pbTarget,
+        config.pbTiebreak,
+        config.bestOf,
+        players.A[0],
+        players.A[1] ?? null,
+        players.B[0],
+        players.B[1] ?? null,
+        match.court ?? null,
+        match.location ?? null,
+        match.startedAt,
+      ],
+    );
+    return;
+  }
+
+  if (config.sport === "squash") {
+    driver.execute(
+      `INSERT INTO matches (
+         id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
+         squash_mode, squash_target, squash_tiebreak, squash_best_of, padel_best_of,
+         team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
+         court, location, started_at
+       ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        match.id,
+        "squash",
+        config.bestOf === 5 ? 1 : config.bestOf, // dummy padel value
+        "advantage",
+        "fullSet",
+        config.firstServePending ? "A" : config.firstServe,
+        config.firstServePending ? 1 : 0,
+        config.firstServeOriginallyUndecided ? 1 : 0,
+        config.squashMode,
+        config.squashTarget,
+        config.squashTiebreak,
+        config.bestOf,
+        null, // padel_best_of
+        players.A[0],
+        players.A[1] ?? null,
+        players.B[0],
+        players.B[1] ?? null,
+        match.court ?? null,
+        match.location ?? null,
+        match.startedAt,
+      ],
+    );
+    return;
+  }
+
   driver.execute(
     `INSERT INTO matches (
-       id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending,
-       squash_mode, squash_target, squash_tiebreak, squash_best_of, padel_best_of,
+       id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
+       padel_best_of,
        team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
        court, location, started_at
-     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       match.id,
-      config.sport ?? "padel",
-      config.sport === "squash" || config.bestOf === 5 ? SINGLE_SET : config.bestOf, // dummy padel value to satisfy sqlite constraint
-      config.sport === "squash" ? "advantage" : config.deuceMode, // dummy padel value to satisfy sqlite constraint
-      config.sport === "squash" ? "fullSet" : config.thirdSet, // dummy padel value
-      config.firstServePending ? "A" : config.firstServe, // dummy value if pending
+      "padel",
+      config.bestOf,
+      config.deuceMode,
+      config.thirdSet,
+      config.firstServePending ? "A" : config.firstServe,
       config.firstServePending ? 1 : 0,
-      config.sport === "squash" ? config.squashMode : null,
-      config.sport === "squash" ? config.squashTarget : null,
-      config.sport === "squash" ? config.squashTiebreak : null,
-      config.sport === "squash" ? config.bestOf : null,
-      (config.sport === undefined || config.sport === "padel") ? config.bestOf : null,
+      config.firstServeOriginallyUndecided ? 1 : 0,
+      config.bestOf,
       players.A[0],
-      players.A[1],
+      players.A[1] ?? null,
       players.B[0],
-      players.B[1],
+      players.B[1] ?? null,
       match.court ?? null,
       match.location ?? null,
       match.startedAt,

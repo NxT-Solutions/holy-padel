@@ -1,5 +1,5 @@
 import type { SqlDriver } from "@holy-padel/db";
-import { getLiveMatch, listMatches, loadEvents } from "@holy-padel/db";
+import { getLiveMatch, getOwner, listMatches, loadEvents } from "@holy-padel/db";
 import { computeMatch } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
@@ -13,20 +13,20 @@ import { addIntentListener, pushWatchStateJson } from "./bridge.ts";
 import type { WatchStateInput } from "./build-state.ts";
 import { buildWatchState } from "./build-state.ts";
 
-// The app treats "nico" as the device owner throughout (see the matches screen).
-const OWNER_ID = "nico";
 const CLOCK_REFRESH_MS = 30_000;
 
 type GatheredInput = Pick<WatchStateInput, "ownerId" | "live" | "last">;
 
 function gatherWatchInput(driver: SqlDriver): GatheredInput {
+  const owner = getOwner(driver);
+  const ownerId = owner?.id ?? "nico";
   const live = getLiveMatch(driver);
   if (live !== undefined) {
     const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
-    return { ownerId: OWNER_ID, live: { match: live, snapshot } };
+    return { ownerId, live: { match: live, snapshot } };
   }
   const last = listMatches(driver).find((match) => match.status === "finished");
-  return last === undefined ? { ownerId: OWNER_ID } : { ownerId: OWNER_ID, last };
+  return last === undefined ? { ownerId } : { ownerId, last };
 }
 
 /**

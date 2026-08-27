@@ -33,6 +33,11 @@ export interface SerializedSnapshot {
     | {
         readonly kind: "squash";
         readonly points: { readonly A: number; readonly B: number };
+      }
+    | {
+        readonly kind: "pickleball";
+        readonly points: { readonly A: number; readonly B: number };
+        readonly serverNumber: 1 | 2 | null;
       };
   readonly servingTeam: "A" | "B" | undefined;
   readonly servingSide: "right" | "left" | undefined;
@@ -91,6 +96,13 @@ function serializeGame(snap: MatchSnapshot): SerializedSnapshot["currentGame"] {
     return {
       kind: "squash",
       points: { A: game.points.A, B: game.points.B },
+    };
+  }
+  if (game.kind === "pickleball") {
+    return {
+      kind: "pickleball",
+      points: { A: game.points.A, B: game.points.B },
+      serverNumber: game.serverNumber ?? null,
     };
   }
   return {
@@ -173,9 +185,52 @@ export function goldenVectors(): GoldenVector[] {
             const config: MatchConfig = {
               sport: "squash",
               bestOf,
+              deuceMode: "advantage",
+              thirdSet: "fullSet",
               squashMode,
               squashTarget,
               squashTiebreak,
+              firstServe,
+            };
+            for (const bias of BIASES) {
+              seed += 1;
+              const full = winnerSequence(seed, 240, bias);
+              for (const prefix of PREFIXES) {
+                const winners = full.slice(0, prefix);
+                const events = [...winners].map((w, i) => ({
+                  winner: w === "A" ? ("A" as const) : ("B" as const),
+                  at: i,
+                }));
+                vectors.push({
+                  config,
+                  winners,
+                  snapshot: serializeSnapshot(computeMatch(config, events)),
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Pickleball vectors
+  const PbTypes = ["singles", "doubles"] as const;
+  const PbTargets = [11, 15, 21] as const;
+  const PbTiebreaks = ["winByTwo", "winByOne"] as const;
+  for (const bestOf of SquashBestOfs) {
+    for (const pbType of PbTypes) {
+      for (const pbTarget of PbTargets) {
+        for (const pbTiebreak of PbTiebreaks) {
+          for (const firstServe of SERVES) {
+            const config: MatchConfig = {
+              sport: "pickleball",
+              bestOf,
+              deuceMode: "advantage",
+              thirdSet: "superTieBreak",
+              pbType,
+              pbTarget,
+              pbTiebreak,
               firstServe,
             };
             for (const bias of BIASES) {

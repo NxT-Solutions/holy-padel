@@ -117,27 +117,43 @@ export function matchMetaLabel(match: MatchSummary, now: number): string {
     .join(" · ");
 }
 
+export function currentSetScore(snapshot: MatchSnapshot): string {
+  const game = snapshot.currentGame;
+  if (snapshot.config.sport === "pickleball" && game?.kind === "pickleball") {
+    const serverNum = game.serverNumber === undefined ? "" : `-${game.serverNumber}`;
+    const serverPoints = snapshot.servingTeam === "B" ? game.points.B : game.points.A;
+    const receiverPoints = snapshot.servingTeam === "B" ? game.points.A : game.points.B;
+    return `${String(serverPoints)}-${String(receiverPoints)}${serverNum}`;
+  }
+  if (snapshot.config.sport === "squash" && game?.kind === "squash") {
+    return `${String(game.points.A)}-${String(game.points.B)}`;
+  }
+  if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
+    return `${String(game.points.A)}-${String(game.points.B)}`;
+  }
+  return `${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`;
+}
+
 /** "6-4 · 4-3" — completed sets plus the set in play (super TB shows its points). */
 export function liveScoreLine(snapshot: MatchSnapshot): string {
   const parts = snapshot.completedSets.map(
     (set) => `${String(set.games.A)}-${String(set.games.B)}`,
   );
   if (!snapshot.finished) {
-    const game = snapshot.currentGame;
-    if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
-      parts.push(`${String(game.points.A)}-${String(game.points.B)}`);
-    } else {
-      parts.push(`${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`);
-    }
+    parts.push(currentSetScore(snapshot));
   }
   return parts.join(" · ");
 }
 
 /** "6-3 · 7-6" for a finished match, from the snapshot. */
 export function finalScoreLine(snapshot: MatchSnapshot): string {
-  return snapshot.completedSets
-    .map((set) => `${String(set.games.A)}-${String(set.games.B)}`)
-    .join(" · ");
+  const parts = snapshot.completedSets.map(
+    (set) => `${String(set.games.A)}-${String(set.games.B)}`,
+  );
+  if (snapshot.config.sport === "pickleball" && snapshot.completedSets.length > 0) {
+    // For pickleball, just return the sets as usual
+  }
+  return parts.join(" · ");
 }
 
 /**

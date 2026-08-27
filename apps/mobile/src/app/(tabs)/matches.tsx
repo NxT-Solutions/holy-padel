@@ -1,5 +1,5 @@
 import type { MatchSummary, SqlDriver } from "@holy-padel/db";
-import { countMatches, listMatches, loadEvents } from "@holy-padel/db";
+import { countMatches, getOwner, listMatches, loadEvents } from "@holy-padel/db";
 import { computeMatch } from "@holy-padel/scoring";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
@@ -47,12 +47,14 @@ function MatchRow({
   match,
   scoreLine,
   now,
+  ownerId,
 }: {
   readonly match: MatchSummary;
   readonly scoreLine: string;
   readonly now: number;
+  readonly ownerId: string;
 }): ReactNode {
-  const ownerTeam = ownerTeamOf(match, "nico");
+  const ownerTeam = ownerTeamOf(match, ownerId);
   const live = match.status === "live";
   return (
     <Card
@@ -132,6 +134,8 @@ export default function MatchesScreen(): ReactNode {
   const insets = useSafeAreaInsets();
   const now = useNow();
   const [filter, setFilter] = useState<Filter>("all");
+  const owner = useDbQuery(getOwner);
+  const ownerId = owner?.id ?? "nico";
 
   const total = useDbQuery(countMatches);
   const rows = useDbQuery((driver) =>
@@ -145,7 +149,7 @@ export default function MatchesScreen(): ReactNode {
     const finished = listMatches(driver).filter((match) => match.status === "finished");
     const counts = new Map<string, { label: string; count: number }>();
     for (const match of finished) {
-      const ownerTeam = ownerTeamOf(match, "nico");
+      const ownerTeam = ownerTeamOf(match, ownerId);
       const key = opponentKey(match, ownerTeam);
       const entry = counts.get(key) ?? {
         label: pairInitials(opponentsOf(match, ownerTeam)),
@@ -159,7 +163,7 @@ export default function MatchesScreen(): ReactNode {
   });
 
   const visible = rows.filter(({ match }) =>
-    FILTER_PREDICATES[filter](match, ownerTeamOf(match, "nico"), rivals?.key),
+    FILTER_PREDICATES[filter](match, ownerTeamOf(match, ownerId), rivals?.key),
   );
 
   return (
@@ -231,7 +235,13 @@ export default function MatchesScreen(): ReactNode {
 
       <YStack gap={9}>
         {visible.map(({ match, scoreLine }) => (
-          <MatchRow key={match.id} match={match} scoreLine={scoreLine} now={now} />
+          <MatchRow
+            key={match.id}
+            match={match}
+            scoreLine={scoreLine}
+            now={now}
+            ownerId={ownerId}
+          />
         ))}
       </YStack>
     </ScrollView>

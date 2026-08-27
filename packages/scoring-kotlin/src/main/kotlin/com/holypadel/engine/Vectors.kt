@@ -48,6 +48,16 @@ private fun serializeGame(game: CurrentGame?): JsonElement =
                 put("kind", "squash")
                 put("points", teamValues(game.points))
             }
+        is CurrentGame.Pickleball ->
+            buildJsonObject {
+                put("kind", "pickleball")
+                put("points", teamValues(game.points))
+                if (game.serverNumber != null) {
+                    put("serverNumber", game.serverNumber)
+                } else {
+                    put("serverNumber", JsonNull)
+                }
+            }
     }
 
 private fun serializeMoment(moment: Moment): JsonElement =
@@ -97,7 +107,18 @@ fun serializeSnapshot(snap: MatchSnapshot): JsonElement =
         put("setNumber", snap.setNumber)
         put("currentSetGames", teamValues(snap.currentSetGames))
         put("currentGame", serializeGame(snap.currentGame))
-        put("servingTeam", team(snap.servingTeam))
+        val st = snap.servingTeam
+        if (st == null) {
+            put("servingTeam", JsonNull)
+        } else {
+            put("servingTeam", team(st))
+        }
+        val ss = snap.servingSide
+        if (ss == null) {
+            put("servingSide", JsonNull)
+        } else {
+            put("servingSide", ss)
+        }
 
         put("moment", serializeMoment(snap.moment))
         put("totalGames", teamValues(snap.totalGames))

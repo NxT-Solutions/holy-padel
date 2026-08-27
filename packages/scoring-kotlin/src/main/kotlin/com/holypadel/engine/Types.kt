@@ -30,6 +30,9 @@ enum class ThirdSetMode { fullSet, advantageSet, superTieBreak }
 enum class SquashMode { par, hiho }
 enum class SquashTiebreak { winByTwo, setOne, setTwo }
 
+enum class PbType { singles, doubles }
+enum class PbTiebreak { winByTwo, winByOne }
+
 sealed class MatchConfig {
     abstract val bestOf: Int
     abstract val firstServe: TeamId
@@ -48,6 +51,15 @@ sealed class MatchConfig {
         val squashMode: SquashMode,
         val squashTarget: Int,
         val squashTiebreak: SquashTiebreak,
+        override val firstServe: TeamId,
+        override val firstServePending: Boolean? = null,
+    ) : MatchConfig()
+
+    data class Pickleball(
+        override val bestOf: Int,
+        val pbType: PbType,
+        val pbTarget: Int,
+        val pbTiebreak: PbTiebreak,
         override val firstServe: TeamId,
         override val firstServePending: Boolean? = null,
     ) : MatchConfig()
@@ -123,6 +135,11 @@ sealed class CurrentGame {
 
     data class Squash(
         val points: TeamValues<Int>,
+    ) : CurrentGame()
+
+    data class Pickleball(
+        val points: TeamValues<Int>,
+        val serverNumber: Int?,
     ) : CurrentGame()
 }
 

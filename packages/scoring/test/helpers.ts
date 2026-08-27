@@ -1,7 +1,7 @@
 import type { MatchConfig, MatchSnapshot, PointEvent, TeamId } from "../src/index.ts";
 import { computeMatch } from "../src/index.ts";
 
-export const ADVANTAGE_MATCH = {
+export const ADVANTAGE_MATCH: Extract<MatchConfig, { sport?: "padel" }> = {
   sport: "padel",
   bestOf: 3,
   deuceMode: "advantage",

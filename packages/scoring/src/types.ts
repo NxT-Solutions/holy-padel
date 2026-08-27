@@ -26,15 +26,31 @@ export type MatchConfig =
       /** Team serving the first game of the match. */
       readonly firstServe: TeamId;
       readonly firstServePending?: boolean;
+      readonly firstServeOriginallyUndecided?: boolean;
     }
   | {
       readonly sport: "squash";
       readonly bestOf: 1 | 3 | 5;
+      readonly deuceMode: "advantage";
+      readonly thirdSet: "fullSet";
       readonly squashMode: "par" | "hiho";
       readonly squashTarget: number;
       readonly squashTiebreak: SquashTiebreak;
       readonly firstServe: TeamId;
       readonly firstServePending?: boolean;
+      readonly firstServeOriginallyUndecided?: boolean;
+    }
+  | {
+      readonly sport: "pickleball";
+      readonly bestOf: 1 | 3 | 5;
+      readonly deuceMode: "advantage";
+      readonly thirdSet: "superTieBreak";
+      readonly firstServe: TeamId;
+      readonly firstServePending?: boolean;
+      readonly firstServeOriginallyUndecided?: boolean;
+      readonly pbType: "singles" | "doubles";
+      readonly pbTarget: number;
+      readonly pbTiebreak: "winByTwo" | "winByOne";
     };
 
 /** The only mutating event of a match: a rally ended and `winner` won it. */
@@ -93,6 +109,11 @@ export type CurrentGame =
   | {
       readonly kind: "squash";
       readonly points: TeamValues<number>;
+    }
+  | {
+      readonly kind: "pickleball";
+      readonly points: TeamValues<number>;
+      readonly serverNumber?: 1 | 2;
     };
 
 /** Everything the UI needs about a match, derived from config + events. */

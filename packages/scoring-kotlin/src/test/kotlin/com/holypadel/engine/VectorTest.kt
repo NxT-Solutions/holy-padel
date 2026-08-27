@@ -52,6 +52,15 @@ class VectorTest {
                 firstServe = firstServe,
             )
         }
+        if (sport == "pickleball") {
+            return MatchConfig.Pickleball(
+                bestOf = bestOf,
+                pbType = PbType.valueOf(obj.getValue("pbType").jsonPrimitive.content),
+                pbTarget = obj.getValue("pbTarget").jsonPrimitive.content.toInt(),
+                pbTiebreak = PbTiebreak.valueOf(obj.getValue("pbTiebreak").jsonPrimitive.content),
+                firstServe = firstServe,
+            )
+        }
         return MatchConfig.Padel(
             bestOf = bestOf,
             deuceMode = DeuceMode.valueOf(obj.getValue("deuceMode").jsonPrimitive.content),
@@ -67,7 +76,7 @@ class VectorTest {
     fun everyGoldenVectorMatches() {
         val file = goldenFile()
         val root = json.parseToJsonElement(file.readText()) as JsonArray
-        assertEquals(3888, root.size, "expected 3888 golden vectors")
+        assertEquals(5832, root.size, "expected 5832 golden vectors")
 
         var pass = 0
         val failures = mutableListOf<String>()
@@ -93,10 +102,10 @@ class VectorTest {
 
         if (failures.isNotEmpty()) {
             val shown = failures.take(5).joinToString("\n")
-            System.err.println("FAILED ${failures.size}/3888 vectors. First few:\n$shown")
+            System.err.println("FAILED ${failures.size}/5832 vectors. First few:\n$shown")
         }
-        assertTrue(failures.isEmpty(), "${failures.size} vector mismatch(es); ${pass}/3888 passed")
-        assertEquals(3888, pass, "all 3888 vectors must pass")
-        println("scoring-kotlin: $pass/3888 golden vectors passed")
+        assertTrue(failures.isEmpty(), "${failures.size} vector mismatch(es); ${pass}/5832 passed")
+        assertEquals(5832, pass, "all 5832 vectors must pass")
+        println("scoring-kotlin: $pass/5832 golden vectors passed")
     }
 }
