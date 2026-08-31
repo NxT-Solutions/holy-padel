@@ -49,6 +49,7 @@ fun WatchApp(
     liveBpm: Int,
     onScore: (String) -> Unit,
     onUndo: () -> Unit,
+    onSetChoice: (String) -> Unit,
     onStartLast: () -> Unit,
     onPause: () -> Unit,
     onStop: () -> Unit,
@@ -61,7 +62,7 @@ fun WatchApp(
     ) {
         when (state.phase) {
             Phase.IDLE -> IdleScreen(state, onStartLast)
-            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onUndo, onPause, onStop, onCancel)
+            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onSetChoice, onUndo, onPause, onStop, onCancel)
             Phase.WON -> MatchWonScreen(state, onEnd)
         }
     }
@@ -114,6 +115,7 @@ private fun LiveScoreScreen(
     state: MatchState,
     liveBpm: Int,
     onScore: (String) -> Unit,
+    onSetChoice: (String) -> Unit,
     onUndo: () -> Unit,
     onPause: () -> Unit,
     onStop: () -> Unit,
@@ -126,7 +128,7 @@ private fun LiveScoreScreen(
             if (page == 0) {
                 ControlsPage(state, onUndo, onPause, onStop, onCancel)
             } else {
-                ScorePage(state, liveBpm, onScore)
+                ScorePage(state, liveBpm, onScore, onSetChoice)
             }
         }
         PagerDots(
@@ -139,7 +141,12 @@ private fun LiveScoreScreen(
 
 /** The score face — nothing but the two tappable team halves plus a compact header. */
 @Composable
-private fun ScorePage(state: MatchState, liveBpm: Int, onScore: (String) -> Unit) {
+private fun ScorePage(
+    state: MatchState,
+    liveBpm: Int,
+    onScore: (String) -> Unit,
+    onSetChoice: (String) -> Unit,
+) {
     val paused = state.paused
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
         // Header: clock (or live bpm) · set/games · LIVE (or PAUSED)
@@ -163,6 +170,16 @@ private fun ScorePage(state: MatchState, liveBpm: Int, onScore: (String) -> Unit
                     sizeSp = 10,
                 )
             }
+        }
+
+        // During a squash "choice" tie-break the decision is mandatory: the
+        // SHORT/LONG buttons replace the score halves. Once a choice is staged
+        // (from either surface) the phone clears choicePending and moves the
+        // staged call into `status`, so the score face returns on the next
+        // state push — the phone owns the truth (docs/watch-sync.md).
+        if (state.choicePending) {
+            ChoiceButtons(onChoose = onSetChoice)
+            return@Column
         }
 
         // While paused, dim the halves and swallow taps — the phone rejects points
@@ -194,6 +211,46 @@ private fun ScorePage(state: MatchState, liveBpm: Int, onScore: (String) -> Unit
             serving = state.teamB.serving,
             servingSide = state.teamB.servingSide,
         )
+    }
+}
+
+/** The squash "choice" tie-break decision — short (set 1) or long (set 2). */
+@Composable
+private fun ChoiceButtons(onChoose: (String) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        LabelText("SET 1 OR 2?", color = CourtColors.Lime, sizeSp = 14)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(CourtColors.Lime)
+                .clickable { onChoose("one") }
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BodyText("SHORT · SET 1", color = CourtColors.Black, sizeSp = 13)
+                LabelText("next point wins", color = CourtColors.Black.copy(alpha = 0.55f), sizeSp = 9)
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(CourtColors.Lime)
+                .clickable { onChoose("two") }
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BodyText("LONG · SET 2", color = CourtColors.Black, sizeSp = 13)
+                LabelText("two more points", color = CourtColors.Black.copy(alpha = 0.55f), sizeSp = 9)
+            }
+        }
     }
 }
 

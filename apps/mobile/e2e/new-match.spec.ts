@@ -11,7 +11,7 @@ test.describe("match setup and player picker (designs 1f + 3b)", () => {
     await expect(page.getByText("TEAM B", { exact: true })).toBeVisible();
     await expect(page.getByText("Nico", { exact: true })).toBeVisible();
     await expect(page.getByText("Sets", { exact: true })).toBeVisible();
-    await expect(page.getByText("Third set")).toBeVisible();
+    await expect(page.getByText("Last set")).toBeVisible();
     await expect(page.getByText("At deuce")).toBeVisible();
     await expect(page.getByText("First serve")).toBeVisible();
     await expect(page.getByText("Watches join automatically when the match starts")).toBeVisible();

@@ -18,15 +18,22 @@ const MONTHS = [
   "DEC",
 ] as const;
 
-/** "Nico & Javi" */
-export function pairLabel(names: readonly [string, string]): string {
-  if (names[0] === names[1]) return names[0];
+/**
+ * "Nico & Javi" — the second slot is undefined for singles-era rows whose
+ * second player column is NULL; the pair is then just the one player.
+ */
+export function pairLabel(names: readonly [string, string | undefined]): string {
+  if (names[1] === undefined || names[0] === names[1]) {
+    return names[0];
+  }
   return `${names[0]} & ${names[1]}`;
 }
 
 /** "N&J" */
-export function pairInitials(names: readonly [string, string]): string {
-  if (names[0] === names[1]) return names[0].substring(0, 2).toUpperCase();
+export function pairInitials(names: readonly [string, string | undefined]): string {
+  if (names[1] === undefined || names[0] === names[1]) {
+    return names[0].slice(0, 2).toUpperCase();
+  }
   return `${names[0].charAt(0).toUpperCase()}&${names[1].charAt(0).toUpperCase()}`;
 }
 
@@ -39,7 +46,10 @@ export function teamInitials(match: MatchSummary): TeamValues<string> {
 }
 
 /** The pair facing the owner's team. */
-export function opponentsOf(match: MatchSummary, ownerTeam: TeamId): readonly [string, string] {
+export function opponentsOf(
+  match: MatchSummary,
+  ownerTeam: TeamId,
+): readonly [string, string | undefined] {
   return ownerTeam === "A" ? match.names.B : match.names.A;
 }
 

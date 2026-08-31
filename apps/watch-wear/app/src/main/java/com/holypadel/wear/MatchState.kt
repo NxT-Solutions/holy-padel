@@ -30,6 +30,8 @@ data class MatchState(
     val startedAt: Long,
     /** True while a live match is paused — dim scoring and pause the workout. */
     val paused: Boolean,
+    /** Squash "choice" tie-break at target-1 all — show the SHORT/LONG buttons. */
+    val choicePending: Boolean,
     val won: WonState?,
     val last: LastState?,
 ) {
@@ -47,6 +49,7 @@ data class MatchState(
             status = "",
             startedAt = 0L,
             paused = false,
+            choicePending = false,
             won = null,
             last = null,
         )
@@ -85,6 +88,7 @@ data class MatchState(
                 status = root.optString("status"),
                 startedAt = root.optLong("startedAt", 0L),
                 paused = root.optBoolean("paused", false),
+                choicePending = root.optBoolean("choicePending", false),
                 won = won,
                 last = last,
             )

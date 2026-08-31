@@ -36,7 +36,7 @@ function TabButton({
 export default function TabsLayout(): ReactNode {
   const insets = useSafeAreaInsets();
   return (
-    <Tabs style={{ flex: 1, backgroundColor: colors.cream }}>
+    <Tabs style={{ flex: 1, backgroundColor: colors.screen }}>
       <TabSlot />
       <TabList asChild={true}>
         <View

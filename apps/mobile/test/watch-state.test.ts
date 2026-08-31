@@ -29,6 +29,7 @@ function baseMatch(overrides: Partial<MatchSummary> = {}): MatchSummary {
     scoreLine: undefined,
     pausedMs: 0,
     pausedAt: undefined,
+    pendingGameSet: undefined,
     names: { A: ["Nico", "Javi"], B: ["Marta", "Leo"] },
     ...overrides,
   };
@@ -37,6 +38,51 @@ function baseMatch(overrides: Partial<MatchSummary> = {}): MatchSummary {
 function wins(team: TeamId, count: number): PointEvent[] {
   return Array.from({ length: count }, () => ({ winner: team, at: 0 }));
 }
+
+describe("buildWatchState — squash set choice", () => {
+  const squashConfig: MatchConfig = {
+    sport: "squash",
+    bestOf: 3,
+    deuceMode: "advantage",
+    thirdSet: "fullSet",
+    squashMode: "par",
+    squashTarget: 9,
+    squashTiebreak: "choice",
+    firstServe: "A",
+  };
+
+  function choiceSnapshot(pendingGameSet: MatchSummary["pendingGameSet"]) {
+    // 8-8 in PAR scoring reaches the receiver's choice point.
+    const winners = "AAAAAAAABBBBBBBB";
+    const events: PointEvent[] = [...winners].map((winner, index) => ({
+      winner: winner === "A" ? ("A" as const) : ("B" as const),
+      at: index,
+    }));
+    const snapshot = computeMatch(squashConfig, events);
+    return { match: baseMatch({ pendingGameSet }), snapshot };
+  }
+
+  it("with no staged decision the watch shows its SHORT/LONG buttons", () => {
+    const state = buildWatchState({
+      ownerId: "nico",
+      now: NOW,
+      live: choiceSnapshot(undefined),
+    });
+    expect(state.status).toBe("SET 1 OR 2");
+    expect(state.choicePending).toBe(true);
+    expect(state.status).toBe("SET 1 OR 2");
+  });
+
+  it("once staged the buttons clear and the staged call becomes the status", () => {
+    const state = buildWatchState({
+      ownerId: "nico",
+      now: NOW,
+      live: choiceSnapshot("two"),
+    });
+    expect(state.choicePending).toBeUndefined();
+    expect(state.status).toBe("LONG · SET 2");
+  });
+});
 
 describe("buildWatchState", () => {
   it("mirrors a live game — serving, point calls, clock and status", () => {

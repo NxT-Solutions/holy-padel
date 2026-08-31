@@ -9,7 +9,7 @@ import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { confirmDestructive } from "@/lib/confirm.ts";
 import { fullDayLabel, megabytesLabel, pairLabel } from "@/lib/format.ts";
 import { goBack } from "@/lib/navigation.ts";
-import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
 
 /** Local data controls — everything lives in on-device SQLite, so this is where
  *  you export it or wipe it. Reached from the "ON THIS PHONE" card on Profile. */
@@ -47,7 +47,7 @@ export default function DataScreen(): ReactNode {
   return (
     <YStack
       flex={1}
-      backgroundColor={colors.cream}
+      backgroundColor={colors.screen}
       paddingTop={insets.top + 14}
       paddingBottom={insets.bottom + 16}
       paddingHorizontal={20}
@@ -82,10 +82,10 @@ export default function DataScreen(): ReactNode {
           onPress={exportAll}
           testID="export-data"
         >
-          <Body fontSize={15} fontWeight="800" color={colors.ink}>
+          <Body fontSize={15} fontWeight="800" color={colors.text}>
             Export matches
           </Body>
-          <Body fontSize={12} fontWeight="600" color={inkAlpha(0.45)} marginTop={2}>
+          <Body fontSize={12} fontWeight="600" color={textAlpha(0.45)} marginTop={2}>
             Share every match as text
           </Body>
         </Card>
@@ -103,7 +103,7 @@ export default function DataScreen(): ReactNode {
           <Body fontSize={15} fontWeight="800" color={colors.danger}>
             Delete all matches
           </Body>
-          <Body fontSize={12} fontWeight="600" color={inkAlpha(0.45)} marginTop={2}>
+          <Body fontSize={12} fontWeight="600" color={textAlpha(0.45)} marginTop={2}>
             Wipe every match from this phone
           </Body>
         </Card>

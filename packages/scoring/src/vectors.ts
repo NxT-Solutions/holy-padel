@@ -39,8 +39,8 @@ export interface SerializedSnapshot {
         readonly points: { readonly A: number; readonly B: number };
         readonly serverNumber: 1 | 2 | null;
       };
-  readonly servingTeam: "A" | "B" | undefined;
-  readonly servingSide: "right" | "left" | undefined;
+  readonly servingTeam?: "A" | "B";
+  readonly servingSide?: "right" | "left";
   readonly moment: Record<string, unknown>;
   readonly totalGames: { readonly A: number; readonly B: number };
   readonly totalPoints: { readonly A: number; readonly B: number };
@@ -66,8 +66,10 @@ export function serializeSnapshot(snap: MatchSnapshot): SerializedSnapshot {
     setNumber: snap.setNumber,
     currentSetGames: { A: snap.currentSetGames.A, B: snap.currentSetGames.B },
     currentGame: serializeGame(snap),
-    servingTeam: snap.servingTeam,
-    servingSide: snap.servingSide,
+    // Match JSON.stringify: keys with undefined values are dropped, so the
+    // in-memory shape equals the committed JSON (pending-serve states).
+    ...(snap.servingTeam === undefined ? {} : { servingTeam: snap.servingTeam }),
+    ...(snap.servingSide === undefined ? {} : { servingSide: snap.servingSide }),
     moment: { ...snap.moment },
     totalGames: { A: snap.totalGames.A, B: snap.totalGames.B },
     totalPoints: { A: snap.totalPoints.A, B: snap.totalPoints.B },

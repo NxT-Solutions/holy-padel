@@ -1,5 +1,11 @@
 import type { SqlDriver } from "@holy-padel/db";
-import { getLiveMatch, getOwner, listMatches, loadEvents } from "@holy-padel/db";
+import {
+  getLiveMatch,
+  getOwner,
+  listMatches,
+  loadEvents,
+  saveMatchHeartRate,
+} from "@holy-padel/db";
 import { computeMatch } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
@@ -15,11 +21,29 @@ import { buildWatchState } from "./build-state.ts";
 
 const CLOCK_REFRESH_MS = 30_000;
 
+/** Longest reasonable gap between a match's start and its tracked workout. */
+const WORKOUT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The match a workout summary belongs to: the most recent match that started
+ * within a day of the tracked session (the watch sends no match id).
+ */
+export function matchIdForWorkout(driver: SqlDriver, startedAt: number): string | undefined {
+  let best: { readonly id: string; readonly gap: number } | undefined;
+  for (const match of listMatches(driver)) {
+    const gap = Math.abs(match.startedAt - startedAt);
+    if (gap <= WORKOUT_WINDOW_MS && (best === undefined || gap < best.gap)) {
+      best = { id: match.id, gap };
+    }
+  }
+  return best?.id;
+}
+
 type GatheredInput = Pick<WatchStateInput, "ownerId" | "live" | "last">;
 
 function gatherWatchInput(driver: SqlDriver): GatheredInput {
   const owner = getOwner(driver);
-  const ownerId = owner?.id ?? "nico";
+  const ownerId = owner === undefined ? "nico" : owner.id;
   const live = getLiveMatch(driver);
   if (live !== undefined) {
     const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
@@ -50,10 +74,22 @@ export function useWatchSync(): void {
     () =>
       addIntentListener((intent) => {
         if (intent.path === WORKOUT_PATH) {
-          // A tracked workout summary, not a scoring intent: persist it to the
-          // health platform (fire-and-forget) — the ledger is untouched.
+          // A tracked workout summary, not a scoring intent: keep the
+          // heart-rate series for the match it belongs to (the score-race
+          // overlay reads it back), and mirror the workout into the health
+          // platform (fire-and-forget) — the ledger is untouched.
           const summary = parseWorkoutSummary(intent.body);
           if (summary !== undefined) {
+            mutate((driver) => {
+              const matchId = matchIdForWorkout(driver, summary.startedAt);
+              if (matchId !== undefined) {
+                saveMatchHeartRate(
+                  driver,
+                  matchId,
+                  summary.samples.map((sample) => ({ t: sample.t, bpm: sample.bpm })),
+                );
+              }
+            });
             void logWatchWorkout(JSON.stringify(summary));
           }
           return;

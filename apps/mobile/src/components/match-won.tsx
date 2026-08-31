@@ -87,7 +87,7 @@ export function MatchWon({
             goHome();
           }}
         >
-          <Display fontSize={19} letterSpacing={1.4} color={colors.ink}>
+          <Display fontSize={19} letterSpacing={1.4} color={colors.text}>
             SAVE & CLOSE
           </Display>
         </XStack>

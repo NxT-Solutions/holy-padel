@@ -4,12 +4,11 @@ import {
   deleteMatch,
   getLiveMatch,
   listMatches,
-  loadEvents,
   pauseMatch,
   removeLastEvent,
   resumeMatch,
   scorePoint,
-  updateFirstServe,
+  setPendingGameSet,
 } from "@holy-padel/db";
 import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 
@@ -19,6 +18,8 @@ export const INTENT_PATHS = {
   undo: "/holy-padel/undo",
   startLast: "/holy-padel/start-last",
   pause: "/holy-padel/pause",
+  /** Squash "choice" tie-break: the receiver picked long or short. */
+  setChoice: "/holy-padel/set-choice",
   /** Stop AND save the match in its current state (even unfinished). */
   stop: "/holy-padel/stop",
   /** Discard the match — lose it. */
@@ -45,16 +46,21 @@ function applyScore(driver: SqlDriver, body: string, now: number): void {
   }
   const live = getLiveMatch(driver);
   // scorePoint re-reads fresh state and refuses if paused/finished, so a burst
-  // of fast watch taps can't append past match point.
+  // of fast watch taps can't append past match point. It also resolves
+  // undecided first serves (game 1 and pickleball games 2+) with the tap.
   if (live !== undefined) {
-    if (live.config.firstServePending) {
-      const events = loadEvents(driver, live.id);
-      if (events.length === 0) {
-        updateFirstServe(driver, live.id, body as "A" | "B");
-        return;
-      }
-    }
     scorePoint(driver, live.id, body, now);
+  }
+}
+
+/** Stage the squash long/short decision; the next rally carries it. */
+function applySetChoice(driver: SqlDriver, body: string): void {
+  if (body !== "one" && body !== "two") {
+    return;
+  }
+  const live = getLiveMatch(driver);
+  if (live !== undefined) {
+    setPendingGameSet(driver, live.id, body);
   }
 }
 
@@ -132,6 +138,8 @@ export function applyWatchIntent(driver: SqlDriver, intent: WatchIntent, ctx: In
     applyUndo(driver);
   } else if (intent.path === INTENT_PATHS.pause) {
     applyPauseToggle(driver, ctx.now);
+  } else if (intent.path === INTENT_PATHS.setChoice) {
+    applySetChoice(driver, intent.body);
   } else if (intent.path === INTENT_PATHS.stop || intent.path === INTENT_PATHS.end) {
     applyStop(driver, ctx.now);
   } else if (intent.path === INTENT_PATHS.cancel) {

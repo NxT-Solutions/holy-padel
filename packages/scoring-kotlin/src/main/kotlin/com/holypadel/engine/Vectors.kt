@@ -83,6 +83,7 @@ private fun serializeMoment(moment: Moment): JsonElement =
             }
             is Moment.GoldenPoint -> put("kind", "goldenPoint")
             is Moment.StarPoint -> put("kind", "starPoint")
+            is Moment.SetChoice -> put("kind", "setChoice")
             is Moment.TieBreak -> {
                 put("kind", "tieBreak")
                 put("setNumber", moment.setNumber)
@@ -107,16 +108,16 @@ fun serializeSnapshot(snap: MatchSnapshot): JsonElement =
         put("setNumber", snap.setNumber)
         put("currentSetGames", teamValues(snap.currentSetGames))
         put("currentGame", serializeGame(snap.currentGame))
+        // The TS generator serialises via JSON.stringify, which DROPS keys
+        // whose value is undefined — servingTeam/servingSide must be omitted,
+        // not null, when no serving team is resolved (e.g. pickleball games
+        // 2+ before the first serve is decided).
         val st = snap.servingTeam
-        if (st == null) {
-            put("servingTeam", JsonNull)
-        } else {
+        if (st != null) {
             put("servingTeam", team(st))
         }
         val ss = snap.servingSide
-        if (ss == null) {
-            put("servingSide", JsonNull)
-        } else {
+        if (ss != null) {
             put("servingSide", ss)
         }
 

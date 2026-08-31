@@ -71,8 +71,15 @@ interface Recorder {
 
 function gameKindOf(snapshot: MatchSnapshot): GameKind {
   const game = snapshot.currentGame;
-  if (game === undefined || game.kind === "standard" || game.kind === "squash") {
-    return "standard"; // We'll track squash games as 'standard' for stats purposes (service held/broken, etc.)
+  // Squash and pickleball games have no standard/tie-break distinction —
+  // they are tracked as "standard" so service held/broken stats still work.
+  if (
+    game === undefined ||
+    game.kind === "standard" ||
+    game.kind === "squash" ||
+    game.kind === "pickleball"
+  ) {
+    return "standard";
   }
   if (game.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
     return "superTieBreak";
@@ -179,6 +186,12 @@ export function computeStats(config: MatchConfig, events: readonly PointEvent[])
   };
 
   events.forEach((event, index) => {
+    // Serve events (pickleball game 2+ undecided first serve) score no rally —
+    // skipping them keeps the first rally's snapshot as the game opener, whose
+    // serving team is the one the serve choice resolved to.
+    if (event.kind === "serve") {
+      return;
+    }
     const before = computeMatch(config, events.slice(0, index));
     const after = computeMatch(config, events.slice(0, index + 1));
     const open = openGameIfNeeded(recorder, before, event.at);

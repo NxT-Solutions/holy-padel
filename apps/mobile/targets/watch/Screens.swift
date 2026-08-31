@@ -60,6 +60,7 @@ struct LiveView: View {
     let liveBpm: Int
     let onScore: (String) -> Void
     let onUndo: () -> Void
+    let onSetChoice: (String) -> Void
     let onPause: () -> Void
     let onStop: () -> Void
     let onCancel: () -> Void
@@ -76,39 +77,45 @@ struct LiveView: View {
         TabView(selection: $tab) {
             ControlsTab(state: state, onUndo: onUndo, onPause: onPause, onStop: onStop, onCancel: onCancel)
                 .tag(Tab.controls)
-            ScoreTab(state: state, liveBpm: liveBpm, onScore: onScore)
+            ScoreTab(state: state, liveBpm: liveBpm, onScore: onScore, onSetChoice: onSetChoice)
                 .tag(Tab.score)
         }
         .tabViewStyle(.page)
     }
 }
 
-/// The score face — the only thing on screen is the two tappable team rows.
+/// The score face — the only thing on screen is the two tappable team rows,
+/// or, during a squash "choice" tie-break, the mandatory SHORT/LONG decision.
 private struct ScoreTab: View {
     let state: MatchState
     let liveBpm: Int
     let onScore: (String) -> Void
+    let onSetChoice: (String) -> Void
 
     var body: some View {
         VStack(spacing: 4) {
             header
-            TeamScoreRow(
-                short: state.teamA.short,
-                point: state.pointA,
-                serving: state.teamA.serving,
-                servingSide: state.teamA.servingSide,
-                paused: state.paused,
-                onTap: { onScore("A") }
-            )
-            Rectangle().fill(Court.white.opacity(0.12)).frame(height: 1)
-            TeamScoreRow(
-                short: state.teamB.short,
-                point: state.pointB,
-                serving: state.teamB.serving,
-                servingSide: state.teamB.servingSide,
-                paused: state.paused,
-                onTap: { onScore("B") }
-            )
+            if state.choicePending {
+                ChoiceButtons(onChoose: onSetChoice)
+            } else {
+                TeamScoreRow(
+                    short: state.teamA.short,
+                    point: state.pointA,
+                    serving: state.teamA.serving,
+                    servingSide: state.teamA.servingSide,
+                    paused: state.paused,
+                    onTap: { onScore("A") }
+                )
+                Rectangle().fill(Court.white.opacity(0.12)).frame(height: 1)
+                TeamScoreRow(
+                    short: state.teamB.short,
+                    point: state.pointB,
+                    serving: state.teamB.serving,
+                    servingSide: state.teamB.servingSide,
+                    paused: state.paused,
+                    onTap: { onScore("B") }
+                )
+            }
         }
         .padding(.horizontal, 14)
         .padding(.top, 2)
@@ -277,6 +284,43 @@ private struct TeamScoreRow: View {
         .buttonStyle(.plain)
         .disabled(paused)
         .opacity(paused ? 0.35 : 1)
+    }
+}
+
+/// The squash "choice" tie-break decision — short (play to the target) or
+/// long (one extra point). Mandatory: scoring is refused until a choice is
+/// staged, so these buttons replace the score rows while pending.
+private struct ChoiceButtons: View {
+    let onChoose: (String) -> Void
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("SET 1 OR 2?")
+                .font(.system(size: 15, weight: .heavy))
+                .foregroundStyle(Court.lime)
+            Button(action: { onChoose("one") }) {
+                choiceLabel("SHORT · SET 1", "next point wins")
+            }
+            .buttonStyle(.plain)
+            Button(action: { onChoose("two") }) {
+                choiceLabel("LONG · SET 2", "two more points")
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func choiceLabel(_ title: String, _ detail: String) -> some View {
+        VStack(spacing: 1) {
+            Text(title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Court.ink)
+            Text(detail)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Court.ink.opacity(0.55))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Court.lime))
     }
 }
 

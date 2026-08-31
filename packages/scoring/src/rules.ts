@@ -126,7 +126,14 @@ export function thirdSetWithoutTieBreak(mode: ThirdSetMode): boolean {
 
 /** Sets a team must win to take the match. */
 export function setsToWin(bestOf: 1 | 3 | 5): number {
-  if (bestOf === 1) return 1;
-  if (bestOf === 3) return WIN_BY_TWO;
-  return 3;
+  const BestOfOne = 1;
+  const BestOfThree = 3;
+  const SetsToWinBestOfFive = 3;
+  if (bestOf === BestOfOne) {
+    return 1;
+  }
+  if (bestOf === BestOfThree) {
+    return WIN_BY_TWO;
+  }
+  return SetsToWinBestOfFive;
 }

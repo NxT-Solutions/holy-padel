@@ -11,6 +11,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Text, View } from "react-native";
+import { colors } from "@/theme/colors.ts";
 import { openAppDatabase } from "./database.ts";
 
 interface DbStore {
@@ -30,10 +31,14 @@ export function DbProvider({ children }: { readonly children: ReactNode }): Reac
     let cancelled = false;
     void openAppDatabase()
       .then((opened) => {
-        if (!cancelled) setDriver(opened);
+        if (!cancelled) {
+          setDriver(opened);
+        }
       })
       .catch((e) => {
-        if (!cancelled) setError(e);
+        if (!cancelled) {
+          setError(e);
+        }
       });
     return (): void => {
       cancelled = true;
@@ -59,7 +64,9 @@ export function DbProvider({ children }: { readonly children: ReactNode }): Reac
             mutate: (write: (target: SqlDriver) => void) => {
               write(driver);
               versionRef.current += 1;
-              for (const listener of listenersRef.current) listener();
+              for (const listener of listenersRef.current) {
+                listener();
+              }
             },
           },
     [driver],
@@ -68,9 +75,16 @@ export function DbProvider({ children }: { readonly children: ReactNode }): Reac
   if (error !== undefined) {
     return (
       <View
-        style={{ flex: 1, backgroundColor: "red", justifyContent: "center", alignItems: "center" }}
+        style={{
+          flex: 1,
+          backgroundColor: colors.ink,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
       >
-        <Text style={{ color: "white" }}>DB Error: {error.message}</Text>
+        <Text style={{ color: colors.white }}>
+          DB Error: {error instanceof Error ? error.message : JSON.stringify(error)}
+        </Text>
       </View>
     );
   }
@@ -83,7 +97,9 @@ export function DbProvider({ children }: { readonly children: ReactNode }): Reac
 
 export function useDbStore(): DbStore {
   const store = useContext(DbContext);
-  if (store === undefined) throw new Error("useDb must be used inside DbProvider");
+  if (store === undefined) {
+    throw new Error("useDb must be used inside DbProvider");
+  }
   return store;
 }
 

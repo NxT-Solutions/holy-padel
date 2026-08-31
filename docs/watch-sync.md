@@ -23,12 +23,15 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "clock": "0:47",                // elapsed, mm or h:mm — empty when idle
   "court": "COURT 4",             // may be absent
   "setLabel": "SET 2",            // current set, e.g. "SET 2" / "SUPER TB"
-  "teamA": { "short": "N&J", "serving": true },
+  "teamA": { "short": "N&J", "serving": true, "servingSide": "right" },
   "teamB": { "short": "M&L", "serving": false },
   "pointA": "40",                 // display call: 0/15/30/40/AD or tie-break number
   "pointB": "30",
   "games": "6-4 · 4-3",           // completed sets + current, the live score line
   "status": "GAME PT",            // watchStatusLabel(), may be empty
+  "choicePending": true,          // squash "choice" tie-break at target-1 all:
+                                  // the watch shows its SHORT/LONG buttons while
+                                  // set; absent otherwise
   "startedAt": 1783200000000,     // epoch ms the match started — the watch's
                                   // workout-session start time and cross-device
                                   // dedup key; absent when idle
@@ -51,10 +54,11 @@ pushes fresh state back.
 
 | Path                     | Body        | Effect on the phone                          |
 | ------------------------ | ----------- | -------------------------------------------- |
-| `/holy-padel/score`      | `"A"`\|`"B"`| Append a point event for that team           |
+| `/holy-padel/score`      | `"A"`\|`"B"`| Append a point event for that team. While a first serve is undecided (game 1, or pickleball games 2+) the tap instead *takes* the serve — no rally is scored |
 | `/holy-padel/undo`       | `""`        | Remove the last point event                   |
 | `/holy-padel/pause`      | `""`        | Toggle pause ↔ resume on the live match       |
 | `/holy-padel/start-last` | `""`        | From idle: start a rematch of the last lineup |
+| `/holy-padel/set-choice` | `"one"`\|`"two"` | Squash "choice" tie-break: stage the receiver's long/short decision; the next scored rally carries it |
 | `/holy-padel/stop`       | `""`        | **Stop AND save** the match in its current state |
 | `/holy-padel/cancel`     | `""`        | **Discard** the live match — nothing is saved  |
 | `/holy-padel/end`        | `""`        | Legacy alias for `stop` (older builds)         |
@@ -166,6 +170,14 @@ physically paired devices.
   `live` → the scoreboard (square + round variants), `won` → the celebration.
 - Serving dots, status pill and point calls come straight from the fields above —
   the watch does no scoring math.
+- **Undecided serves** (game 1 of any match, and pickleball games 2+): the phone
+  sends no serving team (`serving` false on both); the next score intent from
+  either surface *takes* the serve rather than scoring a rally.
+- **Squash "choice" tie-break** (HIHO at target-1 all): `status` reads
+  "SET 1 OR 2" and `choicePending` is set; the phone shows a mandatory SHORT/LONG
+  sheet and the watch shows the same two buttons, firing `/holy-padel/set-choice`.
+  Scoring is refused until a choice is staged. The decision rides on the next
+  rally in the event log, so undo/resume re-ask naturally.
 - Because the payload is tiny and latest-wins, a missed update self-heals on the
   next point; there is no event replay on the watch.
 

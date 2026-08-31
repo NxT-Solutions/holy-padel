@@ -1,13 +1,14 @@
-import { deleteMatch, getMatch, loadEvents } from "@holy-padel/db";
+import { deleteMatch, getMatch, loadEvents, loadMatchHeartRate } from "@holy-padel/db";
 import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Alert, Platform, ScrollView, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ChevronLeft } from "@/components/icons.tsx";
+import { ScoreRaceCard } from "@/components/score-race-card.tsx";
 import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { isHealthLogAvailable, logMatchWorkout } from "@/health/health-log.ts";
@@ -20,8 +21,9 @@ import {
   teamNames,
   timeLabel,
 } from "@/lib/format.ts";
+import { computeGameSeries } from "@/lib/game-series.ts";
 import { goBack } from "@/lib/navigation.ts";
-import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
 
 const DEUCE_LABELS: Record<string, string> = {
   advantage: "ADVANTAGE",
@@ -52,6 +54,7 @@ export default function MatchOverviewScreen(): ReactNode {
 
   const match = useDbQuery((driver) => getMatch(driver, id));
   const events = useDbQuery((driver) => loadEvents(driver, id));
+  const heartRate = useDbQuery((driver) => loadMatchHeartRate(driver, id));
 
   if (match === undefined) {
     // Deleted or unknown match (stale link, back after delete): recover home.
@@ -64,6 +67,7 @@ export default function MatchOverviewScreen(): ReactNode {
 
   const snapshot = computeMatch(match.config, events);
   const stats = computeStats(match.config, events);
+  const series = useMemo(() => computeGameSeries(match.config, events), [match.config, events]);
   const names = teamNames(match);
   const winner: TeamId = match.winner ?? snapshot.winner ?? "A";
   const loser: TeamId = winner === "A" ? "B" : "A";
@@ -122,14 +126,14 @@ export default function MatchOverviewScreen(): ReactNode {
         paddingBottom: insets.bottom + 24,
         gap: 13,
       }}
-      style={{ backgroundColor: colors.cream }}
+      style={{ backgroundColor: colors.screen }}
     >
       <XStack alignItems="center" justifyContent="space-between">
         <View
           width={38}
           height={38}
           borderRadius={19}
-          backgroundColor={colors.white}
+          backgroundColor={colors.card}
           alignItems="center"
           justifyContent="center"
           boxShadow="0 2px 8px rgba(14, 17, 22, 0.08)"
@@ -140,9 +144,9 @@ export default function MatchOverviewScreen(): ReactNode {
             goBack();
           }}
         >
-          <ChevronLeft size={15} color={colors.ink} />
+          <ChevronLeft size={15} color={colors.text} />
         </View>
-        <Body fontSize={11} fontWeight="800" letterSpacing={1.6} color={inkAlpha(0.45)}>
+        <Body fontSize={11} fontWeight="800" letterSpacing={1.6} color={textAlpha(0.45)}>
           {[fullDayLabel(match.startedAt), timeLabel(match.startedAt), match.court?.toUpperCase()]
             .filter((part): part is string => part !== undefined)
             .join(" · ")}
@@ -198,7 +202,7 @@ export default function MatchOverviewScreen(): ReactNode {
               <Overline letterSpacing={1.4}>
                 {`SET ${String(set.setNumber)} · ${String(Math.round(set.durationMs / 60_000))} MIN`}
               </Overline>
-              <Body fontSize={13} fontWeight="700" color={inkAlpha(0.55)}>
+              <Body fontSize={13} fontWeight="700" color={textAlpha(0.55)}>
                 {setNote(set)}
               </Body>
             </YStack>
@@ -212,7 +216,7 @@ export default function MatchOverviewScreen(): ReactNode {
                 paddingVertical={4}
                 paddingHorizontal={8}
               >
-                <Display fontSize={11} letterSpacing={0.5} color={colors.ink}>
+                <Display fontSize={11} letterSpacing={0.5} color={colors.text}>
                   {initials[set.summary.winner]}
                 </Display>
               </Pill>
@@ -221,17 +225,29 @@ export default function MatchOverviewScreen(): ReactNode {
         ))}
       </YStack>
 
+      <ScoreRaceCard series={series} {...(heartRate === undefined ? {} : { heartRate })} />
+
       <Card borderRadius={20} paddingVertical={16} paddingHorizontal={17} gap={13}>
         <Overline>MATCH TOTALS</Overline>
         <YStack gap={6}>
           <XStack alignItems="center" justifyContent="space-between">
-            <Display fontSize={16}>{String(pointsWinner)}</Display>
-            <Body fontSize={10} fontWeight="800" letterSpacing={1.3} color={inkAlpha(0.4)}>
+            <YStack alignItems="center" gap={1} maxWidth="32%">
+              <Display fontSize={16}>{String(pointsWinner)}</Display>
+              <Body fontSize={9} fontWeight="800" color={colors.limeOnCard} textAlign="center">
+                {names[winner].toUpperCase()}
+              </Body>
+            </YStack>
+            <Body fontSize={10} fontWeight="800" letterSpacing={1.3} color={textAlpha(0.4)}>
               POINTS WON
             </Body>
-            <Display fontSize={16} color={inkAlpha(0.45)}>
-              {String(pointsLoser)}
-            </Display>
+            <YStack alignItems="center" gap={1} maxWidth="32%">
+              <Display fontSize={16} color={textAlpha(0.45)}>
+                {String(pointsLoser)}
+              </Display>
+              <Body fontSize={9} fontWeight="800" color={textAlpha(0.4)} textAlign="center">
+                {names[loser].toUpperCase()}
+              </Body>
+            </YStack>
           </XStack>
           <XStack height={8} borderRadius={999} overflow="hidden" gap={2}>
             <View flex={winnerShare} backgroundColor={colors.lime} />
@@ -266,28 +282,28 @@ export default function MatchOverviewScreen(): ReactNode {
               fontSize={11}
               fontWeight="800"
               letterSpacing={1.3}
-              color={workoutLogged ? colors.limeInk : inkAlpha(0.45)}
+              color={workoutLogged ? colors.limeOnCard : textAlpha(0.45)}
               pressStyle={{ opacity: 0.6 }}
               role="button"
               onPress={workoutLogged ? undefined : logWorkout}
             >
               {workoutLogged ? "WORKOUT LOGGED ✓" : "LOG WORKOUT"}
             </Body>
-            <View width={3} height={3} borderRadius={2} backgroundColor={inkAlpha(0.25)} />
+            <View width={3} height={3} borderRadius={2} backgroundColor={textAlpha(0.25)} />
           </>
         ) : null}
         <Body
           fontSize={11}
           fontWeight="800"
           letterSpacing={1.3}
-          color={inkAlpha(0.45)}
+          color={textAlpha(0.45)}
           pressStyle={{ opacity: 0.6 }}
           role="button"
           onPress={exportMatch}
         >
           EXPORT
         </Body>
-        <View width={3} height={3} borderRadius={2} backgroundColor={inkAlpha(0.25)} />
+        <View width={3} height={3} borderRadius={2} backgroundColor={textAlpha(0.25)} />
         <Body
           fontSize={11}
           fontWeight="800"

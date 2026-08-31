@@ -38,7 +38,7 @@ import {
 } from "@/lib/format.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
 
 function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
   const game = snapshot.currentGame;
@@ -113,10 +113,10 @@ function LiveCard({
           router.push(`/live/${match.id}`);
         }}
       >
-        <Display fontSize={16} letterSpacing={1.4} color={colors.ink}>
+        <Display fontSize={16} letterSpacing={1.4} color={colors.text}>
           RESUME SCORING
         </Display>
-        <ArrowRight size={15} color={colors.ink} />
+        <ArrowRight size={15} color={colors.text} />
       </XStack>
     </View>
   );
@@ -151,7 +151,7 @@ function RecentRow({
         {`${matchMetaLabel(match, now).split(" · ")[0] ?? ""} · vs ${pairLabel(opponentsOf(match, ownerTeam))}`}
       </Body>
       <XStack alignItems="center" gap={10}>
-        <Display fontSize={14} color={inkAlpha(0.6)} letterSpacing={0.5}>
+        <Display fontSize={14} color={textAlpha(0.6)} letterSpacing={0.5}>
           {match.scoreLine ?? ""}
         </Display>
         <ResultBadge won={won} size={24} />
@@ -210,6 +210,7 @@ export default function HomeScreen(): ReactNode {
 
   return (
     <ScrollView
+      style={{ backgroundColor: colors.screen }}
       contentContainerStyle={{
         paddingTop: insets.top + 12,
         paddingHorizontal: 16,
@@ -225,13 +226,13 @@ export default function HomeScreen(): ReactNode {
         </YStack>
         <Pill
           borderWidth={1}
-          borderColor={inkAlpha(0.14)}
+          borderColor={textAlpha(0.14)}
           paddingVertical={7}
           paddingHorizontal={12}
           gap={6}
         >
           <LiveDot size={6} />
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={inkAlpha(0.55)}>
+          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.55)}>
             WATCH PAIRED
           </Body>
         </Pill>
@@ -245,7 +246,7 @@ export default function HomeScreen(): ReactNode {
         <XStack
           flex={1.5}
           height={58}
-          backgroundColor={colors.white}
+          backgroundColor={colors.card}
           borderWidth={2}
           borderColor={colors.ink}
           borderRadius={16}
@@ -259,7 +260,7 @@ export default function HomeScreen(): ReactNode {
             router.push("/new-match");
           }}
         >
-          <Plus size={14} color={colors.ink} />
+          <Plus size={14} color={colors.text} />
           <Display fontSize={16} letterSpacing={1.2}>
             NEW MATCH
           </Display>
@@ -268,7 +269,7 @@ export default function HomeScreen(): ReactNode {
           flex={1}
           height={58}
           borderWidth={1}
-          borderColor={inkAlpha(0.16)}
+          borderColor={textAlpha(0.16)}
           borderRadius={16}
           alignItems="center"
           justifyContent="center"
@@ -277,10 +278,10 @@ export default function HomeScreen(): ReactNode {
           role="button"
           onPress={startRematch}
         >
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={inkAlpha(0.5)}>
+          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.5)}>
             REMATCH
           </Body>
-          <Body fontSize={10.5} fontWeight="700" color={inkAlpha(0.4)}>
+          <Body fontSize={10.5} fontWeight="700" color={textAlpha(0.4)}>
             {lastFinished === undefined
               ? "no matches yet"
               : `vs ${pairLabel(opponentsOf(lastFinished, ownerTeamOf(lastFinished, ownerId)))}`}

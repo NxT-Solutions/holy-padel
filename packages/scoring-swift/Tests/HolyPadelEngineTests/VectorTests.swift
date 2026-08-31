@@ -143,6 +143,8 @@ private func serialize(_ moment: Moment) -> SerializedMoment {
         return SerializedMoment(kind: "goldenPoint", team: nil, winner: nil, setNumber: nil)
     case .starPoint:
         return SerializedMoment(kind: "starPoint", team: nil, winner: nil, setNumber: nil)
+    case .setChoice:
+        return SerializedMoment(kind: "setChoice", team: nil, winner: nil, setNumber: nil)
     case let .tieBreak(setNumber):
         return SerializedMoment(kind: "tieBreak", team: nil, winner: nil, setNumber: setNumber)
     case .superTieBreak:

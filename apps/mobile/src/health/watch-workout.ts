@@ -31,9 +31,8 @@ function parseSamples(value: unknown): { t: number; bpm: number }[] {
     if (typeof sample !== "object" || sample === null) {
       return [];
     }
-    const record = sample as Record<string, unknown>;
-    const t = record.t;
-    const bpm = record.bpm;
+    const record = sample as { readonly t?: unknown; readonly bpm?: unknown };
+    const { t, bpm } = record;
     return isFiniteNumber(t) && isFiniteNumber(bpm) && bpm > 0 ? [{ t, bpm }] : [];
   });
 }
@@ -49,9 +48,15 @@ export function parseWorkoutSummary(body: string): WatchWorkoutSummary | undefin
   if (typeof raw !== "object" || raw === null) {
     return;
   }
-  const record = raw as Record<string, unknown>;
-  const startedAt = record.startedAt;
-  const endedAt = record.endedAt;
+  const record = raw as {
+    readonly startedAt?: unknown;
+    readonly endedAt?: unknown;
+    readonly kcal?: unknown;
+    readonly avgBpm?: unknown;
+    readonly maxBpm?: unknown;
+    readonly samples?: unknown;
+  };
+  const { startedAt, endedAt } = record;
   if (!(isFiniteNumber(startedAt) && isFiniteNumber(endedAt)) || endedAt <= startedAt) {
     return;
   }

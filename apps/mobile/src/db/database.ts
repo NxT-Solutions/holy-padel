@@ -2,6 +2,7 @@ import type { SqlDriver, SqlRow, SqlValue } from "@holy-padel/db";
 import { migrate } from "@holy-padel/db";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { openDatabaseAsync } from "expo-sqlite";
+import { seedIfEmpty } from "./seed.ts";
 
 /** Adapt expo-sqlite's synchronous API to the db package's driver. */
 export function expoDriver(database: SQLiteDatabase): SqlDriver {
@@ -23,5 +24,6 @@ export async function openAppDatabase(): Promise<SqlDriver> {
   const database = await openDatabaseAsync("holy-padel.db");
   const driver = expoDriver(database);
   migrate(driver);
+  seedIfEmpty(driver);
   return driver;
 }

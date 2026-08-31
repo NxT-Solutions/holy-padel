@@ -19,6 +19,10 @@ private data class FoldState(
     val serverConsecutivePoints: Int,
     val pbServerNumber: Int?,
     val isFirstTerm: Boolean?,
+    /** Pickleball games 2+: the first serve of the current game is undecided. */
+    val pbServePending: Boolean?,
+    /** Squash "choice" tie-break: the current game's effective target once the receiver has decided. */
+    val gameTarget: Int?,
     val setNumber: Int,
     val finished: Boolean,
     val winner: TeamId?,
@@ -45,6 +49,8 @@ private fun initialState(config: MatchConfig): FoldState =
         serverConsecutivePoints = 0,
         pbServerNumber = if (config is MatchConfig.Pickleball && config.pbType == PbType.doubles) 2 else null,
         isFirstTerm = if (config is MatchConfig.Pickleball) true else null,
+        pbServePending = null,
+        gameTarget = null,
         setNumber = 1,
         finished = false,
         winner = null,
@@ -80,6 +86,10 @@ private fun startNextSet(state: FoldState, config: MatchConfig): FoldState {
         tieBreakStarter = state.gameServer,
         pbServerNumber = if (config is MatchConfig.Pickleball && config.pbType == PbType.doubles) 2 else null,
         isFirstTerm = if (config is MatchConfig.Pickleball) true else null,
+        // Pickleball: the first serve of each new game is undecided (the previous
+        // game's winner does not automatically serve first).
+        pbServePending = if (config is MatchConfig.Pickleball) true else null,
+        gameTarget = null,
     )
 }
 
@@ -148,22 +158,48 @@ private fun applyStandardPoint(state: FoldState, config: MatchConfig, winner: Te
     return afterGame
 }
 
-private fun applySquashPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+private fun applySquashPoint(
+    state: FoldState,
+    config: MatchConfig,
+    winner: TeamId,
+    gameSet: String?,
+): FoldState {
     val squashConfig = config as MatchConfig.Squash
     val isPar = squashConfig.squashMode == SquashMode.par
+    val baseTarget = squashConfig.squashTarget
+    val choiceMode = squashConfig.squashTiebreak == SquashTiebreak.choice
+    val atChoicePoint = state.points.a == baseTarget - 1 && state.points.b == baseTarget - 1
+    // The receiver's decision rides on the rally played at the choice point:
+    // "one" keeps the game at its target, "two" extends it by one point.
+    val gameTarget =
+        if (choiceMode && state.gameTarget == null && atChoicePoint) {
+            if (gameSet == "two") baseTarget + 1 else baseTarget
+        } else {
+            state.gameTarget
+        }
+    val target = if (choiceMode) (gameTarget ?: baseTarget) else baseTarget
+    val tiebreak =
+        if (squashConfig.squashTiebreak == SquashTiebreak.choice) SquashTiebreak.setOne
+        else squashConfig.squashTiebreak
     val points = if (isPar || winner == state.gameServer) bump(state.points, winner) else state.points
     val loser = otherTeam(winner)
-    
+
     val serverConsecutivePoints = if (winner == state.gameServer) state.serverConsecutivePoints + 1 else 0
-    
-    if (!squashGameWon(squashConfig.squashTiebreak, squashConfig.squashTarget, points[winner], points[loser])) {
-        return state.copy(points = points, gameServer = winner, serverConsecutivePoints = serverConsecutivePoints)
+
+    if (!squashGameWon(tiebreak, target, points[winner], points[loser])) {
+        return state.copy(
+            points = points,
+            gameServer = winner,
+            serverConsecutivePoints = serverConsecutivePoints,
+            gameTarget = gameTarget,
+        )
     }
     val summary = SetSummary(games = points, tieBreak = null, winner = winner, kind = SetKind.set)
     val afterGame = state.copy(
         points = ZERO,
         gameServer = winner,
         serverConsecutivePoints = 0,
+        gameTarget = null,
         totalGames = bump(state.totalGames, winner)
     )
     return completeSet(afterGame, config, summary)
@@ -203,7 +239,19 @@ private fun applyPickleballPoint(state: FoldState, config: MatchConfig, winner: 
     )
 }
 
-private fun applyPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+/**
+ * A `serve` event: a team takes the undecided first serve of a pickleball
+ * game 2+. No rally is scored; stray events (wrong sport, no pending serve)
+ * are ignored so a stale replay can never corrupt the fold.
+ */
+private fun applyServeEvent(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+    if (config !is MatchConfig.Pickleball || state.pbServePending != true) {
+        return state
+    }
+    return state.copy(gameServer = winner, pbServePending = false)
+}
+
+private fun applyPoint(state: FoldState, config: MatchConfig, winner: TeamId, gameSet: String?): FoldState {
     if (state.finished) {
         throw IllegalStateException("cannot score a point: the match is already finished")
     }
@@ -212,7 +260,7 @@ private fun applyPoint(state: FoldState, config: MatchConfig, winner: TeamId): F
         return applyPickleballPoint(counted, config, winner)
     }
     if (config is MatchConfig.Squash) {
-        return applySquashPoint(counted, config, winner)
+        return applySquashPoint(counted, config, winner, gameSet)
     }
     if (counted.tieBreak != null) {
         return applyTieBreakPoint(counted, config, winner)
@@ -244,6 +292,15 @@ private fun leaderOf(points: TeamValues<Int>): TeamId? {
 private fun squashMoment(state: FoldState, config: MatchConfig): Moment {
     val squashConfig = config as MatchConfig.Squash
     val points = state.points
+    // "Choice" tie-break: at target-1 all the receiver picks long or short.
+    if (
+        squashConfig.squashTiebreak == SquashTiebreak.choice &&
+        state.gameTarget == null &&
+        points.a == squashConfig.squashTarget - 1 &&
+        points.b == squashConfig.squashTarget - 1
+    ) {
+        return Moment.SetChoice
+    }
     val leader = leaderOf(points) ?: return Moment.Normal
     val loser = otherTeam(leader)
     val potentialPoints = bump(points, leader)
@@ -351,6 +408,10 @@ private fun servingTeamOf(state: FoldState, config: MatchConfig): TeamId? {
     if (config.firstServePending == true && state.totalPoints.a == 0 && state.totalPoints.b == 0) {
         return null
     }
+    // Pickleball games 2+: the first serve of the new game is undecided.
+    if (state.pbServePending == true) {
+        return null
+    }
     if (state.tieBreak != null) {
         return tieBreakServer(state.tieBreakStarter, state.points.a + state.points.b)
     }
@@ -361,7 +422,10 @@ private fun servingSideOf(state: FoldState, config: MatchConfig): String? {
     if (config.firstServePending == true && state.totalPoints.a == 0 && state.totalPoints.b == 0) {
         return null
     }
-    
+    if (state.pbServePending == true) {
+        return null
+    }
+
     if (config is MatchConfig.Pickleball) {
         val score = state.points[state.gameServer]
         if (config.pbType == PbType.singles) {
@@ -375,7 +439,18 @@ private fun servingSideOf(state: FoldState, config: MatchConfig): String? {
     }
     
     if (config is MatchConfig.Squash) {
-        return if (state.serverConsecutivePoints % 2 == 0) "right" else "left"
+        // Squash serving: the chosen mode picks each hand's FIRST box — a fixed
+        // right/left, or the team's saved preference (default right) — then the
+        // boxes alternate every point while the team holds serve.
+        val startBox = when (config.squashServeBoxes) {
+            SquashServeBoxes.left -> "left"
+            SquashServeBoxes.player ->
+                if (state.gameServer == TeamId.A) (config.squashServeBoxA ?: "right")
+                else (config.squashServeBoxB ?: "right")
+            else -> "right"
+        }
+        val alternated = state.serverConsecutivePoints % 2 == 1
+        return if (alternated) (if (startBox == "right") "left" else "right") else startBox
     }
     return if ((state.points.a + state.points.b) % 2 == 0) "right" else "left"
 }
@@ -409,7 +484,11 @@ fun computeMatch(config: MatchConfig, events: List<PointEvent>): MatchSnapshot {
         if (state.finished) {
             break
         }
-        state = applyPoint(state, config, event.winner)
+        state = if (event.kind == EventKind.serve) {
+            applyServeEvent(state, config, event.winner)
+        } else {
+            applyPoint(state, config, event.winner, event.gameSet)
+        }
     }
     return toSnapshot(state, config)
 }

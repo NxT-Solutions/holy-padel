@@ -19,9 +19,10 @@ import {
   pairLabel,
 } from "@/lib/format.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, inkAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha } from "@/theme/colors.ts";
 
 type Filter = "all" | "won" | "lost" | "rivals";
+type SportFilter = "all" | "padel" | "squash" | "pickleball";
 
 /** A pair's stable identity: the two player ids, order-independent. */
 function opponentKey(match: MatchSummary, ownerTeam: "A" | "B"): string {
@@ -113,7 +114,7 @@ function FilterChip({
       paddingHorizontal={15}
       backgroundColor={active ? colors.ink : "transparent"}
       borderWidth={active ? 0 : 1}
-      borderColor={inkAlpha(0.16)}
+      borderColor={textAlpha(0.16)}
       pressStyle={{ opacity: 0.8 }}
       role="button"
       onPress={onPress}
@@ -122,7 +123,7 @@ function FilterChip({
         fontSize={11}
         fontWeight="800"
         letterSpacing={1}
-        color={active ? colors.white : inkAlpha(0.5)}
+        color={active ? colors.white : textAlpha(0.5)}
       >
         {label}
       </Body>
@@ -134,6 +135,7 @@ export default function MatchesScreen(): ReactNode {
   const insets = useSafeAreaInsets();
   const now = useNow();
   const [filter, setFilter] = useState<Filter>("all");
+  const [sport, setSport] = useState<SportFilter>("all");
   const owner = useDbQuery(getOwner);
   const ownerId = owner?.id ?? "nico";
 
@@ -162,12 +164,15 @@ export default function MatchesScreen(): ReactNode {
     return top === undefined ? undefined : { key: top[0], label: top[1].label };
   });
 
-  const visible = rows.filter(({ match }) =>
-    FILTER_PREDICATES[filter](match, ownerTeamOf(match, ownerId), rivals?.key),
-  );
+  const visible = rows
+    .filter(({ match }) =>
+      FILTER_PREDICATES[filter](match, ownerTeamOf(match, ownerId), rivals?.key),
+    )
+    .filter(({ match }) => sport === "all" || match.config.sport === sport);
 
   return (
     <ScrollView
+      style={{ backgroundColor: colors.screen }}
       contentContainerStyle={{
         paddingTop: insets.top + 12,
         paddingHorizontal: 16,
@@ -178,7 +183,7 @@ export default function MatchesScreen(): ReactNode {
       <XStack alignItems="flex-end" justifyContent="space-between">
         <YStack>
           <Display fontSize={34}>MATCHES</Display>
-          <Body fontSize={12.5} fontWeight="600" color={inkAlpha(0.45)} marginTop={2}>
+          <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.45)} marginTop={2}>
             {`${String(total)} stored locally`}
           </Body>
         </YStack>
@@ -200,38 +205,61 @@ export default function MatchesScreen(): ReactNode {
         </Pill>
       </XStack>
 
-      <XStack gap={7}>
-        <FilterChip
-          label="ALL"
-          active={filter === "all"}
-          onPress={() => {
-            setFilter("all");
-          }}
-        />
-        <FilterChip
-          label="WON"
-          active={filter === "won"}
-          onPress={() => {
-            setFilter("won");
-          }}
-        />
-        <FilterChip
-          label="LOST"
-          active={filter === "lost"}
-          onPress={() => {
-            setFilter("lost");
-          }}
-        />
-        {rivals === undefined ? null : (
+      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+        <XStack gap={7}>
           <FilterChip
-            label={`VS ${rivals.label}`}
-            active={filter === "rivals"}
+            label="ALL"
+            active={filter === "all"}
             onPress={() => {
-              setFilter("rivals");
+              setFilter("all");
             }}
           />
-        )}
-      </XStack>
+          <FilterChip
+            label="WON"
+            active={filter === "won"}
+            onPress={() => {
+              setFilter("won");
+            }}
+          />
+          <FilterChip
+            label="LOST"
+            active={filter === "lost"}
+            onPress={() => {
+              setFilter("lost");
+            }}
+          />
+          {rivals === undefined ? null : (
+            <FilterChip
+              label={`VS ${rivals.label}`}
+              active={filter === "rivals"}
+              onPress={() => {
+                setFilter("rivals");
+              }}
+            />
+          )}
+          <FilterChip
+            label="PADEL"
+            active={sport === "padel"}
+            onPress={() => {
+              setSport(sport === "padel" ? "all" : "padel");
+            }}
+          />
+          <FilterChip
+            label="SQUASH"
+            active={sport === "squash"}
+            onPress={() => {
+              setSport(sport === "squash" ? "all" : "squash");
+            }}
+          />
+          <FilterChip
+            label="PICKLE"
+            active={sport === "pickleball"}
+            onPress={() => {
+              setSport(sport === "pickleball" ? "all" : "pickleball");
+            }}
+          />
+        </XStack>
+      </ScrollView>
 
       <YStack gap={9}>
         {visible.map(({ match, scoreLine }) => (

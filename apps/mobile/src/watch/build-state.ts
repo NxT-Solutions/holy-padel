@@ -27,6 +27,8 @@ const SCHEMA_VERSION = 1;
 export interface WatchTeam {
   readonly short: string;
   readonly serving: boolean;
+  /** Box the server is serving from — additive since payload v1; watches may ignore it. */
+  readonly servingSide?: "right" | "left" | null | undefined;
 }
 
 export interface WatchWon {
@@ -54,6 +56,11 @@ export interface WatchState {
   readonly status: string;
   /** True while a live match is paused — the watches pause the workout too. */
   readonly paused?: boolean;
+  /**
+   * Squash "choice" tie-break: the game is at target-1 all and the receiver
+   * must pick long or short. Watches show their choice buttons while set.
+   */
+  readonly choicePending?: boolean | undefined;
   /**
    * Epoch ms the live/won match started — the watches use it as the workout
    * session's start time and as the cross-device dedup key. Absent when idle.
@@ -91,8 +98,21 @@ function courtField(match: MatchSummary): { court?: string } {
   return match.court === undefined ? {} : { court: match.court };
 }
 
+/** The watch status line while a long/short decision is staged for the next rally. */
+function stagedChoiceStatus(staged: MatchSummary["pendingGameSet"]): string | undefined {
+  if (staged === "one") {
+    return "SHORT · SET 1";
+  }
+  return staged === "two" ? "LONG · SET 2" : undefined;
+}
+
 function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): WatchState {
   const shorts = teamInitials(match);
+  // Squash "choice" tie-break: while no decision is staged the watch shows its
+  // SHORT/LONG buttons; once staged (from either surface) the buttons clear —
+  // the score face returns with the staged call as the status line.
+  const choicePending = snapshot.moment.kind === "setChoice" && match.pendingGameSet === undefined;
+  const stagedStatus = stagedChoiceStatus(match.pendingGameSet);
   return {
     v: SCHEMA_VERSION,
     phase: "live",
@@ -112,8 +132,9 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     pointA: pointDisplay(snapshot, "A"),
     pointB: pointDisplay(snapshot, "B"),
     games: liveScoreLine(snapshot),
-    status: watchStatusLabel(snapshot.moment, shorts) ?? "",
+    status: stagedStatus ?? watchStatusLabel(snapshot.moment, shorts) ?? "",
     paused: match.pausedAt !== undefined,
+    choicePending: choicePending || undefined,
     startedAt: match.startedAt,
   };
 }

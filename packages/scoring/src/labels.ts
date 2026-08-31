@@ -24,6 +24,8 @@ export function statusLabel(moment: Moment, teamNames: TeamValues<string>): stri
       return "GOLDEN POINT";
     case "starPoint":
       return "STAR POINT";
+    case "setChoice":
+      return "SET 1 OR 2?";
     case "tieBreak":
       return `TIE-BREAK — SET ${String(moment.setNumber)}`;
     case "superTieBreak":
@@ -62,6 +64,8 @@ export function watchStatusLabel(
       return "GOLDEN PT";
     case "starPoint":
       return "STAR PT";
+    case "setChoice":
+      return "SET 1 OR 2";
     case "tieBreak":
       return "TIE-BREAK";
     case "superTieBreak":

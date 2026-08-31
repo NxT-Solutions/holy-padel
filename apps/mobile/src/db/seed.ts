@@ -1,4 +1,4 @@
-import type { SqlDriver, TeamPlayers } from "@holy-padel/db";
+import type { CourtSide, SqlDriver, TeamPlayers } from "@holy-padel/db";
 import {
   appendEvents,
   countMatches,
@@ -100,14 +100,19 @@ const DEFAULT_CONFIG: MatchConfig = {
   firstServe: "A",
 };
 
-const ROSTER: readonly { id: string; name: string }[] = [
-  { id: "javi", name: "Javi" },
-  { id: "marta", name: "Marta" },
-  { id: "leo", name: "Leo" },
-  { id: "ana", name: "Ana" },
-  { id: "pablo", name: "Pablo" },
-  { id: "carla", name: "Carla" },
-  { id: "hugo", name: "Hugo" },
+const ROSTER: readonly {
+  readonly id: string;
+  readonly name: string;
+  readonly club?: string;
+  readonly side: CourtSide;
+}[] = [
+  { id: "javi", name: "Javi", club: "Club Padel Norte", side: "right" },
+  { id: "marta", name: "Marta", club: "Club Padel Norte", side: "left" },
+  { id: "leo", name: "Leo", side: "right" },
+  { id: "ana", name: "Ana", club: "Club Río Sur", side: "left" },
+  { id: "pablo", name: "Pablo", side: "left" },
+  { id: "carla", name: "Carla", club: "Club Río Sur", side: "right" },
+  { id: "hugo", name: "Hugo", side: "left" },
 ];
 
 /**
@@ -215,7 +220,10 @@ function seedFinishedMatch(driver: SqlDriver, plan: MatchPlan, now: number): voi
     A: ["nico", plan.partner],
     B: [plan.opponents[0], plan.opponents[1]],
   };
-  const config: MatchConfig = { ...DEFAULT_CONFIG, ...plan.config };
+  // The spread widens optional keys to `| undefined`, which
+  // exactOptionalPropertyTypes rejects — seed plans only ever tighten
+  // the default config, so the cast is safe.
+  const config = { ...DEFAULT_CONFIG, ...plan.config } as MatchConfig;
   const match = {
     id: plan.id,
     config,
@@ -291,7 +299,13 @@ export function seedIfEmpty(driver: SqlDriver): void {
     });
     for (const entry of ROSTER) {
       createdAt += MINUTE_MS;
-      createPlayer(driver, { id: entry.id, name: entry.name, createdAt });
+      createPlayer(driver, {
+        id: entry.id,
+        name: entry.name,
+        createdAt,
+        side: entry.side,
+        ...(entry.club === undefined ? {} : { club: entry.club }),
+      });
     }
     for (const plan of FINISHED) {
       seedFinishedMatch(driver, plan, now);

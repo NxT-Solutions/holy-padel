@@ -9,7 +9,7 @@ import {
   removeLastEvent,
   resumeMatch,
   scorePoint as scorePointDb,
-  updateFirstServe,
+  setPendingGameSet,
 } from "@holy-padel/db";
 import type { MatchSnapshot, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
@@ -19,163 +19,21 @@ import { useEffect, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { EndSheet } from "@/components/end-sheet.tsx";
-import { Pause, Play, Square, Undo } from "@/components/icons.tsx";
+import {
+  LiveActionBar,
+  LiveHeader,
+  SetChips,
+  SetChoiceSheet,
+  TeamCard,
+} from "@/components/live-parts.tsx";
 import { MatchWon } from "@/components/match-won.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import {
-  currentSetScore,
-  durationLabel,
-  finalScoreLine,
-  playedMs,
-  pointDisplay,
-  teamNames,
-} from "@/lib/format.ts";
+import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
 import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
-
-function SetChip({
-  label,
-  score,
-  state,
-}: {
-  readonly label: string;
-  readonly score: string;
-  readonly state: "done" | "current" | "future";
-}): ReactNode {
-  const testId = `set-chip-${label.toLowerCase().replaceAll(" ", "-")}`;
-  if (state === "done") {
-    return (
-      <YStack
-        flex={1}
-        backgroundColor={colors.ink}
-        borderRadius={14}
-        paddingVertical={9}
-        alignItems="center"
-      >
-        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={whiteAlpha(0.5)}>
-          {label}
-        </Body>
-        <Display fontSize={20} color={colors.white} marginTop={2} testID={testId}>
-          {score}
-        </Display>
-      </YStack>
-    );
-  }
-  if (state === "current") {
-    return (
-      <YStack
-        flex={1}
-        backgroundColor={colors.white}
-        borderWidth={2}
-        borderColor={colors.lime}
-        borderRadius={14}
-        paddingVertical={7}
-        alignItems="center"
-        boxShadow="0 2px 10px rgba(14, 17, 22, 0.06)"
-      >
-        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={colors.limeInk}>
-          {label}
-        </Body>
-        <Display fontSize={20} marginTop={2} testID={testId}>
-          {score}
-        </Display>
-      </YStack>
-    );
-  }
-  return (
-    <YStack
-      flex={1}
-      borderWidth={1}
-      borderColor={inkAlpha(0.14)}
-      borderRadius={14}
-      paddingVertical={8}
-      alignItems="center"
-    >
-      <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={inkAlpha(0.35)}>
-        {label}
-      </Body>
-      <Display fontSize={20} color={inkAlpha(0.25)} marginTop={2} testID={testId}>
-        –
-      </Display>
-    </YStack>
-  );
-}
-
-function TeamCard({
-  name,
-  point,
-  serving,
-  servingSide,
-  serverNumber,
-
-  onScore,
-  testID,
-}: {
-  readonly name: string;
-  readonly point: string;
-  readonly serving: boolean;
-  readonly servingSide?: "right" | "left" | null;
-  readonly serverNumber?: number | null;
-
-  readonly onScore: () => void;
-  readonly testID: string;
-}): ReactNode {
-  return (
-    <XStack
-      flex={1}
-      backgroundColor={colors.white}
-      borderRadius={22}
-      borderWidth={2}
-      borderColor={inkAlpha(0.05)}
-      paddingVertical={18}
-      paddingHorizontal={22}
-      alignItems="center"
-      justifyContent="space-between"
-      boxShadow="0 2px 14px rgba(14, 17, 22, 0.07)"
-      pressStyle={{ opacity: 0.9, scale: 0.99 }}
-      role="button"
-      aria-label={`Point ${name}`}
-      onPress={onScore}
-    >
-      <YStack gap={7}>
-        <XStack alignItems="center" gap={8}>
-          <XStack alignItems="center" gap={6} opacity={serving ? 1 : 0}>
-            <View
-              width={20}
-              height={20}
-              borderRadius={10}
-              backgroundColor={colors.lime}
-              alignItems="center"
-              justifyContent="center"
-              boxShadow={serving ? `0 0 0 4px ${limeAlpha(0.3)}` : "unset"}
-              testID={`${testID}-serve${serving ? "-on" : "-off"}`}
-            >
-              {Boolean(serving && servingSide) && (
-                <Body fontSize={11} fontWeight="900" color={colors.white}>
-                  {serverNumber
-                    ? `${serverNumber}${servingSide === "right" ? "R" : "L"}`
-                    : servingSide === "right"
-                      ? "R"
-                      : "L"}
-                </Body>
-              )}
-            </View>
-          </XStack>
-          <Display fontSize={23}>{name.toUpperCase()}</Display>
-        </XStack>
-        <Body fontSize={10} fontWeight="800" letterSpacing={1.6} color={inkAlpha(0.35)}>
-          TAP TO SCORE +1
-        </Body>
-      </YStack>
-      <Display fontSize={112} testID={testID}>
-        {point}
-      </Display>
-    </XStack>
-  );
-}
+import { colors, textAlpha } from "@/theme/colors.ts";
 
 /** Persist the finished result once the engine says the match is over. */
 function usePersistFinish(
@@ -209,46 +67,13 @@ function usePersistFinish(
   }, [match, snapshot, events, id, mutate]);
 }
 
-function SetChips({
-  match,
-  snapshot,
-}: {
-  readonly match: MatchSummary;
-  readonly snapshot: MatchSnapshot;
-}): ReactNode {
-  const chips: ReactNode[] = [];
-  const isGameBased = match.config.sport === "squash" || match.config.sport === "pickleball";
-  for (let setIndex = 0; setIndex < match.config.bestOf; setIndex += 1) {
-    const completed = snapshot.completedSets[setIndex];
-    const setLabel = isGameBased ? `GAME ${String(setIndex + 1)}` : `SET ${String(setIndex + 1)}`;
-    if (completed !== undefined) {
-      chips.push(
-        <SetChip
-          key={setLabel}
-          label={setLabel}
-          score={`${String(completed.games.A)}–${String(completed.games.B)}`}
-          state="done"
-        />,
-      );
-    } else if (setIndex + 1 === snapshot.setNumber) {
-      const game = snapshot.currentGame;
-      const isSuperTieBreak = game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak";
-      const score = isSuperTieBreak
-        ? `${String(game.points.A)}–${String(game.points.B)}`
-        : currentSetScore(snapshot).replace("-", "–");
-      chips.push(
-        <SetChip
-          key={setLabel}
-          label={isSuperTieBreak ? "SUPER TB" : setLabel}
-          score={score}
-          state="current"
-        />,
-      );
-    } else {
-      chips.push(<SetChip key={setLabel} label={setLabel} score="–" state="future" />);
-    }
-  }
-  return <XStack gap={8}>{chips}</XStack>;
+function squashTargetOf(snapshot: MatchSnapshot): number {
+  return snapshot.config.sport === "squash" ? snapshot.config.squashTarget : 11;
+}
+
+/** The status-pill call while a long/short decision is staged for the next rally. */
+function stagedChoiceLabel(staged: "one" | "two", target: number): string {
+  return staged === "one" ? `SHORT · TO ${String(target)}` : `LONG · TO ${String(target + 1)}`;
 }
 
 export default function LiveScreen(): ReactNode {
@@ -315,9 +140,17 @@ export default function LiveScreen(): ReactNode {
 
   const scorePoint = (team: TeamId): void => {
     // scorePointDb re-reads committed state and refuses once the match is
-    // paused or decided, so rapid double-taps can't race past the final point.
+    // paused or decided. It also resolves undecided first serves (game 1 and
+    // pickleball games 2+) and attaches a staged squash long/short decision,
+    // so the phone, the watch, and replays all share one code path.
     mutate((driver) => {
       scorePointDb(driver, id, team, Date.now());
+    });
+  };
+
+  const chooseGameSet = (choice: "one" | "two"): void => {
+    mutate((driver) => {
+      setPendingGameSet(driver, id, choice);
     });
   };
 
@@ -354,10 +187,18 @@ export default function LiveScreen(): ReactNode {
     goHome();
   };
 
-  const label = statusLabel(snapshot.moment, names);
+  const squashTarget = squashTargetOf(snapshot);
+  // The staged long/short decision lives in the ledger row, so a choice made
+  // on the watch closes the phone's popup too (and vice versa).
+  const choicePending = snapshot.moment.kind === "setChoice";
+  const staged = match.pendingGameSet;
+  const label =
+    choicePending && staged !== undefined
+      ? stagedChoiceLabel(staged, squashTarget)
+      : statusLabel(snapshot.moment, names);
 
   return (
-    <View flex={1} backgroundColor={colors.cream}>
+    <View flex={1} backgroundColor={colors.screen}>
       <YStack
         flex={1}
         paddingTop={insets.top + 10}
@@ -365,34 +206,13 @@ export default function LiveScreen(): ReactNode {
         paddingHorizontal={16}
         gap={12}
       >
-        <XStack alignItems="center" justifyContent="space-between">
-          <Pill
-            backgroundColor={paused ? inkAlpha(0.4) : colors.ink}
-            paddingVertical={6}
-            paddingLeft={9}
-            paddingRight={12}
-            gap={6}
-            testID="live-pill"
-          >
-            {paused ? <Pause size={9} color={colors.white} /> : <LiveDot size={7} />}
-            <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.white}>
-              {paused ? "PAUSED" : "LIVE"}
-            </Body>
-          </Pill>
-          <Body fontSize={11} fontWeight="700" letterSpacing={1.8} color={inkAlpha(0.55)}>
-            {[
-              match.court?.toUpperCase(),
-              match.config.sport === "squash"
-                ? `GAME ${String(snapshot.setNumber)}`
-                : `SET ${String(snapshot.setNumber)}`,
-            ]
-              .filter((part): part is string => part !== undefined)
-              .join(" · ")}
-          </Body>
-          <Display fontSize={16} testID="match-clock">
-            {durationLabel(playedMs(match, now))}
-          </Display>
-        </XStack>
+        <LiveHeader
+          paused={paused}
+          court={match.court}
+          sport={match.config.sport}
+          setNumber={snapshot.setNumber}
+          clock={durationLabel(playedMs(match, now))}
+        />
 
         <SetChips match={match} snapshot={snapshot} />
 
@@ -406,16 +226,9 @@ export default function LiveScreen(): ReactNode {
             serverNumber={
               snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
             }
+            hint={snapshot.servingTeam === undefined ? "TAP TO TAKE SERVE" : undefined}
             onScore={() => {
-              if (
-                snapshot.config.firstServePending &&
-                snapshot.totalPoints.A === 0 &&
-                snapshot.totalPoints.B === 0
-              ) {
-                mutate((db) => updateFirstServe(db, id, "A"));
-              } else {
-                scorePoint("A");
-              }
+              scorePoint("A");
             }}
           />
           <TeamCard
@@ -427,16 +240,9 @@ export default function LiveScreen(): ReactNode {
             serverNumber={
               snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
             }
+            hint={snapshot.servingTeam === undefined ? "TAP TO TAKE SERVE" : undefined}
             onScore={() => {
-              if (
-                snapshot.config.firstServePending &&
-                snapshot.totalPoints.A === 0 &&
-                snapshot.totalPoints.B === 0
-              ) {
-                mutate((db) => updateFirstServe(db, id, "B"));
-              } else {
-                scorePoint("B");
-              }
+              scorePoint("B");
             }}
           />
         </YStack>
@@ -455,80 +261,21 @@ export default function LiveScreen(): ReactNode {
           </Pill>
         )}
 
-        <XStack gap={10}>
-          <XStack
-            flex={1}
-            height={58}
-            backgroundColor={colors.white}
-            borderWidth={1}
-            borderColor={inkAlpha(0.08)}
-            borderRadius={16}
-            alignItems="center"
-            justifyContent="center"
-            gap={9}
-            boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-            pressStyle={{ opacity: 0.85 }}
-            role="button"
-            onPress={undoPoint}
-          >
-            <Undo size={17} color={colors.ink} />
-            <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
-              UNDO
-            </Body>
-          </XStack>
-          <XStack
-            flex={1.3}
-            height={58}
-            backgroundColor={paused ? colors.lime : colors.white}
-            borderWidth={1}
-            borderColor={paused ? colors.lime : inkAlpha(0.08)}
-            borderRadius={16}
-            alignItems="center"
-            justifyContent="center"
-            gap={9}
-            boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-            pressStyle={{ opacity: 0.85 }}
-            role="button"
-            onPress={togglePause}
-            testID="pause-toggle"
-          >
-            {paused ? (
-              <Play size={17} color={colors.ink} />
-            ) : (
-              <Pause size={17} color={colors.ink} />
-            )}
-            <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
-              {paused ? "RESUME" : "PAUSE"}
-            </Body>
-          </XStack>
-          <XStack
-            flex={1}
-            height={58}
-            borderWidth={1}
-            borderColor={inkAlpha(0.16)}
-            borderRadius={16}
-            alignItems="center"
-            justifyContent="center"
-            gap={8}
-            pressStyle={{ opacity: 0.7 }}
-            role="button"
-            aria-label="End match"
-            onPress={() => {
-              setEnding(true);
-            }}
-            testID="end-match"
-          >
-            <Square size={13} color={inkAlpha(0.55)} />
-            <Body fontSize={13} fontWeight="700" letterSpacing={1.4} color={inkAlpha(0.5)}>
-              END
-            </Body>
-          </XStack>
-        </XStack>
+        <LiveActionBar
+          paused={paused}
+          onUndo={undoPoint}
+          onTogglePause={togglePause}
+          onEnd={() => {
+            setEnding(true);
+          }}
+        />
 
         <XStack alignItems="center" justifyContent="center" gap={6}>
           <LiveDot size={6} />
-          <Body fontSize={11} fontWeight="600" color={inkAlpha(0.45)}>
-            {paused ? "Paused — workout paused on your watch too" : "Synced — 2 watches connected"}
+          <Body fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
+            {paused
+              ? "Paused — workout paused on your watch too"
+              : "Synced — your watch mirrors the score"}
           </Body>
         </XStack>
       </YStack>
@@ -542,6 +289,10 @@ export default function LiveScreen(): ReactNode {
           }}
         />
       ) : null}
+
+      {!paused && choicePending && staged === undefined && (
+        <SetChoiceSheet target={squashTarget} onChoose={chooseGameSet} />
+      )}
     </View>
   );
 }
