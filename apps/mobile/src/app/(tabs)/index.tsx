@@ -11,7 +11,7 @@ import type { MatchSnapshot } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
 import { router, useFocusEffect } from "expo-router";
 import type { ReactNode } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
@@ -168,12 +168,16 @@ export default function HomeScreen(): ReactNode {
     live === undefined ? undefined : computeMatch(live.config, loadEvents(driver, live.id)),
   );
   const stats = useDbQuery((driver) => computeProfileStats(driver, ownerId));
-  const recent = useDbQuery((driver) =>
-    listMatches(driver)
-      .filter((match) => match.status === "finished")
-      .slice(0, 2),
+  const allMatches = useDbQuery(listMatches);
+  const recent = useMemo(
+    () => allMatches.filter((match) => match.status === "finished").slice(0, 2),
+    [allMatches],
   );
-  const history = useDbQuery((driver) => computeHistory(listMatches(driver), ownerId, now));
+  const history = useMemo(
+    () => computeHistory(allMatches, ownerId, now),
+    [allMatches, ownerId, now],
+  );
+  const [selectedDay, setSelectedDay] = useState<number | undefined>(undefined);
   const [lastFinished] = recent;
 
   const rematchStarted = useRef(false);
@@ -306,6 +310,10 @@ export default function HomeScreen(): ReactNode {
         played={history.played}
         won={history.won}
         lost={history.lost}
+        matches={allMatches}
+        ownerId={ownerId}
+        selectedDay={selectedDay}
+        onSelectDay={setSelectedDay}
       />
     </ScrollView>
   );

@@ -6,6 +6,12 @@ export interface GameSeriesStep {
   readonly t: number;
   /** Points for team A minus points for team B, within the game. */
   readonly lead: number;
+  /**
+   * True when the serve changed hands on this rally (a hand-out in HIHO
+   * squash, a break of serve in padel) — marked on the score-race chart so
+   * serve stretches read as plateaus between markers.
+   */
+  readonly handOut: boolean;
 }
 
 /** The point-by-point lead ("snake") of one completed game. */
@@ -74,11 +80,15 @@ export function computeGameSeries(
     const current: OpenGame = open;
     const a = event.winner === "A" ? current.a + 1 : current.a;
     const b = event.winner === "B" ? current.b + 1 : current.b;
+    const handOut =
+      before.servingTeam !== undefined &&
+      after.servingTeam !== undefined &&
+      after.servingTeam !== before.servingTeam;
     open = {
       setNumber: current.setNumber,
       a,
       b,
-      steps: [...current.steps, { t: event.at, lead: a - b }],
+      steps: [...current.steps, { t: event.at, lead: a - b, handOut }],
     };
     previousTotalGames = after.totalGames;
     previousSetCount = after.completedSets.length;

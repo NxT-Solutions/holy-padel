@@ -11,6 +11,7 @@ export interface DayCell {
   readonly day: number;
   /** Days after today render as nothing, so the grid ends at today. */
   readonly future: boolean;
+  readonly today: boolean;
   readonly played: number;
   readonly won: number;
   readonly lost: number;
@@ -27,7 +28,8 @@ export interface History {
 const DAYS_PER_WEEK = 7;
 const MS_PER_DAY = 86_400_000;
 
-function localMidnight(timestamp: number): number {
+/** Local midnight of `timestamp` — the key matches are grouped by. */
+export function midnightOf(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
@@ -48,7 +50,7 @@ export function computeHistory(
   const playedByOwner = matches.filter((match) => ownerTeamIn(match, ownerId) !== undefined);
   for (const match of playedByOwner) {
     const ownerTeam = ownerTeamIn(match, ownerId) ?? "A";
-    const day = localMidnight(match.startedAt);
+    const day = midnightOf(match.startedAt);
     const entry = byDay.get(day) ?? { played: 0, won: 0, lost: 0 };
     entry.played += 1;
     if (match.winner === ownerTeam) {
@@ -59,7 +61,7 @@ export function computeHistory(
     byDay.set(day, entry);
   }
 
-  const today = localMidnight(now);
+  const today = midnightOf(now);
   // End the grid on the current week's Saturday so columns align.
   const endOfWeek = today + (6 - new Date(today).getDay()) * MS_PER_DAY;
   const gridStart = endOfWeek - (weeks * DAYS_PER_WEEK - 1) * MS_PER_DAY;
@@ -73,6 +75,7 @@ export function computeHistory(
     const cell: DayCell = {
       day,
       future: day > today,
+      today: day === today,
       played: entry?.played ?? 0,
       won: entry?.won ?? 0,
       lost: entry?.lost ?? 0,

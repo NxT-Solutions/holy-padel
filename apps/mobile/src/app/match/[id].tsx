@@ -37,7 +37,7 @@ const DEUCE_LABELS: Record<string, string> = {
   starPoint: "STAR POINT",
 };
 
-function setNote(set: SetStats): string {
+function setNote(set: SetStats): string | undefined {
   if (set.summary.kind === "superTieBreak") {
     return "Super tie-break";
   }
@@ -46,10 +46,7 @@ function setNote(set: SetStats): string {
     return `Tie-break ${String(Math.max(A, B))}–${String(Math.min(A, B))}`;
   }
   const lastBreak = set.breakGames.at(-1);
-  if (lastBreak !== undefined) {
-    return `Break in game ${String(lastBreak.gameNumber)}`;
-  }
-  return "Serve held throughout";
+  return lastBreak === undefined ? undefined : `Break in game ${String(lastBreak.gameNumber)}`;
 }
 
 /**
@@ -334,9 +331,11 @@ export default function MatchOverviewScreen(): ReactNode {
               <Overline letterSpacing={1.4}>
                 {`SET ${String(set.setNumber)} · ${String(Math.round(set.durationMs / 60_000))} MIN`}
               </Overline>
-              <Body fontSize={13} fontWeight="700" color={textAlpha(0.55)}>
-                {setNote(set)}
-              </Body>
+              {setNote(set) === undefined ? null : (
+                <Body fontSize={13} fontWeight="700" color={textAlpha(0.55)}>
+                  {setNote(set)}
+                </Body>
+              )}
             </YStack>
             <XStack alignItems="center" gap={11}>
               <Display fontSize={26}>

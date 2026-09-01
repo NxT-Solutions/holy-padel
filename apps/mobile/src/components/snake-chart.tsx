@@ -1,7 +1,7 @@
 import type { HeartRateSample } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import Svg, { Circle, Line, Polyline } from "react-native-svg";
+import Svg, { Circle, Line, Polyline, Rect } from "react-native-svg";
 import { View, XStack } from "tamagui";
 import { Body } from "@/components/ui.tsx";
 import type { GameSeriesStep } from "@/lib/game-series.ts";
@@ -161,6 +161,19 @@ export function SnakeChart({
               />
             ),
           )}
+          {/* Hand-ins / hand-outs: the serve changed hands on this rally. */}
+          {steps.map((step, index) =>
+            step.handOut && count > 1 ? (
+              <Rect
+                key={`h${String(index)}`}
+                x={xOf(step.t, index) - 2}
+                y={CHART_HEIGHT / 2 - 3}
+                width={4}
+                height={6}
+                fill={colors.text}
+              />
+            ) : null,
+          )}
           {firstX !== undefined && firstStep !== undefined && count === 1 && (
             <Circle
               cx={firstX}
@@ -201,6 +214,14 @@ export function SnakeChart({
             TEAM B AHEAD
           </Body>
         </XStack>
+        {count > 1 && steps.some((step) => step.handOut) ? (
+          <XStack alignItems="center" gap={5}>
+            <View width={6} height={8} borderRadius={2} backgroundColor={colors.text} />
+            <Body fontSize={9.5} fontWeight="700" color={textAlpha(0.5)}>
+              SERVE CHANGE
+            </Body>
+          </XStack>
+        ) : null}
         {hrPoints.length >= 2 && (
           <XStack alignItems="center" gap={5}>
             <View width={8} height={8} borderRadius={4} backgroundColor={colors.danger} />
