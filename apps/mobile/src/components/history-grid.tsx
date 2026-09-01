@@ -40,6 +40,23 @@ const MONTHS = [
 
 const RADIUS = 7;
 
+/**
+ * The day colour is a scale, not a category: 0% wins sits at the opponents'
+ * blue, 100% at the brand lime, with the middle blending through a muted
+ * green — so a quick glance separates "lost everything" from "won
+ * everything" and every shade between is a real win share.
+ */
+const SCALE_LOST = [46, 91, 255];
+const SCALE_WON = [198, 241, 53];
+
+function winShareColor(won: number, lost: number): string {
+  const share = won + lost === 0 ? 0 : won / (won + lost);
+  const [lr = 0, lg = 0, lb = 0] = SCALE_LOST;
+  const [wr = 0, wg = 0, wb = 0] = SCALE_WON;
+  const channel = (l: number, w: number): number => Math.round(l + (w - l) * share);
+  return `rgb(${String(channel(lr, wr))}, ${String(channel(lg, wg))}, ${String(channel(lb, wb))})`;
+}
+
 function DaySquare({
   cell,
   selected,
@@ -62,13 +79,15 @@ function DaySquare({
         <View width={CELL} height={CELL} borderRadius={RADIUS} backgroundColor={textAlpha(0.05)} />
       );
     }
-    // The fill is the day's win percentage: all lime = won everything,
-    // all blue = lost everything, half-and-half = even day.
+    // The whole cell is one shade on the lost→won scale, positioned by the
+    // day's win percentage.
     return (
-      <View width={CELL} height={CELL} borderRadius={RADIUS} overflow="hidden">
-        <View flex={cell.won} backgroundColor={colors.lime} />
-        <View flex={cell.lost} backgroundColor={colors.teamBlue} />
-      </View>
+      <View
+        width={CELL}
+        height={CELL}
+        borderRadius={RADIUS}
+        backgroundColor={winShareColor(cell.won, cell.lost)}
+      />
     );
   })();
 
@@ -285,30 +304,25 @@ export function HistoryGrid({
         </YStack>
       </ScrollView>
 
-      <XStack alignItems="center" justifyContent="center" gap={14}>
-        <XStack alignItems="center" gap={6}>
-          <View width={13} height={13} borderRadius={4} backgroundColor={colors.lime} />
-          <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
-            All won
-          </Body>
-        </XStack>
-        <XStack alignItems="center" gap={6}>
-          <View width={13} height={13} borderRadius={4} backgroundColor={colors.teamBlue} />
-          <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
-            All lost
-          </Body>
-        </XStack>
-        <XStack alignItems="center" gap={6}>
-          <View width={13} height={13} borderRadius={4} overflow="hidden">
-            <View flex={1} backgroundColor={colors.lime} />
-            <View flex={1} backgroundColor={colors.teamBlue} />
-          </View>
-          <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
-            Split day
-          </Body>
-        </XStack>
+      <XStack alignItems="center" justifyContent="center" gap={10}>
+        <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
+          0%
+        </Body>
+        {[0, 0.25, 0.5, 0.75, 1].map((share) => (
+          <View
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed 5-stop scale
+            key={share}
+            width={15}
+            height={13}
+            borderRadius={4}
+            backgroundColor={winShareColor(share, 1 - share)}
+          />
+        ))}
+        <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
+          100% won
+        </Body>
         <Body fontSize={11} fontWeight="700" color={textAlpha(0.35)}>
-          {`${String(played)} played`}
+          {`· ${String(played)} played`}
         </Body>
       </XStack>
 
