@@ -26,6 +26,19 @@ export interface ProfileStats {
   readonly winRatePercent: number;
   /** Most recent finished matches first: true = won. */
   readonly form: readonly boolean[];
+  /** The run the owner is on right now (undefined with no finished matches). */
+  readonly streak: { readonly kind: "won" | "lost"; readonly count: number } | undefined;
+  /** Longest winning run across all finished matches. */
+  readonly bestWinStreak: number;
+  /** Pause-adjusted play time across finished matches, and its average. */
+  readonly totalDurationMs: number;
+  readonly avgDurationMs: number;
+  /** Won–lost per sport, for the by-sport record card. */
+  readonly recordsBySport: {
+    readonly padel: WinLoss;
+    readonly squash: WinLoss;
+    readonly pickleball: WinLoss;
+  };
   readonly partners: readonly PartnerRecord[];
   readonly headToHead: readonly HeadToHeadRecord[];
 }
@@ -42,6 +55,44 @@ function pairText(names: readonly (string | undefined)[]): string {
     }
   }
   return seen.join(" & ");
+}
+
+/** Pause-adjusted play time of a finished match (open pauses are closed on finish). */
+function matchDurationMs(match: MatchSummary): number {
+  if (match.endedAt === undefined) {
+    return 0;
+  }
+  return Math.max(0, match.endedAt - match.startedAt - match.pausedMs);
+}
+
+/** Consecutive wins/losses starting at the most recent result. */
+function currentStreakOf(
+  byRecency: readonly OwnedResult[],
+): { kind: "won" | "lost"; count: number } | undefined {
+  const [first] = byRecency;
+  if (first === undefined) {
+    return;
+  }
+  const kind = first.won ? ("won" as const) : ("lost" as const);
+  let count = 0;
+  for (const result of byRecency) {
+    if (result.won !== (kind === "won")) {
+      break;
+    }
+    count += 1;
+  }
+  return { kind, count };
+}
+
+/** Longest run of wins, oldest to newest. */
+function bestWinStreakOf(chronological: readonly OwnedResult[]): number {
+  let best = 0;
+  let run = 0;
+  for (const result of chronological) {
+    run = result.won ? run + 1 : 0;
+    best = Math.max(best, run);
+  }
+  return best;
 }
 
 function ownerTeamOf(match: MatchSummary, ownerId: string): TeamId | undefined {
@@ -76,7 +127,7 @@ function partnerRecords(results: readonly OwnedResult[], ownerId: string): Partn
     const partnerIndex = ids[0] === ownerId ? 1 : 0;
     const partnerId = ids[partnerIndex];
     const partnerName = names[partnerIndex];
-    // Singles rows store the same player in both slots — nobody partnered you.
+    // Legacy rows may repeat the owner in both slots — that's not a partner.
     if (partnerId !== undefined && partnerName !== undefined && partnerId !== ownerId) {
       const entry = byPartner.get(partnerId) ?? { name: partnerName, won: 0, lost: 0 };
       if (won) {
@@ -130,11 +181,31 @@ export function computeProfileStats(driver: SqlDriver, ownerId: string): Profile
   const byRecency = [...results].sort(
     (left, right) => (right.match.endedAt ?? 0) - (left.match.endedAt ?? 0),
   );
+  const chronological = [...byRecency].reverse();
+  const totalDurationMs = results.reduce((sum, result) => sum + matchDurationMs(result.match), 0);
+  const bySportRecords: Record<"padel" | "squash" | "pickleball", { won: number; lost: number }> = {
+    padel: { won: 0, lost: 0 },
+    squash: { won: 0, lost: 0 },
+    pickleball: { won: 0, lost: 0 },
+  };
+  for (const result of results) {
+    const sport = bySportRecords[result.match.config.sport ?? "padel"];
+    if (result.won) {
+      sport.won += 1;
+    } else {
+      sport.lost += 1;
+    }
+  }
   return {
     played: results.length,
     record: { won, lost },
     winRatePercent: results.length === 0 ? 0 : Math.round((won / results.length) * PERCENT),
     form: byRecency.slice(0, FORM_LENGTH).map((result) => result.won),
+    streak: currentStreakOf(byRecency),
+    bestWinStreak: bestWinStreakOf(chronological),
+    totalDurationMs,
+    avgDurationMs: results.length === 0 ? 0 : Math.round(totalDurationMs / results.length),
+    recordsBySport: bySportRecords,
     partners: partnerRecords(results, ownerId),
     headToHead: headToHeadRecords(results),
   };

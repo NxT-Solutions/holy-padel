@@ -39,6 +39,7 @@ import {
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { isWatchBridgeAvailable } from "@/watch/bridge.ts";
 
 function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
   const game = snapshot.currentGame;
@@ -224,18 +225,20 @@ export default function HomeScreen(): ReactNode {
           <Overline letterSpacing={1.6}>{owner?.club ?? "Holy Padel"}</Overline>
           <Display fontSize={24}>{`HOLA, ${(owner?.name ?? "").toUpperCase()}`}</Display>
         </YStack>
-        <Pill
-          borderWidth={1}
-          borderColor={textAlpha(0.14)}
-          paddingVertical={7}
-          paddingHorizontal={12}
-          gap={6}
-        >
-          <LiveDot size={6} />
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.55)}>
-            WATCH PAIRED
-          </Body>
-        </Pill>
+        {isWatchBridgeAvailable() ? (
+          <Pill
+            borderWidth={1}
+            borderColor={textAlpha(0.14)}
+            paddingVertical={7}
+            paddingHorizontal={12}
+            gap={6}
+          >
+            <LiveDot size={6} />
+            <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.55)}>
+              WATCH PAIRED
+            </Body>
+          </Pill>
+        ) : null}
       </XStack>
 
       {live !== undefined && liveSnapshot !== undefined ? (

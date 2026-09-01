@@ -11,7 +11,6 @@ import {
 } from "@holy-padel/db";
 import type {
   DeuceMode,
-  MatchConfig,
   PbTiebreak,
   SquashServeBoxes,
   SquashTiebreak,
@@ -23,18 +22,20 @@ import type { ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
-import { ArrowRight } from "@/components/icons.tsx";
+import { View, YStack } from "tamagui";
 import { ModalHeader } from "@/components/modal-header.tsx";
 import {
+  MatchNoteInput,
   MatchPickerSheet,
   MatchSetupOptions,
   matchSubtitle,
   PlayerRow,
+  StartMatchButton,
   TeamCard,
 } from "@/components/new-match-parts.tsx";
-import { Body, Display } from "@/components/ui.tsx";
+import { Body } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { buildConfig } from "@/lib/match-config-builder.ts";
 import { goBack, newMatchId } from "@/lib/navigation.ts";
 import { useMatchDraftPersistence } from "@/lib/use-match-draft.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
@@ -74,6 +75,8 @@ export default function NewMatchScreen(): ReactNode {
   const [squashServeBoxes, setSquashServeBoxes] = useState<SquashServeBoxes>(d.squashServeBoxes);
   const [pbTarget, setPbTarget] = useState<number>(d.pbTarget);
   const [pbTiebreak, setPbTiebreak] = useState<PbTiebreak>(d.pbTiebreak);
+  // The note only comes from a resumable draft — saved defaults don't carry it.
+  const [note, setNote] = useState<string>(draft?.note ?? "");
 
   // The full setup (settings AND picked players) persists on every change so
   // leaving the screen and coming back restores the work in progress.
@@ -94,6 +97,7 @@ export default function NewMatchScreen(): ReactNode {
       teamA1,
       ...(partner === undefined ? {} : { partner }),
       teamB,
+      ...(note.trim() === "" ? {} : { note: note.trim() }),
     }),
     [
       format,
@@ -111,6 +115,7 @@ export default function NewMatchScreen(): ReactNode {
       teamA1,
       partner,
       teamB,
+      note,
     ],
   );
   useMatchDraftPersistence(setupDraft);
@@ -133,7 +138,8 @@ export default function NewMatchScreen(): ReactNode {
       if (opponent1 === undefined) {
         return;
       }
-      players = { A: [teamA1, teamA1], B: [opponent1, opponent1] };
+      // One player per team — the second slot stays empty.
+      players = { A: [teamA1, undefined], B: [opponent1, undefined] };
     } else {
       if (partnerId === undefined || opponent1 === undefined || opponent2 === undefined) {
         return;
@@ -174,6 +180,7 @@ export default function NewMatchScreen(): ReactNode {
         config,
         players,
         ...(owner?.club === undefined ? {} : { location: owner.club }),
+        ...(note.trim() === "" ? {} : { note: note.trim() }),
         startedAt: Date.now(),
       });
       clearMatchDraft(driver);
@@ -267,38 +274,11 @@ export default function NewMatchScreen(): ReactNode {
           pbTiebreak={pbTiebreak}
           setPbTiebreak={setPbTiebreak}
         />
+
+        <MatchNoteInput value={note} onChange={setNote} />
       </ScrollView>
 
-      <YStack
-        gap={8}
-        paddingHorizontal={16}
-        paddingTop={10}
-        paddingBottom={insets.bottom + 12}
-        backgroundColor={colors.screen}
-      >
-        <XStack
-          height={62}
-          backgroundColor={colors.lime}
-          borderRadius={18}
-          alignItems="center"
-          justifyContent="center"
-          gap={10}
-          opacity={ready ? 1 : 0.5}
-          boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          aria-label="Start match"
-          onPress={startMatch}
-        >
-          <Display fontSize={21} letterSpacing={1.5} color={colors.text}>
-            START MATCH
-          </Display>
-          <ArrowRight size={18} color={colors.text} />
-        </XStack>
-        <Body textAlign="center" fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
-          Watches join automatically when the match starts
-        </Body>
-      </YStack>
+      <StartMatchButton ready={ready} onStart={startMatch} bottomInset={insets.bottom} />
 
       {picking === undefined ? null : (
         <MatchPickerSheet
@@ -316,74 +296,4 @@ export default function NewMatchScreen(): ReactNode {
       )}
     </View>
   );
-}
-
-interface ConfigInput {
-  readonly sport: "padel" | "squash" | "pickleball";
-  readonly bestOf: 1 | 3 | 5;
-  readonly thirdSet: ThirdSetMode;
-  readonly deuceMode: DeuceMode;
-  readonly squashMode: "par" | "hiho";
-  readonly squashTarget: number;
-  readonly squashTiebreak: SquashTiebreak;
-  readonly squashServeBoxes: SquashServeBoxes;
-  readonly pbType: "singles" | "doubles";
-  readonly pbTarget: number;
-  readonly pbTiebreak: PbTiebreak;
-  readonly firstServe: TeamId;
-  readonly firstServePending: boolean;
-  /** Resolves a team lead player's saved serve-box preference. */
-  readonly resolveServeBox: (playerId: string) => "right" | "left";
-  readonly teamA1: string;
-  readonly opponent1: string | undefined;
-}
-
-/** Build the sport-specific MatchConfig from the picker state. */
-function buildConfig(input: ConfigInput): MatchConfig {
-  const serveBoxes =
-    input.opponent1 === undefined
-      ? {}
-      : {
-          squashServeBoxA: input.resolveServeBox(input.teamA1),
-          squashServeBoxB: input.resolveServeBox(input.opponent1),
-        };
-  if (input.sport === "squash") {
-    return {
-      sport: "squash",
-      bestOf: input.bestOf,
-      deuceMode: "advantage",
-      thirdSet: "fullSet",
-      squashMode: input.squashMode,
-      squashTarget: input.squashTarget,
-      squashTiebreak: input.squashTiebreak,
-      squashServeBoxes: input.squashServeBoxes,
-      ...serveBoxes,
-      firstServe: input.firstServe,
-      firstServePending: input.firstServePending,
-      firstServeOriginallyUndecided: input.firstServePending,
-    };
-  }
-  if (input.sport === "pickleball") {
-    return {
-      sport: "pickleball",
-      bestOf: input.bestOf === 5 ? 3 : input.bestOf,
-      deuceMode: "advantage",
-      thirdSet: "superTieBreak",
-      pbType: input.pbType,
-      pbTarget: input.pbTarget,
-      pbTiebreak: input.pbTiebreak,
-      firstServe: input.firstServe,
-      firstServePending: input.firstServePending,
-      firstServeOriginallyUndecided: input.firstServePending,
-    };
-  }
-  return {
-    sport: "padel",
-    bestOf: input.bestOf === 5 ? 3 : input.bestOf,
-    deuceMode: input.deuceMode,
-    thirdSet: input.thirdSet,
-    firstServe: input.firstServe,
-    firstServePending: input.firstServePending,
-    firstServeOriginallyUndecided: input.firstServePending,
-  };
 }

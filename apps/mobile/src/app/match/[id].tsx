@@ -1,10 +1,16 @@
-import { deleteMatch, getMatch, loadEvents, loadMatchHeartRate } from "@holy-padel/db";
+import {
+  deleteMatch,
+  getMatch,
+  loadEvents,
+  loadMatchHeartRate,
+  setMatchNote,
+} from "@holy-padel/db";
 import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-import { Alert, Platform, ScrollView, Share } from "react-native";
+import { useState } from "react";
+import { Alert, Platform, ScrollView, Share, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ChevronLeft } from "@/components/icons.tsx";
@@ -46,6 +52,107 @@ function setNote(set: SetStats): string {
   return "Serve held throughout";
 }
 
+/** The editable free-text note — add context before or after the fact. */
+function MatchNoteCard({
+  matchId,
+  initialNote,
+}: {
+  readonly matchId: string;
+  readonly initialNote: string | undefined;
+}): ReactNode {
+  const mutate = useDbMutation();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(initialNote ?? "");
+
+  const save = (): void => {
+    mutate((driver) => {
+      setMatchNote(driver, matchId, draft.trim());
+    });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <YStack gap={9}>
+        <TextInput
+          style={{
+            fontSize: 14,
+            fontFamily: "Archivo_600SemiBold",
+            color: colors.text,
+            paddingVertical: 11,
+            paddingHorizontal: 14,
+            backgroundColor: colors.card,
+            borderRadius: 13,
+            borderWidth: 1,
+            borderColor: textAlpha(0.1),
+            minHeight: 66,
+            textAlignVertical: "top",
+          }}
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="e.g. league night, new racket…"
+          placeholderTextColor={textAlpha(0.4)}
+          multiline={true}
+          autoFocus={true}
+          testID="edit-note-input"
+        />
+        <XStack gap={9} justifyContent="flex-end">
+          <Body
+            fontSize={11.5}
+            fontWeight="800"
+            letterSpacing={1.2}
+            color={textAlpha(0.45)}
+            pressStyle={{ opacity: 0.6 }}
+            role="button"
+            onPress={() => {
+              setDraft(initialNote ?? "");
+              setEditing(false);
+            }}
+          >
+            CANCEL
+          </Body>
+          <Body
+            fontSize={11.5}
+            fontWeight="800"
+            letterSpacing={1.2}
+            color={colors.limeOnCard}
+            pressStyle={{ opacity: 0.6 }}
+            role="button"
+            onPress={save}
+            testID="save-note"
+          >
+            SAVE NOTE
+          </Body>
+        </XStack>
+      </YStack>
+    );
+  }
+
+  return (
+    <XStack
+      alignItems="center"
+      gap={10}
+      pressStyle={{ opacity: 0.8 }}
+      role="button"
+      aria-label={initialNote === undefined ? "Add a note" : "Edit note"}
+      onPress={() => {
+        setDraft(initialNote ?? "");
+        setEditing(true);
+      }}
+      testID="match-note-row"
+    >
+      <Body
+        flex={1}
+        fontSize={13}
+        fontWeight="600"
+        color={textAlpha(initialNote === undefined ? 0.4 : 0.75)}
+      >
+        {initialNote ?? "Add a note — league night, how it felt…"}
+      </Body>
+    </XStack>
+  );
+}
+
 export default function MatchOverviewScreen(): ReactNode {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -67,7 +174,7 @@ export default function MatchOverviewScreen(): ReactNode {
 
   const snapshot = computeMatch(match.config, events);
   const stats = computeStats(match.config, events);
-  const series = useMemo(() => computeGameSeries(match.config, events), [match.config, events]);
+  const series = computeGameSeries(match.config, events);
   const names = teamNames(match);
   const winner: TeamId = match.winner ?? snapshot.winner ?? "A";
   const loser: TeamId = winner === "A" ? "B" : "A";
@@ -186,6 +293,10 @@ export default function MatchOverviewScreen(): ReactNode {
           {`${durationLabel(stats.durationMs)} · BEST OF ${String(match.config.bestOf)} · ${DEUCE_LABELS[match.config.deuceMode] ?? ""}`}
         </Body>
       </YStack>
+
+      <Card borderRadius={18} paddingVertical={13} paddingHorizontal={17}>
+        <MatchNoteCard matchId={match.id} initialNote={match.note} />
+      </Card>
 
       <YStack gap={8}>
         {stats.sets.map((set) => (

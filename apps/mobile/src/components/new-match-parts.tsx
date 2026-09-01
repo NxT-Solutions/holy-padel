@@ -9,10 +9,12 @@ import type {
   ThirdSetMode,
 } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
-import { XStack } from "tamagui";
+import { TextInput } from "react-native";
+import { XStack, YStack } from "tamagui";
+import { ArrowRight } from "@/components/icons.tsx";
 import { PickerSheet } from "@/components/picker-sheet.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
-import { Avatar, Body, Card, Pill } from "@/components/ui.tsx";
+import { Avatar, Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 export function PlayerRow({
@@ -333,6 +335,86 @@ export function MatchPickerSheet({
       }}
       onDone={() => setPicking(undefined)}
     />
+  );
+}
+
+/** The optional pre-match note input, shown on the setup screen. */
+export function MatchNoteInput({
+  value,
+  onChange,
+}: {
+  readonly value: string;
+  readonly onChange: (next: string) => void;
+}): ReactNode {
+  return (
+    <Card borderRadius={20} padding={16} gap={10}>
+      <Overline color={textAlpha(0.45)}>NOTE · OPTIONAL</Overline>
+      <TextInput
+        style={noteInputStyle}
+        value={value}
+        onChangeText={onChange}
+        placeholder="e.g. league night, new racket…"
+        placeholderTextColor={textAlpha(0.4)}
+        multiline={true}
+        testID="match-note"
+      />
+    </Card>
+  );
+}
+
+const noteInputStyle = {
+  fontSize: 14,
+  fontFamily: "Archivo_600SemiBold",
+  color: colors.text,
+  paddingVertical: 10,
+  paddingHorizontal: 13,
+  backgroundColor: colors.row,
+  borderRadius: 13,
+  minHeight: 44,
+  textAlignVertical: "top",
+} as const;
+
+/** The lime START MATCH action plus the watch hint beneath it. */
+export function StartMatchButton({
+  ready,
+  onStart,
+  bottomInset,
+}: {
+  readonly ready: boolean;
+  readonly onStart: () => void;
+  readonly bottomInset: number;
+}): ReactNode {
+  return (
+    <YStack
+      gap={8}
+      paddingHorizontal={16}
+      paddingTop={10}
+      paddingBottom={bottomInset + 12}
+      backgroundColor={colors.screen}
+    >
+      <XStack
+        height={62}
+        backgroundColor={colors.lime}
+        borderRadius={18}
+        alignItems="center"
+        justifyContent="center"
+        gap={10}
+        opacity={ready ? 1 : 0.5}
+        boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
+        pressStyle={{ opacity: 0.85 }}
+        role="button"
+        aria-label="Start match"
+        onPress={onStart}
+      >
+        <Display fontSize={21} letterSpacing={1.5} color={colors.text}>
+          START MATCH
+        </Display>
+        <ArrowRight size={18} color={colors.text} />
+      </XStack>
+      <Body textAlign="center" fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
+        Watches join automatically when the match starts
+      </Body>
+    </YStack>
   );
 }
 

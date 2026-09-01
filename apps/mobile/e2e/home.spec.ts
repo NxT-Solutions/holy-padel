@@ -6,7 +6,8 @@ test.describe("home screen (design 3a)", () => {
     await gotoHome(page);
 
     await expect(page.getByText("Club Padel Norte")).toBeVisible();
-    await expect(page.getByText("WATCH PAIRED")).toBeVisible();
+    // The watch pill only renders when the native bridge exists — never on web.
+    await expect(page.getByText("WATCH PAIRED")).toHaveCount(0);
 
     // The seeded live match: set 1 taken 6-4, 4-3 up, 40-30 on the game.
     await expect(page.getByText("LIVE NOW")).toBeVisible();

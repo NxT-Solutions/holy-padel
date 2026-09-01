@@ -15,7 +15,6 @@ import {
   loadEvents,
   migrate,
   removeLastEvent,
-  reopenMatch,
 } from "../src/index.ts";
 import { CONFIG, newMatch, nextTimestamp, seededDriver, storeMatchWithPoints } from "./fixtures.ts";
 import { memoryDriver } from "./memory-driver.ts";
@@ -88,14 +87,6 @@ describe("matches and events", () => {
       winner: "A",
       scoreLine: "6-4 · 7-5",
     });
-  });
-
-  it("reopens a finished match for undo", () => {
-    const driver = seededDriver();
-    storeMatchWithPoints(driver, "m1", "AAAA");
-    finishMatch(driver, "m1", { winner: "A", endedAt: nextTimestamp(), scoreLine: "6-0 · 6-0" });
-    reopenMatch(driver, "m1");
-    expect(getMatch(driver, "m1")).toMatchObject({ status: "live", scoreLine: undefined });
   });
 
   it("deletes a match together with its events", () => {

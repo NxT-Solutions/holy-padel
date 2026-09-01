@@ -35,6 +35,8 @@ export interface MatchDraft extends NewMatchDefaults {
   readonly teamA1: string;
   readonly partner?: string;
   readonly teamB: readonly string[];
+  /** Optional pre-match note. */
+  readonly note?: string;
 }
 
 const DEFAULTS_KEY = "matchDefaults";
@@ -152,6 +154,7 @@ export function loadMatchDraft(driver: SqlDriver): MatchDraft | undefined {
   const teamA1 = row["teamA1"];
   const partner = row["partner"];
   const teamB = row["teamB"];
+  const note = row["note"];
   if (
     defaults === undefined ||
     typeof teamA1 !== "string" ||
@@ -168,6 +171,7 @@ export function loadMatchDraft(driver: SqlDriver): MatchDraft | undefined {
     teamA1,
     ...(typeof partner === "string" ? { partner } : {}),
     teamB,
+    ...(typeof note === "string" && note !== "" ? { note } : {}),
   };
 }
 
@@ -221,7 +225,9 @@ function pickleballDefaults(
 
 /** Defaults for the picker, seeded from the most recent match's config. */
 export function pickDefaults(c: MatchConfig | undefined): NewMatchDefaults {
-  const sport = c?.sport ?? "padel";
+  // The app is squash-first: fresh installs (no history, no saved defaults)
+  // open on a squash match instead of padel.
+  const sport = c?.sport ?? "squash";
   const bestOf = c?.bestOf ?? 3;
   let format: "singles" | "doubles" = "doubles";
   if (c?.sport === "pickleball" && c.pbType === "singles") {

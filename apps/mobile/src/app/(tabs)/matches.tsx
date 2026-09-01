@@ -262,15 +262,50 @@ export default function MatchesScreen(): ReactNode {
       </ScrollView>
 
       <YStack gap={9}>
-        {visible.map(({ match, scoreLine }) => (
-          <MatchRow
-            key={match.id}
-            match={match}
-            scoreLine={scoreLine}
-            now={now}
-            ownerId={ownerId}
-          />
-        ))}
+        {visible.length === 0 ? (
+          <YStack alignItems="center" gap={10} paddingVertical={46} testID="matches-empty">
+            <Display fontSize={19} color={textAlpha(0.6)}>
+              {total === 0 ? "NO MATCHES YET" : "NOTHING HERE"}
+            </Display>
+            <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)} textAlign="center">
+              {total === 0
+                ? "Play your first match and it will show up here."
+                : "No matches match these filters."}
+            </Body>
+            {total === 0 ? (
+              <XStack
+                marginTop={6}
+                height={48}
+                backgroundColor={colors.ink}
+                borderRadius={14}
+                alignItems="center"
+                justifyContent="center"
+                gap={8}
+                paddingHorizontal={22}
+                pressStyle={{ opacity: 0.85 }}
+                role="button"
+                onPress={() => {
+                  router.push("/new-match");
+                }}
+              >
+                <Plus size={13} color={colors.lime} />
+                <Display fontSize={14} letterSpacing={1.2} color={colors.lime}>
+                  START YOUR FIRST MATCH
+                </Display>
+              </XStack>
+            ) : null}
+          </YStack>
+        ) : (
+          visible.map(({ match, scoreLine }) => (
+            <MatchRow
+              key={match.id}
+              match={match}
+              scoreLine={scoreLine}
+              now={now}
+              ownerId={ownerId}
+            />
+          ))
+        )}
       </YStack>
     </ScrollView>
   );

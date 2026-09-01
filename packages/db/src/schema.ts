@@ -296,6 +296,58 @@ export const MIGRATIONS: readonly Migration[] = [
     version: 14,
     statements: ["ALTER TABLE players ADD COLUMN removed INTEGER NOT NULL DEFAULT 0"],
   },
+  {
+    // Singles rows stop duplicating the player into the paired slots: the
+    // *_player_2 columns become nullable and existing duplicate slots are
+    // normalised to NULL. Also adds the optional per-match note.
+    version: 15,
+    statements: [
+      `CREATE TABLE matches_new (
+         id TEXT PRIMARY KEY,
+         status TEXT NOT NULL CHECK (status IN ('live', 'finished')),
+         best_of INTEGER NOT NULL CHECK (best_of IN (1, 3)),
+         deuce_mode TEXT NOT NULL CHECK (deuce_mode IN ('advantage', 'starPoint', 'goldenPoint')),
+         third_set TEXT NOT NULL CHECK (third_set IN ('fullSet', 'advantageSet', 'superTieBreak')),
+         first_serve TEXT NOT NULL CHECK (first_serve IN ('A', 'B')),
+         team_a_player_1 TEXT NOT NULL REFERENCES players (id),
+         team_a_player_2 TEXT REFERENCES players (id),
+         team_b_player_1 TEXT NOT NULL REFERENCES players (id),
+         team_b_player_2 TEXT REFERENCES players (id),
+         court TEXT,
+         location TEXT,
+         started_at INTEGER NOT NULL,
+         ended_at INTEGER,
+         winner TEXT CHECK (winner IN ('A', 'B')),
+         score_line TEXT,
+         paused_ms INTEGER NOT NULL DEFAULT 0,
+         paused_at INTEGER,
+         sport TEXT NOT NULL DEFAULT 'padel' CHECK (sport IN ('padel', 'squash', 'pickleball')),
+         squash_mode TEXT CHECK (squash_mode IN ('par', 'hiho')),
+         squash_target INTEGER,
+         squash_tiebreak TEXT CHECK (squash_tiebreak IN ('winByTwo', 'setOne', 'setTwo', 'choice')),
+         squash_best_of INTEGER CHECK (squash_best_of IN (1, 3, 5)),
+         first_serve_pending INTEGER NOT NULL DEFAULT 0,
+         padel_best_of INTEGER CHECK (padel_best_of IN (1, 3, 5)),
+         first_serve_originally_undecided INTEGER NOT NULL DEFAULT 0,
+         pb_type TEXT CHECK (pb_type IN ('singles', 'doubles')),
+         pb_target INTEGER,
+         pb_tiebreak TEXT CHECK (pb_tiebreak IN ('winByTwo', 'winByOne')),
+         pb_best_of INTEGER CHECK (pb_best_of IN (1, 3, 5)),
+         squash_serve_boxes TEXT CHECK (squash_serve_boxes IN ('alternate', 'right', 'left', 'player')),
+         squash_box_a TEXT CHECK (squash_box_a IN ('left', 'right')),
+         squash_box_b TEXT CHECK (squash_box_b IN ('left', 'right')),
+         pending_game_set TEXT CHECK (pending_game_set IN ('one', 'two')),
+         note TEXT
+       )`,
+      copyMatchesIntoNew,
+      // Normalise legacy singles rows: the same player filled both slots.
+      "UPDATE matches_new SET team_a_player_2 = NULL WHERE team_a_player_2 = team_a_player_1",
+      "UPDATE matches_new SET team_b_player_2 = NULL WHERE team_b_player_2 = team_b_player_1",
+      "DROP TABLE matches",
+      "ALTER TABLE matches_new RENAME TO matches",
+      "CREATE INDEX idx_matches_status ON matches (status, started_at DESC)",
+    ],
+  },
 ];
 
 /** Bring a database up to the latest schema. Safe to call on every launch. */

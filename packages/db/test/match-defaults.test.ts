@@ -33,12 +33,12 @@ function freshDriver(): SqlDriver {
 }
 
 describe("pickDefaults", () => {
-  it("falls back to the padel built-ins without a config", () => {
+  it("falls back to the squash-first built-ins without a config", () => {
     expect(pickDefaults(undefined)).toEqual({
       format: "doubles",
       bestOf: 3,
       firstServe: "undecided",
-      sport: "padel",
+      sport: "squash",
       thirdSet: "superTieBreak",
       deuceMode: "advantage",
       squashMode: "par",
@@ -157,6 +157,6 @@ describe("resolveNewMatchDefaults precedence", () => {
     expect(resolveNewMatchDefaults({ draft, saved, lastConfig }).squashMode).toBe("hiho");
     expect(resolveNewMatchDefaults({ saved, lastConfig }).sport).toBe("pickleball");
     expect(resolveNewMatchDefaults({ lastConfig }).squashTarget).toBe(15);
-    expect(resolveNewMatchDefaults({}).sport).toBe("padel");
+    expect(resolveNewMatchDefaults({}).sport).toBe("squash");
   });
 });

@@ -30,6 +30,7 @@ function baseMatch(overrides: Partial<MatchSummary> = {}): MatchSummary {
     pausedMs: 0,
     pausedAt: undefined,
     pendingGameSet: undefined,
+    note: undefined,
     names: { A: ["Nico", "Javi"], B: ["Marta", "Leo"] },
     ...overrides,
   };

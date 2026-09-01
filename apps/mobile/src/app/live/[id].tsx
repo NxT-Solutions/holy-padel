@@ -30,6 +30,7 @@ import { MatchWon } from "@/components/match-won.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
+import { scoreHaptic, undoHaptic } from "@/lib/haptics.ts";
 import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
@@ -139,6 +140,7 @@ export default function LiveScreen(): ReactNode {
   const paused = match.pausedAt !== undefined;
 
   const scorePoint = (team: TeamId): void => {
+    scoreHaptic();
     // scorePointDb re-reads committed state and refuses once the match is
     // paused or decided. It also resolves undecided first serves (game 1 and
     // pickleball games 2+) and attaches a staged squash long/short decision,
@@ -158,6 +160,7 @@ export default function LiveScreen(): ReactNode {
     if (events.length === 0) {
       return;
     }
+    undoHaptic();
     mutate((driver) => {
       removeLastEvent(driver, id);
     });

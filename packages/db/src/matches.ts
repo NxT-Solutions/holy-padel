@@ -35,6 +35,7 @@ function toStoredMatch(row: SqlRow): StoredMatch {
     pausedMs: expectNumber(row, "paused_ms"),
     pausedAt: optionalNumber(row, "paused_at"),
     pendingGameSet: parseGameSet(optionalString(row, "pending_game_set")),
+    note: optionalString(row, "note"),
   };
 }
 
@@ -317,12 +318,9 @@ export function resumeMatch(driver: SqlDriver, id: string, now: number): void {
   );
 }
 
-/** Reopen a finished match (undo pressed on the match-won screen). */
-export function reopenMatch(driver: SqlDriver, id: string): void {
-  driver.execute(
-    "UPDATE matches SET status = 'live', winner = NULL, ended_at = NULL, score_line = NULL WHERE id = ?",
-    [id],
-  );
+/** Set or clear a match's free-text note (editable before and after play). */
+export function setMatchNote(driver: SqlDriver, id: string, note: string): void {
+  driver.execute("UPDATE matches SET note = ? WHERE id = ?", [note === "" ? null : note, id]);
 }
 
 export function countMatches(driver: SqlDriver): number {

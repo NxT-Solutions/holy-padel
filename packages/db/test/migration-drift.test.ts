@@ -77,11 +77,11 @@ describe("migration 12 over a drifted schema", () => {
 
     expect(() => migrate(driver)).not.toThrow();
 
-    // Version 12 recorded and the row survived with its shared columns intact.
+    // Latest version recorded and the row survived with its shared columns intact.
     const [versionRow] = driver.queryAll("SELECT MAX(version) AS v FROM schema_migrations") as {
       readonly v?: unknown;
     }[];
-    expect(Number(versionRow?.v)).toBe(14);
+    expect(Number(versionRow?.v)).toBe(15);
     const [row] = driver.queryAll("SELECT * FROM matches WHERE id = 'm1'");
     if (row === undefined) {
       throw new Error("migrated match row missing");

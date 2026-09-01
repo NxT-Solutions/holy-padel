@@ -13,6 +13,8 @@ export interface NewMatch {
   readonly players: TeamPlayers;
   readonly court?: string;
   readonly location?: string;
+  /** Optional free-text note, editable before or after the match. */
+  readonly note?: string;
   readonly startedAt: number;
 }
 
@@ -36,6 +38,8 @@ export interface StoredMatch {
    * phone popup or a watch intent). Cleared when the rally is played or undone.
    */
   readonly pendingGameSet: "one" | "two" | undefined;
+  /** Optional free-text note ("training, court felt slow"). */
+  readonly note: string | undefined;
 }
 
 /** A match row joined with the four player names, for list screens. */

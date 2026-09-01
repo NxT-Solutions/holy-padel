@@ -3,6 +3,7 @@ import {
   Check as LucideCheck,
   ChevronLeft as LucideChevronLeft,
   ChevronRight as LucideChevronRight,
+  Flame as LucideFlame,
   Heart as LucideHeart,
   Pause as LucidePause,
   Play as LucidePlay,
@@ -37,6 +38,10 @@ export function ArrowRight({
 
 export function Plus({ size = 15, color = colors.text, strokeWidth = 3 }: IconProps): ReactNode {
   return <LucidePlus size={size} color={color} strokeWidth={strokeWidth} />;
+}
+
+export function Flame({ size = 15, color = colors.text, strokeWidth = 2.6 }: IconProps): ReactNode {
+  return <LucideFlame size={size} color={color} strokeWidth={strokeWidth} />;
 }
 
 /** The curved undo arrow from the live screens (Lucide's undo-2). */

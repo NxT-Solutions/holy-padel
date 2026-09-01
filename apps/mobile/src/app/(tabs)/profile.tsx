@@ -28,7 +28,7 @@ import {
   type HealthStatus,
   requestHealthAuthorization,
 } from "@/health/health-log.ts";
-import { megabytesLabel } from "@/lib/format.ts";
+import { durationLabel, megabytesLabel } from "@/lib/format.ts";
 import { colors, limeAlpha, textAlpha, whiteAlpha } from "@/theme/colors.ts";
 import { loadThemeSetting, useSetThemeSetting } from "@/theme/theme.tsx";
 
@@ -229,6 +229,24 @@ export default function ProfileScreen(): ReactNode {
         </XStack>
       </Card>
 
+      <XStack gap={8}>
+        <StatTile
+          value={
+            stats.streak === undefined
+              ? "—"
+              : `${stats.streak.kind === "won" ? "W" : "L"}${String(stats.streak.count)}`
+          }
+          label="STREAK"
+          variant="ink"
+        />
+        <StatTile value={String(stats.bestWinStreak)} label="BEST W RUN" variant="ink" />
+        <StatTile
+          value={durationLabel(stats.totalDurationMs)}
+          label="TIME PLAYED"
+          variant="white"
+        />
+      </XStack>
+
       <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
         <Overline>WITH PARTNER</Overline>
         {stats.partners.map((partner) => (
@@ -339,6 +357,42 @@ export default function ProfileScreen(): ReactNode {
             router.push(`/player/${id}`);
           }}
         />
+      </Card>
+
+      <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
+        <Overline>BY SPORT</Overline>
+        {(
+          [
+            ["Padel", stats.recordsBySport.padel],
+            ["Squash", stats.recordsBySport.squash],
+            ["Pickleball", stats.recordsBySport.pickleball],
+          ] as const
+        )
+          .filter(([, record]) => record.won + record.lost > 0)
+          .map(([label, record]) => (
+            <XStack key={label} alignItems="center" justifyContent="space-between">
+              <Body fontSize={14.5} fontWeight="700">
+                {label}
+              </Body>
+              <XStack alignItems="center" gap={12}>
+                <RecordBar won={record.won} lost={record.lost} />
+                <Display fontSize={15} width={36} textAlign="right">
+                  {`${String(record.won)}–${String(record.lost)}`}
+                </Display>
+              </XStack>
+            </XStack>
+          ))}
+        {stats.recordsBySport.padel.won +
+          stats.recordsBySport.padel.lost +
+          stats.recordsBySport.squash.won +
+          stats.recordsBySport.squash.lost +
+          stats.recordsBySport.pickleball.won +
+          stats.recordsBySport.pickleball.lost ===
+        0 ? (
+          <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)}>
+            No finished matches yet.
+          </Body>
+        ) : null}
       </Card>
 
       <Card borderRadius={20} padding={16} gap={13}>

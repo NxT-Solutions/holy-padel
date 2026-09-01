@@ -126,8 +126,8 @@ function insertPickleballMatch(driver: SqlDriver, match: NewMatch): void {
        id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
        pb_type, pb_target, pb_tiebreak, pb_best_of,
        team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
-       court, location, started_at
-     ) VALUES (?, 'live', ?, ?, 'advantage', 'superTieBreak', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       court, location, note, started_at
+       ) VALUES (?, 'live', ?, ?, 'advantage', 'superTieBreak', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       match.id,
       "pickleball",
@@ -142,6 +142,7 @@ function insertPickleballMatch(driver: SqlDriver, match: NewMatch): void {
       ...playerParams(players),
       match.court ?? null,
       match.location ?? null,
+      match.note ?? null,
       match.startedAt,
     ],
   );
@@ -154,11 +155,11 @@ function insertSquashMatch(driver: SqlDriver, match: NewMatch): void {
   const { config, players } = match;
   driver.execute(
     `INSERT INTO matches (
-       id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
-       squash_mode, squash_target, squash_tiebreak, squash_serve_boxes, squash_box_a, squash_box_b, squash_best_of, padel_best_of,
-       team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
-       court, location, started_at
-       ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
+        squash_mode, squash_target, squash_tiebreak, squash_serve_boxes, squash_box_a, squash_box_b, squash_best_of, padel_best_of,
+        team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
+        court, location, note, started_at
+        ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       match.id,
       "squash",
@@ -179,6 +180,7 @@ function insertSquashMatch(driver: SqlDriver, match: NewMatch): void {
       ...playerParams(players),
       match.court ?? null,
       match.location ?? null,
+      match.note ?? null,
       match.startedAt,
     ],
   );
@@ -191,11 +193,11 @@ function insertPadelMatch(driver: SqlDriver, match: NewMatch): void {
   const { config, players } = match;
   driver.execute(
     `INSERT INTO matches (
-       id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
-       padel_best_of,
-       team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
-       court, location, started_at
-     ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        id, status, sport, best_of, deuce_mode, third_set, first_serve, first_serve_pending, first_serve_originally_undecided,
+        padel_best_of,
+        team_a_player_1, team_a_player_2, team_b_player_1, team_b_player_2,
+        court, location, note, started_at
+      ) VALUES (?, 'live', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       match.id,
       "padel",
@@ -209,6 +211,7 @@ function insertPadelMatch(driver: SqlDriver, match: NewMatch): void {
       ...playerParams(players),
       match.court ?? null,
       match.location ?? null,
+      match.note ?? null,
       match.startedAt,
     ],
   );

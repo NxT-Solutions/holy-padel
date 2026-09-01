@@ -1,3 +1,5 @@
+export type { BackupData, BackupRow } from "./backup.ts";
+export { exportBackup, importBackup, parseBackup } from "./backup.ts";
 export type { SqlDriver, SqlRow, SqlValue } from "./driver.ts";
 export { inTransaction } from "./driver.ts";
 export type { HeartRateSample } from "./heart-rate.ts";
@@ -33,9 +35,9 @@ export {
   loadEvents,
   pauseMatch,
   removeLastEvent,
-  reopenMatch,
   resumeMatch,
   scorePoint,
+  setMatchNote,
   setPendingGameSet,
   updateFirstServe,
 } from "./matches.ts";
