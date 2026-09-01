@@ -35,7 +35,7 @@ describe("player deletion", () => {
     // The match survives, with the tombstone standing in for the deleted player.
     const match = getMatch(driver, "m1");
     expect(match?.players.A[1]).toBe(REMOVED_PLAYER_ID);
-    expect(match?.names.A[1]).toBe("Former player"); // biome-ignore lint/suspicious/noUnnecessaryConditions: getMatch may return undefined
+    expect(match?.names.A[1]).toBe("Former player");
 
     // Roster and players list exclude both the deleted player and the tombstone.
     const ids = listRoster(driver).map((entry) => entry.id);

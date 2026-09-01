@@ -15,17 +15,10 @@ import { useCallback, useRef } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
+import { HistoryGrid } from "@/components/history-grid.tsx";
 import { ArrowRight, Plus } from "@/components/icons.tsx";
-import {
-  Avatar,
-  Body,
-  Card,
-  Display,
-  LiveDot,
-  Overline,
-  Pill,
-  ResultBadge,
-} from "@/components/ui.tsx";
+import { Avatar, Body, Card, Display, LiveDot, Overline, ResultBadge } from "@/components/ui.tsx";
+import { WatchPill } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import {
   durationLabel,
@@ -36,10 +29,11 @@ import {
   pairInitials,
   pairLabel,
 } from "@/lib/format.ts";
+import { computeHistory } from "@/lib/history.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
-import { isWatchBridgeAvailable } from "@/watch/bridge.ts";
+import { useWatchLink } from "@/watch/use-watch-connection.ts";
 
 function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
   const game = snapshot.currentGame;
@@ -165,6 +159,7 @@ export default function HomeScreen(): ReactNode {
   const insets = useSafeAreaInsets();
   const now = useNow();
   const mutate = useDbMutation();
+  const watch = useWatchLink();
 
   const owner = useDbQuery(getOwner);
   const ownerId = owner?.id ?? "nico";
@@ -178,6 +173,7 @@ export default function HomeScreen(): ReactNode {
       .filter((match) => match.status === "finished")
       .slice(0, 2),
   );
+  const history = useDbQuery((driver) => computeHistory(listMatches(driver), ownerId, now));
   const [lastFinished] = recent;
 
   const rematchStarted = useRef(false);
@@ -225,20 +221,7 @@ export default function HomeScreen(): ReactNode {
           <Overline letterSpacing={1.6}>{owner?.club ?? "Holy Padel"}</Overline>
           <Display fontSize={24}>{`HOLA, ${(owner?.name ?? "").toUpperCase()}`}</Display>
         </YStack>
-        {isWatchBridgeAvailable() ? (
-          <Pill
-            borderWidth={1}
-            borderColor={textAlpha(0.14)}
-            paddingVertical={7}
-            paddingHorizontal={12}
-            gap={6}
-          >
-            <LiveDot size={6} />
-            <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.55)}>
-              WATCH PAIRED
-            </Body>
-          </Pill>
-        ) : null}
+        <WatchPill link={watch} />
       </XStack>
 
       {live !== undefined && liveSnapshot !== undefined ? (
@@ -317,6 +300,13 @@ export default function HomeScreen(): ReactNode {
           <RecentRow key={match.id} match={match} now={now} ownerId={ownerId} />
         ))}
       </YStack>
+
+      <HistoryGrid
+        weeks={history.weeks}
+        played={history.played}
+        won={history.won}
+        lost={history.lost}
+      />
     </ScrollView>
   );
 }

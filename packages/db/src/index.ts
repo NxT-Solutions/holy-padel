@@ -64,5 +64,6 @@ export type {
   WinLoss,
 } from "./profile.ts";
 export { computePointsTotals, computeProfileStats } from "./profile.ts";
+export { repairMissingEvents } from "./repair.ts";
 export { databaseSizeBytes, migrate } from "./schema.ts";
 export { getSetting, setSetting } from "./settings.ts";

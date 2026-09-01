@@ -17,7 +17,7 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
+import { View, YStack } from "tamagui";
 import { EndSheet } from "@/components/end-sheet.tsx";
 import {
   LiveActionBar,
@@ -27,14 +27,16 @@ import {
   TeamCard,
 } from "@/components/live-parts.tsx";
 import { MatchWon } from "@/components/match-won.tsx";
-import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
+import { Display, Pill } from "@/components/ui.tsx";
+import { WatchSyncLine } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
 import { scoreHaptic, undoHaptic } from "@/lib/haptics.ts";
 import { stopAndSaveMatch } from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
+import { useWatchLink } from "@/watch/use-watch-connection.ts";
 
 /** Persist the finished result once the engine says the match is over. */
 function usePersistFinish(
@@ -85,6 +87,9 @@ export default function LiveScreen(): ReactNode {
   const [ending, setEnding] = useState(false);
 
   const match = useDbQuery((driver) => getMatch(driver, id));
+  // Connection status is polled app-wide; called before any early return so
+  // finishing the match (which renders MatchWon) doesn't change the hook count.
+  const watch = useWatchLink();
   const events = useDbQuery((driver) => loadEvents(driver, id));
   const rematchStarted = useRef(false);
   useEffect(() => {
@@ -199,7 +204,6 @@ export default function LiveScreen(): ReactNode {
     choicePending && staged !== undefined
       ? stagedChoiceLabel(staged, squashTarget)
       : statusLabel(snapshot.moment, names);
-
   return (
     <View flex={1} backgroundColor={colors.screen}>
       <YStack
@@ -273,14 +277,7 @@ export default function LiveScreen(): ReactNode {
           }}
         />
 
-        <XStack alignItems="center" justifyContent="center" gap={6}>
-          <LiveDot size={6} />
-          <Body fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
-            {paused
-              ? "Paused — workout paused on your watch too"
-              : "Synced — your watch mirrors the score"}
-          </Body>
-        </XStack>
+        <WatchSyncLine link={watch} paused={paused} />
       </YStack>
 
       {ending ? (

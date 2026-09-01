@@ -5,7 +5,7 @@ import {
   loadMatchHeartRate,
   setMatchNote,
 } from "@holy-padel/db";
-import type { SetStats, TeamId } from "@holy-padel/scoring";
+import type { PointEvent, SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
@@ -50,6 +50,27 @@ function setNote(set: SetStats): string {
     return `Break in game ${String(lastBreak.gameNumber)}`;
   }
   return "Serve held throughout";
+}
+
+/**
+ * The longest streak of consecutive rallies won — the squash counterpart of
+ * "service games held", which means nothing in a sport where the serve swaps
+ * hands every rally.
+ */
+function longestRun(events: readonly PointEvent[]): { team: TeamId; count: number } | undefined {
+  let best: { team: TeamId; count: number } | undefined;
+  let current: { team: TeamId; count: number } | undefined;
+  const rallies = events.filter((event) => event.kind !== "serve");
+  for (const event of rallies) {
+    current =
+      current === undefined || current.team !== event.winner
+        ? { team: event.winner, count: 1 }
+        : { team: current.team, count: current.count + 1 };
+    if (best === undefined || current.count > best.count) {
+      best = current;
+    }
+  }
+  return best;
 }
 
 /** The editable free-text note — add context before or after the fact. */
@@ -378,12 +399,31 @@ export default function MatchOverviewScreen(): ReactNode {
             </Display>
           </XStack>
         )}
-        <XStack alignItems="center" justifyContent="space-between">
-          <Body fontSize={13} fontWeight="700">
-            Service games held
-          </Body>
-          <Display fontSize={15}>{`${String(service.held)} / ${String(service.served)}`}</Display>
-        </XStack>
+        {match.config.sport === "squash" ? (
+          (() => {
+            const run = longestRun(events);
+            if (run === undefined) {
+              return null;
+            }
+            return (
+              <XStack alignItems="center" justifyContent="space-between">
+                <Body fontSize={13} fontWeight="700">
+                  Longest point run
+                </Body>
+                <Display fontSize={15}>
+                  {`${names[run.team]} · ${String(run.count)} in a row`}
+                </Display>
+              </XStack>
+            );
+          })()
+        ) : (
+          <XStack alignItems="center" justifyContent="space-between">
+            <Body fontSize={13} fontWeight="700">
+              Service games held
+            </Body>
+            <Display fontSize={15}>{`${String(service.held)} / ${String(service.served)}`}</Display>
+          </XStack>
+        )}
       </Card>
 
       <XStack alignItems="center" justifyContent="center" gap={18} marginTop={8}>

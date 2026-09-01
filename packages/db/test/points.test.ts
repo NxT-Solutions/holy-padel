@@ -69,15 +69,15 @@ describe("match heart rate storage", () => {
   it("round-trips the watch samples and rejects malformed blobs", () => {
     const driver = seededDriver();
     saveMatchHeartRate(driver, "m1", [
-      { t: 1_000, bpm: 140 },
-      { t: 2_000, bpm: 152 },
+      { t: 1000, bpm: 140 },
+      { t: 2000, bpm: 152 },
     ]);
     expect(loadMatchHeartRate(driver, "m1")).toEqual([
-      { t: 1_000, bpm: 140 },
-      { t: 2_000, bpm: 152 },
+      { t: 1000, bpm: 140 },
+      { t: 2000, bpm: 152 },
     ]);
 
-    saveMatchHeartRate(driver, "m1", [{ t: 3_000, bpm: 900 }]);
+    saveMatchHeartRate(driver, "m1", [{ t: 3000, bpm: 900 }]);
     expect(loadMatchHeartRate(driver, "m1")).toBeUndefined();
 
     saveMatchHeartRate(driver, "m2", []);

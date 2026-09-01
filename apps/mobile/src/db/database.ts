@@ -1,5 +1,5 @@
 import type { SqlDriver, SqlRow, SqlValue } from "@holy-padel/db";
-import { migrate } from "@holy-padel/db";
+import { migrate, repairMissingEvents } from "@holy-padel/db";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { openDatabaseAsync } from "expo-sqlite";
 import { seedIfEmpty } from "./seed.ts";
@@ -26,6 +26,9 @@ export async function openAppDatabase(): Promise<SqlDriver> {
   const database = await openDatabaseAsync("holy-padel.db");
   const driver = expoDriver(database);
   migrate(driver);
+  // Matches whose rallies were lost (e.g. a device restore) get their ledgers
+  // replayed from the cached score line so graphs and stats work again.
+  repairMissingEvents(driver);
   // biome-ignore lint/style/noProcessEnv: Expo inlines EXPO_PUBLIC_* at bundle time
   // biome-ignore lint/correctness/noProcessGlobal: Expo's standard env access
   // biome-ignore lint/complexity/useLiteralKeys: tsc requires the index form

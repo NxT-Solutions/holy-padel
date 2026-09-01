@@ -154,6 +154,13 @@ autolinks into the app on `expo prebuild`. It exposes:
   - **iOS** (`WatchBridgeModule.swift`): `WCSession.updateApplicationContext(["state": json])`,
     plus `sendMessage(["state": json])` when reachable — the `"state"` key the watch
     target decodes (`WatchConnectivityManager.swift`).
+- `connectedWatchCount(): Promise<number>` — how many watches are connected right now
+  (Android: `NodeClient.connectedNodes` size; 0 when Play services are missing or
+  Bluetooth is off; absent on iOS builds older than the feature). The phone app polls
+  this every ~8 s (`use-watch-connection.ts`), refreshes early whenever an intent
+  arrives (an intent is proof of a connection) and on foregrounding, and drives the
+  live screen's "Synced — N watches connected" line and the home pill. The e2e suite
+  fakes the count on web with `EXPO_PUBLIC_MOCK_WATCH_COUNT`.
 - an **`onIntent`** event carrying `{ path, body }` — emitted when the watch sends one.
   - **Android:** a `MessageClient.OnMessageReceivedListener` → `{ path: event.path,
     body: String(event.data) }`.

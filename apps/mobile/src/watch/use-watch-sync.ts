@@ -8,12 +8,11 @@ import {
 } from "@holy-padel/db";
 import { computeMatch } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { logWatchWorkout } from "@/health/health-log.ts";
 import { parseWorkoutSummary, WORKOUT_PATH } from "@/health/watch-workout.ts";
 import { newMatchId } from "@/lib/navigation.ts";
-import { useNow } from "@/lib/use-now.ts";
 import { applyWatchIntent } from "./apply-intent.ts";
 import { addIntentListener, pushWatchStateJson } from "./bridge.ts";
 import type { WatchStateInput } from "./build-state.ts";
@@ -58,17 +57,30 @@ function gatherWatchInput(driver: SqlDriver): GatheredInput {
  * payload on every ledger change (and on a slow clock tick), and applies the
  * score / undo / rematch intents the watch sends back through the same writes
  * the live screen uses. A no-op when no watch bridge is linked (see bridge.ts).
+ *
+ * The clock is stamped with a fresh `Date.now()` at push time, never a ticking
+ * state: scoring from the watch while the phone is pocketed (backgrounded, no
+ * JS timers) must still advance the watch's match clock on every point.
  */
 export function useWatchSync(): void {
   const mutate = useDbMutation();
-  const now = useNow(CLOCK_REFRESH_MS);
   const input = useDbQuery(gatherWatchInput);
-
-  const json = useMemo(() => JSON.stringify(buildWatchState({ ...input, now })), [input, now]);
+  const inputRef = useRef(input);
+  inputRef.current = input;
 
   useEffect(() => {
-    pushWatchStateJson(json);
-  }, [json]);
+    pushWatchStateJson(JSON.stringify(buildWatchState({ ...input, now: Date.now() })));
+  }, [input]);
+
+  // Foreground heartbeat: advances the watch clock between ledger changes.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      pushWatchStateJson(JSON.stringify(buildWatchState({ ...inputRef.current, now: Date.now() })));
+    }, CLOCK_REFRESH_MS);
+    return (): void => {
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(
     () =>
