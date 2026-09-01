@@ -9,15 +9,20 @@ import type { DayCell } from "@/lib/history.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 /**
- * The home screen's season grid: one small square per day for the last few
- * weeks — lime when you won, ink when you lost, outlined for a mixed day —
- * with month markers and today ringed. Tapping a day with matches expands
- * that day's results right below the grid.
+ * The home screen's season calendar — a GitHub-contribution-graph style grid
+ * of the last ten weeks, rebuilt for legibility: 24pt cells, a three-state
+ * colour language (won = lime, lost = ink, mixed = outlined), month markers,
+ * Mon/Wed/Fri row labels and a streak headline so the card answers "how have
+ * I been playing?" without any decoding. Tapping a day with matches expands
+ * that day's results beneath the grid.
  */
 
-const CELL = 13;
-const GAP = 3;
+const CELL = 24;
+const GAP = 5;
+const AXIS_WIDTH = 20;
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
+/** GitHub shows only Mon/Wed/Fri so the axis reads without noise. */
+const LABELLED_ROWS = [1, 3, 5] as const;
 const MONTHS = [
   "JAN",
   "FEB",
@@ -33,6 +38,8 @@ const MONTHS = [
   "DEC",
 ] as const;
 
+const RADIUS = 7;
+
 function DaySquare({
   cell,
   selected,
@@ -45,52 +52,39 @@ function DaySquare({
   if (cell.future) {
     return <View width={CELL} height={CELL} />;
   }
-  const interactive = cell.played > 0;
-  const ring = (() => {
-    if (selected) {
-      return colors.white;
-    }
-    return cell.today ? colors.lime : "transparent";
-  })();
-  const inner = (() => {
+
+  // Today and the tapped day carry a white ring; everything else speaks
+  // through its fill alone.
+  const ringed = selected || cell.today;
+  const box = (() => {
     if (cell.played === 0) {
-      return <View width={CELL} height={CELL} borderRadius={4} backgroundColor={textAlpha(0.04)} />;
-    }
-    const mixed = cell.won > 0 && cell.lost > 0;
-    const wonDay = cell.won > cell.lost;
-    if (mixed) {
       return (
-        <View
-          width={CELL}
-          height={CELL}
-          borderRadius={4}
-          backgroundColor={textAlpha(0.14)}
-          borderWidth={1}
-          borderColor={wonDay ? colors.lime : textAlpha(0.2)}
-        />
+        <View width={CELL} height={CELL} borderRadius={RADIUS} backgroundColor={textAlpha(0.05)} />
       );
     }
+    // The fill is the day's win percentage: all lime = won everything,
+    // all blue = lost everything, half-and-half = even day.
     return (
-      <View
-        width={CELL}
-        height={CELL}
-        borderRadius={4}
-        backgroundColor={wonDay ? colors.lime : colors.ink}
-      />
+      <View width={CELL} height={CELL} borderRadius={RADIUS} overflow="hidden">
+        <View flex={cell.won} backgroundColor={colors.lime} />
+        <View flex={cell.lost} backgroundColor={colors.teamBlue} />
+      </View>
     );
   })();
+
+  const interactive = cell.played > 0;
   if (!interactive) {
     return (
       <View
         width={CELL}
         height={CELL}
-        borderRadius={5}
-        borderWidth={selected || cell.today ? 1 : 0}
-        borderColor={ring}
+        borderRadius={RADIUS + 2}
+        borderWidth={ringed ? 2 : 0}
+        borderColor={colors.white}
         alignItems="center"
         justifyContent="center"
       >
-        {inner}
+        {box}
       </View>
     );
   }
@@ -98,19 +92,19 @@ function DaySquare({
     <View
       width={CELL}
       height={CELL}
-      borderRadius={5}
-      borderWidth={selected || cell.today ? 1 : 0}
-      borderColor={ring}
+      borderRadius={RADIUS + 2}
+      borderWidth={ringed ? 2 : 0}
+      borderColor={colors.white}
       alignItems="center"
       justifyContent="center"
-      pressStyle={{ opacity: 0.6 }}
+      pressStyle={{ opacity: 0.65 }}
       role="button"
-      aria-label={`${cell.played} ${cell.played === 1 ? "match" : "matches"} played`}
+      aria-label={`${cell.played} ${cell.played === 1 ? "match" : "matches"} played, ${cell.won} won`}
       onPress={() => {
         onPress(cell.day);
       }}
     >
-      {inner}
+      {box}
     </View>
   );
 }
@@ -130,23 +124,18 @@ function DayMatches({
   const dayMatches = matches.filter(
     (match) => match.startedAt >= day && match.startedAt < day + 86_400_000,
   );
-  const ownerWon = (match: MatchSummary): boolean => {
-    const ownerTeam = ownerTeamOf(match, ownerId);
-    return match.winner === ownerTeam;
-  };
+  const ownerWon = (match: MatchSummary): boolean => match.winner === ownerTeamOf(match, ownerId);
   const won = dayMatches.filter(ownerWon).length;
   const lost = dayMatches.length - won;
   return (
-    <YStack gap={9}>
+    <YStack gap={11}>
       <XStack alignItems="center" justifyContent="space-between">
-        <Body fontSize={12} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.6)}>
-          {`${fullDayLabel(day)} · ${String(won)}–${String(lost)}`}
-        </Body>
+        <Display fontSize={15}>{`${fullDayLabel(day)} · ${String(won)}–${String(lost)}`}</Display>
         <Body
-          fontSize={10.5}
+          fontSize={11}
           fontWeight="800"
           letterSpacing={1}
-          color={textAlpha(0.4)}
+          color={textAlpha(0.45)}
           pressStyle={{ opacity: 0.6 }}
           role="button"
           onPress={onDismiss}
@@ -167,14 +156,14 @@ function DayMatches({
               router.push(`/match/${match.id}`);
             }}
           >
-            <Body flex={1} fontSize={13.5} fontWeight="700">
+            <Body flex={1} fontSize={14.5} fontWeight="700">
               {`vs ${pairLabel(opponentsOf(match, ownerTeam))}`}
             </Body>
-            <XStack alignItems="center" gap={10}>
-              <Display fontSize={14} color={textAlpha(0.6)}>
+            <XStack alignItems="center" gap={12}>
+              <Display fontSize={15} color={textAlpha(0.6)}>
                 {match.scoreLine ?? ""}
               </Display>
-              <ResultBadge won={match.winner === ownerTeam} size={22} />
+              <ResultBadge won={match.winner === ownerTeam} size={26} />
             </XStack>
           </XStack>
         );
@@ -190,6 +179,7 @@ export function HistoryGrid({
   lost,
   matches,
   ownerId,
+  streak,
   selectedDay,
   onSelectDay,
 }: {
@@ -199,6 +189,7 @@ export function HistoryGrid({
   readonly lost: number;
   readonly matches: readonly MatchSummary[];
   readonly ownerId: string;
+  readonly streak: { readonly kind: "won" | "lost"; readonly count: number } | undefined;
   readonly selectedDay: number | undefined;
   readonly onSelectDay: (day: number | undefined) => void;
 }): ReactNode {
@@ -208,6 +199,7 @@ export function HistoryGrid({
   const handleSelect = (day: number): void => {
     onSelectDay(selectedDay === day ? undefined : day);
   };
+
   // A month marker sits above the first column that starts a new month.
   const monthMarkers = weeks.map((week, index) => {
     const { day } = week[0] ?? {};
@@ -224,47 +216,52 @@ export function HistoryGrid({
   });
 
   return (
-    <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={12}>
+    <Card borderRadius={22} paddingVertical={16} paddingHorizontal={16} gap={14}>
       <XStack alignItems="center" justifyContent="space-between">
-        <Overline>{`LAST ${String(weeks.length)} WEEKS`}</Overline>
-        <XStack alignItems="center" gap={10}>
-          <XStack alignItems="center" gap={5}>
-            <View width={9} height={9} borderRadius={3} backgroundColor={colors.lime} />
-            <Body fontSize={10} fontWeight="700" color={textAlpha(0.45)}>
-              {`${String(won)} W`}
-            </Body>
+        <YStack>
+          <Overline>YOUR SEASON</Overline>
+          <Display fontSize={17}>{`${String(won)}W · ${String(lost)}L`}</Display>
+        </YStack>
+        {streak === undefined ? null : (
+          <XStack
+            backgroundColor={colors.ink}
+            borderRadius={14}
+            paddingVertical={9}
+            paddingHorizontal={14}
+            alignItems="center"
+            gap={8}
+          >
+            <Display fontSize={14} color={streak.kind === "won" ? colors.lime : colors.white}>
+              {streak.kind === "won"
+                ? `Won last ${String(streak.count)}`
+                : `Lost last ${String(streak.count)}`}
+            </Display>
           </XStack>
-          <XStack alignItems="center" gap={5}>
-            <View width={9} height={9} borderRadius={3} backgroundColor={colors.ink} />
-            <Body fontSize={10} fontWeight="700" color={textAlpha(0.45)}>
-              {`${String(lost)} L`}
-            </Body>
-          </XStack>
-        </XStack>
+        )}
       </XStack>
 
       <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-        <YStack gap={3}>
-          <XStack paddingLeft={16} gap={GAP}>
+        <YStack gap={4}>
+          <XStack paddingLeft={AXIS_WIDTH} gap={GAP}>
             {monthMarkers.map((label, index) => (
               <View key={`month-${String(weeks[index]?.[0]?.day)}`} width={CELL * 2}>
-                <Body fontSize={8} fontWeight="800" color={textAlpha(0.35)} numberOfLines={1}>
+                <Body fontSize={10} fontWeight="800" color={textAlpha(0.4)} numberOfLines={1}>
                   {label}
                 </Body>
               </View>
             ))}
           </XStack>
-          <XStack gap={6}>
-            <YStack justifyContent="space-between" paddingVertical={1}>
+          <XStack gap={GAP}>
+            <YStack justifyContent="space-between" width={AXIS_WIDTH} paddingVertical={2}>
               {DAY_LABELS.map((label, index) => (
                 <Body
                   // biome-ignore lint/suspicious/noArrayIndexKey: fixed 7-slot axis
                   key={index}
-                  width={10}
-                  fontSize={8}
+                  fontSize={10}
                   fontWeight="700"
-                  color={textAlpha(0.3)}
+                  color={textAlpha(0.35)}
                   lineHeight={CELL}
+                  opacity={(LABELLED_ROWS as readonly number[]).includes(index) ? 1 : 0}
                 >
                   {label}
                 </Body>
@@ -288,9 +285,32 @@ export function HistoryGrid({
         </YStack>
       </ScrollView>
 
-      <Display fontSize={13} textAlign="center" color={textAlpha(0.5)}>
-        {`${String(played)} ${played === 1 ? "match" : "matches"} played`}
-      </Display>
+      <XStack alignItems="center" justifyContent="center" gap={14}>
+        <XStack alignItems="center" gap={6}>
+          <View width={13} height={13} borderRadius={4} backgroundColor={colors.lime} />
+          <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
+            All won
+          </Body>
+        </XStack>
+        <XStack alignItems="center" gap={6}>
+          <View width={13} height={13} borderRadius={4} backgroundColor={colors.teamBlue} />
+          <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
+            All lost
+          </Body>
+        </XStack>
+        <XStack alignItems="center" gap={6}>
+          <View width={13} height={13} borderRadius={4} overflow="hidden">
+            <View flex={1} backgroundColor={colors.lime} />
+            <View flex={1} backgroundColor={colors.teamBlue} />
+          </View>
+          <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
+            Split day
+          </Body>
+        </XStack>
+        <Body fontSize={11} fontWeight="700" color={textAlpha(0.35)}>
+          {`${String(played)} played`}
+        </Body>
+      </XStack>
 
       {selectedDay === undefined ? null : (
         <DayMatches

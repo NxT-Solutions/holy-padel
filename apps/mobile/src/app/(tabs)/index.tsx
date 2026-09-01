@@ -312,6 +312,7 @@ export default function HomeScreen(): ReactNode {
         lost={history.lost}
         matches={allMatches}
         ownerId={ownerId}
+        streak={stats.streak}
         selectedDay={selectedDay}
         onSelectDay={setSelectedDay}
       />
