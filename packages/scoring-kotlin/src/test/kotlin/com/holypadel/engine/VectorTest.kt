@@ -49,6 +49,12 @@ class VectorTest {
                 squashMode = SquashMode.valueOf(obj.getValue("squashMode").jsonPrimitive.content),
                 squashTarget = obj.getValue("squashTarget").jsonPrimitive.content.toInt(),
                 squashTiebreak = SquashTiebreak.valueOf(obj.getValue("squashTiebreak").jsonPrimitive.content),
+                squashServeBoxes = obj["squashServeBoxes"]
+                    ?.jsonPrimitive
+                    ?.content
+                    ?.let { SquashServeBoxes.valueOf(it) },
+                squashServeBoxA = obj["squashServeBoxA"]?.jsonPrimitive?.content,
+                squashServeBoxB = obj["squashServeBoxB"]?.jsonPrimitive?.content,
                 firstServe = firstServe,
             )
         }
@@ -69,14 +75,25 @@ class VectorTest {
         )
     }
 
-    private fun eventsFrom(winners: String): List<PointEvent> =
-        winners.mapIndexed { i, c -> PointEvent(winner = parseTeam(c.toString()), at = i.toLong()) }
+    private fun eventsFrom(winners: String, gameSets: String?): List<PointEvent> =
+        winners.mapIndexed { i, c ->
+            PointEvent(
+                winner = parseTeam(c.toString()),
+                at = i.toLong(),
+                gameSet =
+                    when (gameSets?.getOrNull(i)) {
+                        '1' -> "one"
+                        '2' -> "two"
+                        else -> null
+                    },
+            )
+        }
 
     @Test
     fun everyGoldenVectorMatches() {
         val file = goldenFile()
         val root = json.parseToJsonElement(file.readText()) as JsonArray
-        assertEquals(5832, root.size, "expected 5832 golden vectors")
+        assertEquals(7032, root.size, "expected 7032 golden vectors")
 
         var pass = 0
         val failures = mutableListOf<String>()
@@ -85,9 +102,10 @@ class VectorTest {
             val elem = elemAny.jsonObject
             val config = parseConfig(elem.getValue("config").jsonObject)
             val winners = elem.getValue("winners").jsonPrimitive.content
+            val gameSets = elem["gameSets"]?.jsonPrimitive?.content
             val expected: JsonElement = elem.getValue("snapshot")
 
-            val actual = serializeSnapshot(computeMatch(config, eventsFrom(winners)))
+            val actual = serializeSnapshot(computeMatch(config, eventsFrom(winners, gameSets)))
 
             if (actual == expected) {
                 pass += 1
@@ -102,10 +120,10 @@ class VectorTest {
 
         if (failures.isNotEmpty()) {
             val shown = failures.take(5).joinToString("\n")
-            System.err.println("FAILED ${failures.size}/5832 vectors. First few:\n$shown")
+            System.err.println("FAILED ${failures.size}/7032 vectors. First few:\n$shown")
         }
-        assertTrue(failures.isEmpty(), "${failures.size} vector mismatch(es); ${pass}/5832 passed")
-        assertEquals(5832, pass, "all 5832 vectors must pass")
-        println("scoring-kotlin: $pass/5832 golden vectors passed")
+        assertTrue(failures.isEmpty(), "${failures.size} vector mismatch(es); ${pass}/7032 passed")
+        assertEquals(7032, pass, "all 7032 vectors must pass")
+        println("scoring-kotlin: $pass/7032 golden vectors passed")
     }
 }

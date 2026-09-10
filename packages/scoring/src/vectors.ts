@@ -1,5 +1,5 @@
 import { computeMatch } from "./engine.ts";
-import type { MatchConfig, MatchSnapshot } from "./types.ts";
+import type { MatchConfig, MatchSnapshot, PointEvent } from "./types.ts";
 
 /**
  * Golden test vectors: the canonical TS engine's output for a spread of
@@ -56,7 +56,27 @@ export interface GoldenVector {
   readonly config: MatchConfig;
   /** The rally winners as a string of "A"/"B", applied in order. */
   readonly winners: string;
+  /**
+   * Squash "choice" tie-breaks only: one char per rally — "." (no decision),
+   * "1" (short/set one) or "2" (long/set two). `winners[i]` and `gameSets[i]`
+   * describe the same rally, so the ports can reconstruct the full event list
+   * (winner, at, gameSet) without a bulky per-event JSON array.
+   */
+  readonly gameSets?: string;
   readonly snapshot: SerializedSnapshot;
+}
+
+/** Materialise a winner sequence (plus any choice decisions) into events. */
+function eventsFrom(winners: string, gameSets?: string): PointEvent[] {
+  return [...winners].map((winner, index) => {
+    const decision = gameSets?.[index];
+    return {
+      winner: winner === "A" ? ("A" as const) : ("B" as const),
+      at: index,
+      ...(decision === "1" ? { gameSet: "one" as const } : {}),
+      ...(decision === "2" ? { gameSet: "two" as const } : {}),
+    };
+  });
 }
 
 export function serializeSnapshot(snap: MatchSnapshot): SerializedSnapshot {
@@ -139,15 +159,72 @@ function winnerSequence(seed: number, length: number, biasToA: number): string {
   return out;
 }
 
+/**
+ * Attach a deterministic long/short decision to every choice-point rally in a
+ * winner sequence. Without a decision the engine falls back to "one", so the
+ * vectors would never exercise the decided target or the `gameSet` event
+ * payload. The LCG keeps the decisions reproducible across runs/languages.
+ */
+function choiceDecisions(config: MatchConfig, winners: string, seed: number): string {
+  const next = lcg(seed);
+  let gameSets = "";
+  for (let i = 0; i < winners.length; i += 1) {
+    const before = computeMatch(config, eventsFrom(winners.slice(0, i), gameSets));
+    let decision = ".";
+    if (before.moment.kind === "setChoice") {
+      decision = next() < 0.5 ? "1" : "2";
+    }
+    gameSets += decision;
+  }
+  return gameSets;
+}
+
 // Snapshot at several prefixes of each sequence, so mid-match states (deuce,
 // tie-break, set points) are covered, not just the finished result.
 const PREFIXES = [0, 1, 3, 8, 20, 45, 90, 160, 240] as const;
 const BIASES = [0.5, 0.62, 0.4] as const;
+/** Offset that keeps choice decisions off the rally-winner LCG stream. */
+const CHOICE_SEED_OFFSET = 10_000;
 
-/** Generate the full golden set (deterministic; ~a few hundred cases). */
+/**
+ * Push the prefix snapshots for one deterministic winner sequence. When
+ * `decisions` is supplied (squash "choice"), every vector carries the matching
+ * `gameSets` string and its events include those `gameSet` decisions.
+ */
+function pushSequence(
+  vectors: GoldenVector[],
+  config: MatchConfig,
+  seed: number,
+  bias: number,
+  decisions?: (winners: string) => string,
+): void {
+  const full = winnerSequence(seed, 240, bias);
+  const allSets = decisions === undefined ? undefined : decisions(full);
+  for (const prefix of PREFIXES) {
+    const winners = full.slice(0, prefix);
+    if (allSets === undefined) {
+      vectors.push({
+        config,
+        winners,
+        snapshot: serializeSnapshot(computeMatch(config, eventsFrom(winners))),
+      });
+      continue;
+    }
+    const gameSets = allSets.slice(0, prefix);
+    vectors.push({
+      config,
+      winners,
+      gameSets,
+      snapshot: serializeSnapshot(computeMatch(config, eventsFrom(winners, gameSets))),
+    });
+  }
+}
+
+/** Generate the full golden set (deterministic; a few thousand cases). */
 export function goldenVectors(): GoldenVector[] {
   const vectors: GoldenVector[] = [];
   let seed = 1;
+
   for (const bestOf of BEST_OFS) {
     for (const deuceMode of DEUCE_MODES) {
       for (const thirdSet of THIRD_SETS) {
@@ -155,26 +232,14 @@ export function goldenVectors(): GoldenVector[] {
           const config: MatchConfig = { sport: "padel", bestOf, deuceMode, thirdSet, firstServe };
           for (const bias of BIASES) {
             seed += 1;
-            const full = winnerSequence(seed, 240, bias);
-            for (const prefix of PREFIXES) {
-              const winners = full.slice(0, prefix);
-              const events = [...winners].map((w, i) => ({
-                winner: w === "A" ? ("A" as const) : ("B" as const),
-                at: i,
-              }));
-              vectors.push({
-                config,
-                winners,
-                snapshot: serializeSnapshot(computeMatch(config, events)),
-              });
-            }
+            pushSequence(vectors, config, seed, bias);
           }
         }
       }
     }
   }
 
-  // Squash vectors
+  // Squash vectors (fixed-target tie-breaks: win by two, set one, set two)
   const SquashModes = ["par", "hiho"] as const;
   const SquashTargets = [9, 11, 15] as const;
   const SquashBestOfs = [1, 3, 5] as const;
@@ -196,21 +261,122 @@ export function goldenVectors(): GoldenVector[] {
             };
             for (const bias of BIASES) {
               seed += 1;
-              const full = winnerSequence(seed, 240, bias);
-              for (const prefix of PREFIXES) {
-                const winners = full.slice(0, prefix);
-                const events = [...winners].map((w, i) => ({
-                  winner: w === "A" ? ("A" as const) : ("B" as const),
-                  at: i,
-                }));
-                vectors.push({
-                  config,
-                  winners,
-                  snapshot: serializeSnapshot(computeMatch(config, events)),
-                });
-              }
+              pushSequence(vectors, config, seed, bias);
             }
           }
+        }
+      }
+    }
+  }
+
+  // Squash "choice" tie-break: a deterministic long/short decision rides on
+  // every choice-point rally as a `gameSet`, matching the app's own events.
+  for (const bestOf of SquashBestOfs) {
+    for (const squashMode of SquashModes) {
+      for (const squashTarget of SquashTargets) {
+        for (const firstServe of SERVES) {
+          const config: MatchConfig = {
+            sport: "squash",
+            bestOf,
+            deuceMode: "advantage",
+            thirdSet: "fullSet",
+            squashMode,
+            squashTarget,
+            squashTiebreak: "choice",
+            firstServe,
+          };
+          for (const bias of BIASES) {
+            seed += 1;
+            const decisionSeed = seed + CHOICE_SEED_OFFSET;
+            pushSequence(vectors, config, seed, bias, (winners) =>
+              choiceDecisions(config, winners, decisionSeed),
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Hand-crafted "choice" end-games: a random walk rarely reaches target-1 all
+  // at a balanced score, so these pin the short and long decisions through a
+  // completed game in the scenarios the setup UI offers — PAR to 9 and 11, and
+  // HI-HO to 11. Each case contributes the choice-point snapshot and the
+  // decided result.
+  const ChoiceCases: readonly {
+    readonly target: number;
+    readonly squashMode: "par" | "hiho";
+    readonly decision: "one" | "two";
+  }[] = [
+    { target: 9, squashMode: "par", decision: "one" },
+    { target: 9, squashMode: "par", decision: "two" },
+    { target: 11, squashMode: "par", decision: "one" },
+    { target: 11, squashMode: "par", decision: "two" },
+    { target: 11, squashMode: "hiho", decision: "one" },
+    { target: 11, squashMode: "hiho", decision: "two" },
+  ];
+  for (const choiceCase of ChoiceCases) {
+    const { target, squashMode, decision } = choiceCase;
+    const config: MatchConfig = {
+      sport: "squash",
+      bestOf: 1,
+      deuceMode: "advantage",
+      thirdSet: "fullSet",
+      squashMode,
+      squashTarget: target,
+      squashTiebreak: "choice",
+      firstServe: "A",
+    };
+    // Balanced score at the choice point. PAR alternates points; HI-HO gets
+    // there with one hand-out (the extra "B") then ten points on B's serve.
+    const balanced =
+      squashMode === "par"
+        ? "A".repeat(target - 1) + "B".repeat(target - 1)
+        : "A".repeat(target - 1) + "B".repeat(target);
+    const pending = ".".repeat(balanced.length);
+    vectors.push({
+      config,
+      winners: balanced,
+      gameSets: pending,
+      snapshot: serializeSnapshot(computeMatch(config, eventsFrom(balanced, pending))),
+    });
+    const winners = balanced + (decision === "one" ? "B" : "BB");
+    const gameSets = pending + (decision === "one" ? "1" : "2.");
+    vectors.push({
+      config,
+      winners,
+      gameSets,
+      snapshot: serializeSnapshot(computeMatch(config, eventsFrom(winners, gameSets))),
+    });
+  }
+
+  // Squash serve boxes: each variant picks the first box of every hand, which
+  // `servingSide` must reproduce identically across the three engines.
+  const ServeBoxVariants = [
+    { squashServeBoxes: "right" as const },
+    { squashServeBoxes: "left" as const },
+    {
+      squashServeBoxes: "player" as const,
+      squashServeBoxA: "left" as const,
+      squashServeBoxB: "right" as const,
+    },
+  ];
+  for (const squashMode of SquashModes) {
+    for (const firstServe of SERVES) {
+      for (const boxes of ServeBoxVariants) {
+        const config: MatchConfig = {
+          sport: "squash",
+          bestOf: 1,
+          deuceMode: "advantage",
+          thirdSet: "fullSet",
+          squashMode,
+          squashTarget: 11,
+          squashTiebreak: "winByTwo",
+          ...boxes,
+          firstServe,
+        };
+        for (const bias of [0.5, 0.62] as const) {
+          seed += 1;
+          pushSequence(vectors, config, seed, bias);
         }
       }
     }
@@ -237,19 +403,7 @@ export function goldenVectors(): GoldenVector[] {
             };
             for (const bias of BIASES) {
               seed += 1;
-              const full = winnerSequence(seed, 240, bias);
-              for (const prefix of PREFIXES) {
-                const winners = full.slice(0, prefix);
-                const events = [...winners].map((w, i) => ({
-                  winner: w === "A" ? ("A" as const) : ("B" as const),
-                  at: i,
-                }));
-                vectors.push({
-                  config,
-                  winners,
-                  snapshot: serializeSnapshot(computeMatch(config, events)),
-                });
-              }
+              pushSequence(vectors, config, seed, bias);
             }
           }
         }

@@ -66,6 +66,9 @@ private struct SerializedConfig: Codable, Equatable {
     let squashMode: String?
     let squashTarget: Int?
     let squashTiebreak: String?
+    let squashServeBoxes: String?
+    let squashServeBoxA: String?
+    let squashServeBoxB: String?
     let pbType: String?
     let pbTarget: Int?
     let pbTiebreak: String?
@@ -74,6 +77,9 @@ private struct SerializedConfig: Codable, Equatable {
 private struct GoldenVector: Codable {
     let config: SerializedConfig
     let winners: String
+    /// Squash "choice" tie-breaks only: one char per rally — "." none, "1" set
+    /// one, "2" set two. Null/missing for every other suite.
+    let gameSets: String?
     let snapshot: SerializedSnapshot
 }
 
@@ -191,7 +197,10 @@ private func decodeConfig(_ c: SerializedConfig) -> MatchConfig {
             squashMode: SquashMode(rawValue: c.squashMode!)!,
             squashTarget: c.squashTarget!,
             squashTiebreak: SquashTiebreak(rawValue: c.squashTiebreak!)!,
-            firstServe: firstServe
+            firstServe: firstServe,
+            squashServeBoxes: c.squashServeBoxes.flatMap { SquashServeBoxes(rawValue: $0) },
+            squashServeBoxA: c.squashServeBoxA,
+            squashServeBoxB: c.squashServeBoxB
         )
     }
     if c.sport == "pickleball" {
@@ -211,9 +220,15 @@ private func decodeConfig(_ c: SerializedConfig) -> MatchConfig {
     )
 }
 
-private func eventsFromWinners(_ winners: String) -> [PointEvent] {
-    winners.enumerated().map { index, ch in
-        PointEvent(winner: ch == "A" ? .A : .B, at: index)
+private func eventsFromWinners(_ winners: String, _ gameSets: String?) -> [PointEvent] {
+    let decisions = gameSets.map(Array.init) ?? []
+    return winners.enumerated().map { index, ch in
+        let decision = index < decisions.count ? String(decisions[index]) : "."
+        return PointEvent(
+            winner: ch == "A" ? .A : .B,
+            at: index,
+            gameSet: decision == "1" ? "one" : (decision == "2" ? "two" : nil)
+        )
     }
 }
 
@@ -240,14 +255,14 @@ final class VectorTests: XCTestCase {
         let data = try Data(contentsOf: url)
         let vectors = try JSONDecoder().decode([GoldenVector].self, from: data)
 
-        XCTAssertEqual(vectors.count, 5832, "expected 5832 golden vectors")
+        XCTAssertEqual(vectors.count, 7032, "expected 7032 golden vectors")
 
         var passed = 0
         var failures: [String] = []
 
         for (index, vector) in vectors.enumerated() {
             let config = decodeConfig(vector.config)
-            let events = eventsFromWinners(vector.winners)
+            let events = eventsFromWinners(vector.winners, vector.gameSets)
             let snapshot = computeMatch(config: config, events: events)
             let actual = serialize(snapshot)
             let expected = vector.snapshot
