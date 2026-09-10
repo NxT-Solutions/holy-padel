@@ -304,7 +304,19 @@ private fun squashMoment(state: FoldState, config: MatchConfig): Moment {
     val leader = leaderOf(points) ?: return Moment.Normal
     val loser = otherTeam(leader)
     val potentialPoints = bump(points, leader)
-    if (!squashGameWon(squashConfig.squashTiebreak, squashConfig.squashTarget, potentialPoints[leader], potentialPoints[loser])) {
+    // In "choice" mode the game runs to its decided effective target — either
+    // the short (set one) or long (set two) one — so the moment must use
+    // state.gameTarget, not the base target.
+    val effectiveTiebreak =
+        if (squashConfig.squashTiebreak == SquashTiebreak.choice) SquashTiebreak.setOne
+        else squashConfig.squashTiebreak
+    val target =
+        if (squashConfig.squashTiebreak == SquashTiebreak.choice) {
+            state.gameTarget ?: squashConfig.squashTarget
+        } else {
+            squashConfig.squashTarget
+        }
+    if (!squashGameWon(effectiveTiebreak, target, potentialPoints[leader], potentialPoints[loser])) {
         return Moment.Normal
     }
     val gamesAfter = setsWonBy(state.completedSets, leader) + 1
