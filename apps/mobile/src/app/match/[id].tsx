@@ -5,7 +5,7 @@ import {
   loadMatchHeartRate,
   setMatchNote,
 } from "@holy-padel/db";
-import type { PointEvent, SetStats, TeamId } from "@holy-padel/scoring";
+import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
 import { Redirect, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
@@ -37,7 +37,12 @@ const DEUCE_LABELS: Record<string, string> = {
   starPoint: "STAR POINT",
 };
 
-function setNote(set: SetStats): string | undefined {
+function setNote(set: SetStats, isSquash: boolean): string | undefined {
+  // Squash games have no breaks or tie-breaks to narrate — each game is its
+  // own "set" in the data model, so the padel note reads as nonsense there.
+  if (isSquash) {
+    return;
+  }
   if (set.summary.kind === "superTieBreak") {
     return "Super tie-break";
   }
@@ -47,27 +52,6 @@ function setNote(set: SetStats): string | undefined {
   }
   const lastBreak = set.breakGames.at(-1);
   return lastBreak === undefined ? undefined : `Break in game ${String(lastBreak.gameNumber)}`;
-}
-
-/**
- * The longest streak of consecutive rallies won — the squash counterpart of
- * "service games held", which means nothing in a sport where the serve swaps
- * hands every rally.
- */
-function longestRun(events: readonly PointEvent[]): { team: TeamId; count: number } | undefined {
-  let best: { team: TeamId; count: number } | undefined;
-  let current: { team: TeamId; count: number } | undefined;
-  const rallies = events.filter((event) => event.kind !== "serve");
-  for (const event of rallies) {
-    current =
-      current === undefined || current.team !== event.winner
-        ? { team: event.winner, count: 1 }
-        : { team: current.team, count: current.count + 1 };
-    if (best === undefined || current.count > best.count) {
-      best = current;
-    }
-  }
-  return best;
 }
 
 /** The editable free-text note — add context before or after the fact. */
@@ -317,46 +301,53 @@ export default function MatchOverviewScreen(): ReactNode {
       </Card>
 
       <YStack gap={8}>
-        {stats.sets.map((set) => (
-          <Card
-            key={set.setNumber}
-            borderRadius={17}
-            paddingVertical={14}
-            paddingHorizontal={17}
-            flexDirection="row"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <YStack gap={3}>
-              <Overline letterSpacing={1.4}>
-                {`SET ${String(set.setNumber)} · ${String(Math.round(set.durationMs / 60_000))} MIN`}
-              </Overline>
-              {setNote(set) === undefined ? null : (
-                <Body fontSize={13} fontWeight="700" color={textAlpha(0.55)}>
-                  {setNote(set)}
-                </Body>
-              )}
-            </YStack>
-            <XStack alignItems="center" gap={11}>
-              <Display fontSize={26}>
-                {`${String(set.summary.games.A)}–${String(set.summary.games.B)}`}
-              </Display>
-              <Pill
-                backgroundColor={colors.lime}
-                borderRadius={7}
-                paddingVertical={4}
-                paddingHorizontal={8}
-              >
-                <Display fontSize={11} letterSpacing={0.5} color={colors.text}>
-                  {initials[set.summary.winner]}
+        {stats.sets.map((set) => {
+          const note = setNote(set, match.config.sport === "squash");
+          return (
+            <Card
+              key={set.setNumber}
+              borderRadius={17}
+              paddingVertical={14}
+              paddingHorizontal={17}
+              flexDirection="row"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <YStack gap={3}>
+                <Overline letterSpacing={1.4}>
+                  {`${match.config.sport === "squash" ? "GAME" : "SET"} ${String(set.setNumber)} · ${String(Math.round(set.durationMs / 60_000))} MIN`}
+                </Overline>
+                {note === undefined ? null : (
+                  <Body fontSize={13} fontWeight="700" color={textAlpha(0.55)}>
+                    {note}
+                  </Body>
+                )}
+              </YStack>
+              <XStack alignItems="center" gap={11}>
+                <Display fontSize={26}>
+                  {`${String(set.summary.games.A)}–${String(set.summary.games.B)}`}
                 </Display>
-              </Pill>
-            </XStack>
-          </Card>
-        ))}
+                <Pill
+                  backgroundColor={colors.lime}
+                  borderRadius={7}
+                  paddingVertical={4}
+                  paddingHorizontal={8}
+                >
+                  <Display fontSize={11} letterSpacing={0.5} color={colors.text}>
+                    {initials[set.summary.winner]}
+                  </Display>
+                </Pill>
+              </XStack>
+            </Card>
+          );
+        })}
       </YStack>
 
-      <ScoreRaceCard series={series} {...(heartRate === undefined ? {} : { heartRate })} />
+      <ScoreRaceCard
+        series={series}
+        sport={match.config.sport}
+        {...(heartRate === undefined ? {} : { heartRate })}
+      />
 
       <Card borderRadius={20} paddingVertical={16} paddingHorizontal={17} gap={13}>
         <Overline>MATCH TOTALS</Overline>
@@ -399,22 +390,16 @@ export default function MatchOverviewScreen(): ReactNode {
           </XStack>
         )}
         {match.config.sport === "squash" ? (
-          (() => {
-            const run = longestRun(events);
-            if (run === undefined) {
-              return null;
-            }
-            return (
-              <XStack alignItems="center" justifyContent="space-between">
-                <Body fontSize={13} fontWeight="700">
-                  Longest point run
-                </Body>
-                <Display fontSize={15}>
-                  {`${names[run.team]} · ${String(run.count)} in a row`}
-                </Display>
-              </XStack>
-            );
-          })()
+          stats.longestRun === undefined ? null : (
+            <XStack alignItems="center" justifyContent="space-between">
+              <Body fontSize={13} fontWeight="700">
+                Longest point run
+              </Body>
+              <Display fontSize={15}>
+                {`${names[stats.longestRun.team]} · ${String(stats.longestRun.count)} in a row`}
+              </Display>
+            </XStack>
+          )
         ) : (
           <XStack alignItems="center" justifyContent="space-between">
             <Body fontSize={13} fontWeight="700">

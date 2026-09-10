@@ -14,18 +14,22 @@ export function MatchWon({
   snapshot,
   stats,
   now,
+  ownerId,
   onRematch,
 }: {
   readonly match: MatchSummary;
   readonly snapshot: MatchSnapshot;
   readonly stats: MatchStats;
   readonly now: number;
+  readonly ownerId: string;
   readonly onRematch: () => void;
 }): ReactNode {
   const insets = useSafeAreaInsets();
   const winner = snapshot.winner ?? "A";
   const loser: TeamId = winner === "A" ? "B" : "A";
   const names = teamNames(match);
+  const ownerTeam: TeamId = match.players.B.includes(ownerId) ? "B" : "A";
+  const ownerWon = winner === ownerTeam;
   const meta = [
     dayLabel(match.startedAt, now),
     match.court?.toUpperCase(),
@@ -46,7 +50,7 @@ export function MatchWon({
         {meta}
       </Body>
       <Display fontSize={58} color={colors.lime} letterSpacing={1} marginTop={14}>
-        MATCH WON
+        {ownerWon ? "MATCH WON" : "MATCH LOST"}
       </Display>
       <Display fontSize={34} color={colors.white} marginTop={18}>
         {names[winner].toUpperCase()}
@@ -72,7 +76,11 @@ export function MatchWon({
           value={`${String(snapshot.totalPoints[winner])}–${String(snapshot.totalPoints[loser])}`}
           label="POINTS"
         />
-        <StatTile value={String(stats.breaks[winner])} label="BREAKS" />
+        {match.config.sport === "squash" ? (
+          <StatTile value={String(stats.longestRun?.count ?? 0)} label="LONGEST RUN" />
+        ) : (
+          <StatTile value={String(stats.breaks[winner])} label="BREAKS" />
+        )}
       </XStack>
       <YStack marginTop="auto" width="100%" gap={9}>
         <XStack

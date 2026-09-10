@@ -15,9 +15,11 @@ import { colors, textAlpha } from "@/theme/colors.ts";
 export function ScoreRaceCard({
   series,
   heartRate,
+  sport,
 }: {
   readonly series: readonly GameSeries[];
   readonly heartRate?: readonly HeartRateSample[];
+  readonly sport?: "padel" | "squash" | "pickleball" | undefined;
 }): ReactNode {
   const [selected, setSelected] = useState<number | undefined>(undefined);
   if (series.length === 0) {
@@ -38,7 +40,9 @@ export function ScoreRaceCard({
       <XStack alignItems="center" justifyContent="space-between">
         <Overline>SCORE RACE</Overline>
         <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.4)}>
-          {`SET ${String(game.setNumber)} · GAME ${String(game.gameNumber)} · ${String(game.pointsA)}–${String(game.pointsB)}`}
+          {sport === "squash"
+            ? `GAME ${String(game.setNumber)} · ${String(game.pointsA)}–${String(game.pointsB)}`
+            : `SET ${String(game.setNumber)} · GAME ${String(game.gameNumber)} · ${String(game.pointsA)}–${String(game.pointsB)}`}
         </Body>
       </XStack>
 

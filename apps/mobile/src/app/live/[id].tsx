@@ -4,6 +4,7 @@ import {
   deleteMatch,
   finishMatch,
   getMatch,
+  getOwner,
   loadEvents,
   pauseMatch,
   removeLastEvent,
@@ -87,6 +88,8 @@ export default function LiveScreen(): ReactNode {
   const [ending, setEnding] = useState(false);
 
   const match = useDbQuery((driver) => getMatch(driver, id));
+  const owner = useDbQuery(getOwner);
+  const ownerId = owner?.id ?? "nico";
   // Connection status is polled app-wide; called before any early return so
   // finishing the match (which renders MatchWon) doesn't change the hook count.
   const watch = useWatchLink();
@@ -117,6 +120,7 @@ export default function LiveScreen(): ReactNode {
         snapshot={snapshot}
         stats={finishedStats}
         now={now}
+        ownerId={ownerId}
         onRematch={() => {
           if (rematchStarted.current) {
             return;
