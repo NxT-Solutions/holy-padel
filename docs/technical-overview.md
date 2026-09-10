@@ -164,7 +164,7 @@ Discard is a separate destructive path.
 
 The canonical engine lives in `packages/scoring`.
 
-It handles:
+It handles, for padel:
 
 - standard games,
 - advantage deuce,
@@ -177,6 +177,14 @@ It handles:
 - serving team,
 - score moments like game point, set point, match point, deuce, advantage,
 - finished state.
+
+And for squash (see [squash-scoring-spec.md](squash-scoring-spec.md)):
+
+- PAR and HI-HO games,
+- configurable targets and best-of,
+- win-by-two, sudden-death and interactive "choice" tie-breaks,
+- serve-box rotation and per-player box preferences,
+- hand-outs and per-game score lines.
 
 Golden vectors are generated from the TypeScript engine and consumed by the Swift
 and Kotlin ports. When scoring behavior changes, update the FIP spec, regenerate
@@ -281,7 +289,8 @@ through `.gitnexusignore` so the graph does not index its own generated output.
 
 | If you change | Also update |
 | --- | --- |
-| Scoring behavior | `docs/fip-scoring-spec.md`, golden vectors, Swift/Kotlin ports |
+| Padel scoring behavior | `docs/fip-scoring-spec.md`, golden vectors, Swift/Kotlin ports |
+| Squash scoring behavior | `docs/squash-scoring-spec.md`, golden vectors, Swift/Kotlin ports |
 | Watch payloads or intents | `docs/watch-sync.md`, mobile watch code, watch apps |
 | Database schema | migrations, repository tests, seed tests |
 | Design tokens | `DESIGN.md`, `apps/mobile/src/theme/colors.ts`, affected screenshots |

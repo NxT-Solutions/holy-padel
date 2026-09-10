@@ -64,7 +64,8 @@ Six workflows in `.github/workflows` (see the README's CI table). `main` is prot
 
 ## Where to look first
 
-- Scoring questions → `packages/scoring/src` + `docs/fip-scoring-spec.md`.
+- Scoring questions → `packages/scoring/src` + `docs/fip-scoring-spec.md` +
+  `docs/squash-scoring-spec.md`.
 - Watch questions → `docs/watch-sync.md` + `apps/mobile/src/watch` + the two watch apps.
 - "How does X render?" → `apps/mobile/src/app` (expo-router screens) + `src/lib/format.ts` (all display strings).
 - Design/colors/typography → **[DESIGN.md](DESIGN.md)** (the token source of truth) + `apps/mobile/src/theme/colors.ts`.

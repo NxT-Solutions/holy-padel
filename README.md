@@ -68,6 +68,7 @@ That keeps the app predictable, testable, and easy to sync.
 | [Human project guide](docs/project-guide.md) | Non-technical readers, open-source visitors, product overview |
 | [Technical overview](docs/technical-overview.md) | Developers who want the architecture, data model, sync model, and build map |
 | [FIP scoring spec](docs/fip-scoring-spec.md) | The scoring rules the engine implements |
+| [Squash scoring spec](docs/squash-scoring-spec.md) | PAR/HI-HO squash rules, tie-breaks and serve boxes |
 | [Watch sync contract](docs/watch-sync.md) | Phone-to-watch payloads and watch-to-phone intents |
 | [Generated GitNexus wiki](docs/gitnexus-wiki/README.md) | Graph-generated module docs for deeper code navigation |
 
@@ -224,6 +225,7 @@ Useful references:
 
 - [Technical overview](docs/technical-overview.md)
 - [FIP scoring spec](docs/fip-scoring-spec.md)
+- [Squash scoring spec](docs/squash-scoring-spec.md)
 - [Watch sync contract](docs/watch-sync.md)
 - [Generated GitNexus wiki](docs/gitnexus-wiki/README.md)
 
