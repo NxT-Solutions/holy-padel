@@ -132,7 +132,7 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     pointA: pointDisplay(snapshot, "A"),
     pointB: pointDisplay(snapshot, "B"),
     games: liveScoreLine(snapshot),
-    status: stagedStatus ?? watchStatusLabel(snapshot.moment, shorts) ?? "",
+    status: stagedStatus ?? watchStatusLabel(snapshot.moment, shorts, snapshot.config.sport) ?? "",
     paused: match.pausedAt !== undefined,
     choicePending: choicePending || undefined,
     startedAt: match.startedAt,

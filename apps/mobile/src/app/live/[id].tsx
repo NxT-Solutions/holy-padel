@@ -200,7 +200,7 @@ export default function LiveScreen(): ReactNode {
   const label =
     choicePending && staged !== undefined
       ? stagedChoiceLabel(staged, squashTarget)
-      : statusLabel(snapshot.moment, names);
+      : statusLabel(snapshot.moment, names, snapshot.config.sport);
   return (
     <View flex={1} backgroundColor={colors.screen}>
       <YStack
