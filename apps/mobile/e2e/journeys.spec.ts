@@ -21,7 +21,7 @@ test.describe("multi-match journeys", () => {
     await page.getByRole("button", { name: "REMATCH", exact: true }).click();
     await expectPoints(page, "0", "0");
     await winLoveGames(page, "B", 6);
-    await expect(page.getByText("MATCH WON")).toBeVisible();
+    await expect(page.getByText("MATCH LOST")).toBeVisible();
     await page.getByRole("button", { name: "SAVE & CLOSE" }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 

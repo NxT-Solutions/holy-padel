@@ -80,7 +80,8 @@ test.describe("a full match, start to save", () => {
     await gotoHome(page);
     await startNewMatch(page, { bestOf: 1 });
     await winLoveGames(page, "B", 6);
-    await expect(page.getByText("MATCH WON")).toBeVisible();
+    // The owner's side lost — the headline says so, the winner is credited.
+    await expect(page.getByText("MATCH LOST")).toBeVisible();
     await expect(page.getByText("MARTA & LEO", { exact: true })).toBeVisible();
     await expect(page.getByText("DEF. NICO & JAVI")).toBeVisible();
     await expect(page.getByTestId("won-score")).toHaveText("0-6");
