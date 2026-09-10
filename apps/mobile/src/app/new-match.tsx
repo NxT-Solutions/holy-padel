@@ -60,9 +60,9 @@ export default function NewMatchScreen(): ReactNode {
     ...(c === undefined ? {} : { lastConfig: c }),
   });
   const [format, setFormat] = useState<"singles" | "doubles">(d.format);
-  const [partner, setPartner] = useState<string | undefined>(undefined);
-  const [teamA1, setTeamA1] = useState<string>(ownerId);
-  const [teamB, setTeamB] = useState<readonly string[]>([]);
+  const [partner, setPartner] = useState<string | undefined>(draft?.partner);
+  const [teamA1, setTeamA1] = useState<string>(draft?.teamA1 ?? ownerId);
+  const [teamB, setTeamB] = useState<readonly string[]>(draft?.teamB ?? []);
   const [picking, setPicking] = useState<TeamId | undefined>(undefined);
   const [bestOf, setBestOf] = useState<1 | 3 | 5>(d.bestOf);
   const [thirdSet, setThirdSet] = useState<ThirdSetMode>(d.thirdSet);
