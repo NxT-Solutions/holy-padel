@@ -46,6 +46,8 @@ export interface MatchStats {
   readonly breaks: TeamValues<number>;
   readonly service: TeamValues<ServiceRecord>;
   readonly longestGame: GameRecord | undefined;
+  /** Longest streak of consecutive rallies won by one team (squash's run stat). */
+  readonly longestRun: { readonly team: TeamId; readonly count: number } | undefined;
   readonly totalPoints: TeamValues<number>;
   readonly durationMs: number;
 }
@@ -171,6 +173,31 @@ function longestOf(standardGames: readonly GameRecord[]): GameRecord | undefined
 }
 
 /**
+ * The longest streak of consecutive rallies won by one team. Serve events
+ * score no rally and are skipped — a run spans a hand-out in HI-HO, where the
+ * receiver's winning rallies never touch the score.
+ */
+function longestRunOf(
+  events: readonly PointEvent[],
+): { readonly team: TeamId; readonly count: number } | undefined {
+  let best: { team: TeamId; count: number } | undefined;
+  let current: { team: TeamId; count: number } | undefined;
+  for (const event of events) {
+    if (event.kind === "serve") {
+      continue;
+    }
+    current =
+      current === undefined || current.team !== event.winner
+        ? { team: event.winner, count: 1 }
+        : { team: current.team, count: current.count + 1 };
+    if (best === undefined || current.count > best.count) {
+      best = current;
+    }
+  }
+  return best;
+}
+
+/**
  * Replay a match and derive per-game and per-set statistics for the
  * overview screens: breaks, service games held, longest game, durations.
  */
@@ -211,6 +238,7 @@ export function computeStats(config: MatchConfig, events: readonly PointEvent[])
     breaks: { A: breaksFor(standardGames, "A"), B: breaksFor(standardGames, "B") },
     service: { A: serviceFor(standardGames, "A"), B: serviceFor(standardGames, "B") },
     longestGame: longestOf(standardGames),
+    longestRun: longestRunOf(events),
     totalPoints: final.totalPoints,
     durationMs:
       firstEvent === undefined || lastEvent === undefined ? 0 : lastEvent.at - firstEvent.at,
