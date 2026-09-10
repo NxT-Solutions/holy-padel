@@ -86,6 +86,18 @@ export default function LiveScreen(): ReactNode {
   const now = useNow(10_000);
   const mutate = useDbMutation();
   const [ending, setEnding] = useState(false);
+  // Transient "HAND OUT" flash for HI-HO: a receiver's rally changes the serve
+  // without moving the score, and without feedback it looks like a dead tap.
+  const [handOut, setHandOut] = useState(false);
+  const handOutTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(
+    () => () => {
+      if (handOutTimer.current !== undefined) {
+        clearTimeout(handOutTimer.current);
+      }
+    },
+    [],
+  );
 
   const match = useDbQuery((driver) => getMatch(driver, id));
   const owner = useDbQuery(getOwner);
@@ -147,6 +159,16 @@ export default function LiveScreen(): ReactNode {
 
   const scorePoint = (team: TeamId): void => {
     scoreHaptic();
+    // HI-HO only: the receiver winning a rally is a hand-out — the serve
+    // changes hands and no point is scored. (An unstaged choice point refuses
+    // the tap entirely, so it must not flash.)
+    const isHandOut =
+      match.config.sport === "squash" &&
+      match.config.squashMode === "hiho" &&
+      match.pausedAt === undefined &&
+      snapshot.servingTeam !== undefined &&
+      snapshot.servingTeam !== team &&
+      !(snapshot.moment.kind === "setChoice" && match.pendingGameSet === undefined);
     // scorePointDb re-reads committed state and refuses once the match is
     // paused or decided. It also resolves undecided first serves (game 1 and
     // pickleball games 2+) and attaches a staged squash long/short decision,
@@ -154,6 +176,15 @@ export default function LiveScreen(): ReactNode {
     mutate((driver) => {
       scorePointDb(driver, id, team, Date.now());
     });
+    if (isHandOut) {
+      setHandOut(true);
+      if (handOutTimer.current !== undefined) {
+        clearTimeout(handOutTimer.current);
+      }
+      handOutTimer.current = setTimeout(() => {
+        setHandOut(false);
+      }, 1400);
+    }
   };
 
   const chooseGameSet = (choice: "one" | "two"): void => {
@@ -255,7 +286,19 @@ export default function LiveScreen(): ReactNode {
           />
         </YStack>
 
-        {label === undefined ? null : (
+        {handOut ? (
+          <Pill
+            alignSelf="center"
+            backgroundColor={colors.lime}
+            paddingVertical={10}
+            paddingHorizontal={22}
+            testID="hand-out-pill"
+          >
+            <Display fontSize={15} letterSpacing={1.5} color={colors.text}>
+              HAND OUT
+            </Display>
+          </Pill>
+        ) : label === undefined ? null : (
           <Pill
             alignSelf="center"
             backgroundColor={colors.ink}
