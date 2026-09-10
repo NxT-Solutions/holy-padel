@@ -444,6 +444,7 @@ export function MatchSetupOptions({
   setPbTarget,
   pbTiebreak,
   setPbTiebreak,
+  teamLabels,
 }: {
   readonly format: "singles" | "doubles";
   readonly setFormat: (value: "singles" | "doubles") => void;
@@ -469,7 +470,13 @@ export function MatchSetupOptions({
   readonly setPbTarget: (value: number) => void;
   readonly pbTiebreak: PbTiebreak;
   readonly setPbTiebreak: (value: PbTiebreak) => void;
+  /** Singles: the picked players' names for the first-serve row. */
+  readonly teamLabels?: { readonly A: string; readonly B: string } | undefined;
 }): ReactNode {
+  const teamLabel = (team: TeamId): string => {
+    const name = teamLabels?.[team];
+    return name === undefined || name === "" ? `Team ${team}` : name;
+  };
   return (
     <Card borderRadius={20} padding={16} gap={13}>
       <SegmentedRow
@@ -525,8 +532,8 @@ export function MatchSetupOptions({
         label="First serve"
         options={[
           { value: "undecided", label: "Undecided" },
-          { value: "A", label: "Team A" },
-          { value: "B", label: "Team B" },
+          { value: "A", label: teamLabel("A") },
+          { value: "B", label: teamLabel("B") },
         ]}
         value={firstServe}
         onChange={setFirstServe}

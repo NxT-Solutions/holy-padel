@@ -273,6 +273,9 @@ export default function NewMatchScreen(): ReactNode {
           setPbTarget={setPbTarget}
           pbTiebreak={pbTiebreak}
           setPbTiebreak={setPbTiebreak}
+          {...(format === "singles" && nameOf(teamA1) !== "" && nameOf(teamB[0]) !== ""
+            ? { teamLabels: { A: nameOf(teamA1), B: nameOf(teamB[0]) } }
+            : {})}
         />
 
         <MatchNoteInput value={note} onChange={setNote} />
