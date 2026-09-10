@@ -230,6 +230,11 @@ export function pickDefaults(c: MatchConfig | undefined): NewMatchDefaults {
   const sport = c?.sport ?? "squash";
   const bestOf = c?.bestOf ?? 3;
   let format: "singles" | "doubles" = "doubles";
+  // Squash is overwhelmingly singles — including a fresh install, which opens
+  // on squash — and pickleball carries its format on the config.
+  if (c === undefined || c.sport === "squash") {
+    format = "singles";
+  }
   if (c?.sport === "pickleball" && c.pbType === "singles") {
     format = "singles";
   }

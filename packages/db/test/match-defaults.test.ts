@@ -35,7 +35,7 @@ function freshDriver(): SqlDriver {
 describe("pickDefaults", () => {
   it("falls back to the squash-first built-ins without a config", () => {
     expect(pickDefaults(undefined)).toEqual({
-      format: "doubles",
+      format: "singles",
       bestOf: 3,
       firstServe: "undecided",
       sport: "squash",
@@ -53,12 +53,24 @@ describe("pickDefaults", () => {
   it("seeds the squash options from a squash config", () => {
     const defaults = pickDefaults(SQUASH_CONFIG);
     expect(defaults.sport).toBe("squash");
+    expect(defaults.format).toBe("singles");
     expect(defaults.bestOf).toBe(5);
     expect(defaults.squashMode).toBe("hiho");
     expect(defaults.squashTarget).toBe(9);
     expect(defaults.squashTiebreak).toBe("choice");
     expect(defaults.squashServeBoxes).toBe("left");
     expect(defaults.firstServe).toBe("B");
+  });
+
+  it("keeps padel doubles by default", () => {
+    const padel: MatchConfig = {
+      sport: "padel",
+      bestOf: 3,
+      deuceMode: "advantage",
+      thirdSet: "fullSet",
+      firstServe: "A",
+    };
+    expect(pickDefaults(padel).format).toBe("doubles");
   });
 });
 

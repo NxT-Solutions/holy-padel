@@ -16,12 +16,12 @@ test.describe("match defaults and draft persistence", () => {
     await page.getByRole("button", { name: "9", exact: true }).click();
 
     await page.getByRole("button", { name: "Done" }).click();
-    await expect(page.getByTestId("defaults-row")).toContainText("Squash · Doubles · best of 3");
+    await expect(page.getByTestId("defaults-row")).toContainText("Squash · Singles · best of 3");
 
     // A new match now prefills from the saved defaults.
     await gotoHome(page);
     await page.getByRole("button", { name: "NEW MATCH" }).click();
-    await expect(page.getByText("Doubles · Squash scoring")).toBeVisible();
+    await expect(page.getByText("Singles · Squash scoring")).toBeVisible();
   });
 
   test("leaving a half-set-up match restores settings and players on return", async ({ page }) => {

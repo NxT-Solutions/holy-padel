@@ -154,7 +154,14 @@ export function SportOptions({
             { value: "hiho", label: "HIHO" },
           ]}
           value={squashMode}
-          onChange={setSquashMode}
+          onChange={(value) => {
+            setSquashMode(value);
+            // The long/short choice is a HI-HO concept — a PAR match never
+            // reaches target-1 all with a decision to make.
+            if (value === "par" && squashTiebreak === "choice") {
+              setSquashTiebreak("winByTwo");
+            }
+          }}
         />
         <SegmentedRow
           label="Target"
@@ -168,10 +175,14 @@ export function SportOptions({
         />
         <SegmentedRow
           label="Tiebreak"
-          options={[
-            { value: "winByTwo", label: "Win by 2" },
-            { value: "choice", label: `Ask at ${String(squashTarget - 1)}` },
-          ]}
+          options={
+            squashMode === "hiho"
+              ? [
+                  { value: "winByTwo" as const, label: "Win by 2" },
+                  { value: "choice" as const, label: `Ask at ${String(squashTarget - 1)}` },
+                ]
+              : [{ value: "winByTwo" as const, label: "Win by 2" }]
+          }
           value={squashTiebreak === "choice" ? "choice" : "winByTwo"}
           onChange={setSquashTiebreak}
         />
