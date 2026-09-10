@@ -144,6 +144,12 @@ export function SportOptions({
   readonly pbTiebreak: PbTiebreak;
   readonly setPbTiebreak: (value: PbTiebreak) => void;
 }): ReactNode {
+  const changeSquashMode = (value: "par" | "hiho"): void => {
+    setSquashMode(value);
+    if (value === "par" && squashTiebreak === "choice") {
+      setSquashTiebreak("winByTwo");
+    }
+  };
   if (sport === "squash") {
     return (
       <>
@@ -154,14 +160,7 @@ export function SportOptions({
             { value: "hiho", label: "HIHO" },
           ]}
           value={squashMode}
-          onChange={(value) => {
-            setSquashMode(value);
-            // The long/short choice is a HI-HO concept — a PAR match never
-            // reaches target-1 all with a decision to make.
-            if (value === "par" && squashTiebreak === "choice") {
-              setSquashTiebreak("winByTwo");
-            }
-          }}
+          onChange={changeSquashMode}
         />
         <SegmentedRow
           label="Target"
@@ -481,13 +480,9 @@ export function MatchSetupOptions({
   readonly setPbTarget: (value: number) => void;
   readonly pbTiebreak: PbTiebreak;
   readonly setPbTiebreak: (value: PbTiebreak) => void;
-  /** Singles: the picked players' names for the first-serve row. */
   readonly teamLabels?: { readonly A: string; readonly B: string } | undefined;
 }): ReactNode {
-  const teamLabel = (team: TeamId): string => {
-    const name = teamLabels?.[team];
-    return name === undefined || name === "" ? `Team ${team}` : name;
-  };
+  const teamLabel = (team: TeamId): string => teamLabels?.[team] ?? `Team ${team}`;
   return (
     <Card borderRadius={20} padding={16} gap={13}>
       <SegmentedRow

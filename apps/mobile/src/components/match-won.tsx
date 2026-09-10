@@ -77,7 +77,10 @@ export function MatchWon({
           label="POINTS"
         />
         {match.config.sport === "squash" ? (
-          <StatTile value={String(stats.longestRun?.count ?? 0)} label="LONGEST RUN" />
+          <StatTile
+            value={stats.longestRun === undefined ? "0" : String(stats.longestRun.count)}
+            label="LONGEST RUN"
+          />
         ) : (
           <StatTile value={String(stats.breaks[winner])} label="BREAKS" />
         )}
