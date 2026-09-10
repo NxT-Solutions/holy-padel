@@ -14,7 +14,8 @@ test.describe("match overview (design 3d)", () => {
   test("shows the hero, set notes and totals for a tie-break win", async ({ page }) => {
     await gotoOverview(page, "seed-12", "DEF. MARTA & LEO");
 
-    await expect(page.getByText("NICO & JAVI", { exact: true })).toBeVisible();
+    // The pair appears in the hero and again as a MATCH TOTALS label.
+    await expect(page.getByText("NICO & JAVI", { exact: true }).first()).toBeVisible();
     await expect(page.getByTestId("overview-score")).toHaveText("6-3 · 7-6");
     await expect(page.getByText(/BEST OF 3 · ADVANTAGE/u)).toBeVisible();
 
@@ -34,7 +35,7 @@ test.describe("match overview (design 3d)", () => {
   test("labels a super tie-break decider", async ({ page }) => {
     await gotoOverview(page, "seed-10", "Super tie-break");
     await expect(page.getByTestId("overview-score")).toHaveText("7-5 · 2-6 · 10-7");
-    await expect(page.getByText(/SET 3/u)).toBeVisible();
+    await expect(page.getByText(/SET 3 · \d+ MIN/u)).toBeVisible();
   });
 
   test("delete asks first; cancel keeps the match", async ({ page }) => {
@@ -59,7 +60,7 @@ test.describe("match overview (design 3d)", () => {
 
     // Profile recomputes: 11 played, 7–4 now.
     await page.goto("/profile");
-    await expect(page.getByText("PLAYED")).toBeVisible();
-    await expect(page.getByText("7–4", { exact: true })).toBeVisible();
+    await expect(page.getByText("PLAYED", { exact: true })).toBeVisible();
+    await expect(page.getByText("7–4", { exact: true }).first()).toBeVisible();
   });
 });

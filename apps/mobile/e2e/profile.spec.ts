@@ -15,15 +15,16 @@ test.describe("profile tab (design 3f)", () => {
 
     // 12 finished matches, 8 won: 67%.
     await expect(page.getByText("12", { exact: true })).toBeVisible();
-    await expect(page.getByText("8–4", { exact: true })).toBeVisible();
+    // The record shows in the tile and again in the by-sport breakdown.
+    await expect(page.getByText("8–4", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("67%", { exact: true })).toBeVisible();
     await expect(page.getByText("FORM · LAST 5")).toBeVisible();
 
-    // Partner records.
+    // Partner records (Javi also appears in the players card below).
     await expect(page.getByText("WITH PARTNER")).toBeVisible();
-    await expect(page.getByText("Javi", { exact: true })).toBeVisible();
+    await expect(page.getByText("Javi", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("8–3", { exact: true })).toBeVisible();
-    await expect(page.getByText("Ana", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ana", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("0–1", { exact: true })).toBeVisible();
 
     // Head-to-head, most played first.
@@ -47,7 +48,7 @@ test.describe("profile tab (design 3f)", () => {
 
     await gotoProfile(page);
     await expect(page.getByText("13", { exact: true })).toBeVisible();
-    await expect(page.getByText("9–4", { exact: true })).toBeVisible();
+    await expect(page.getByText("9–4", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("69%", { exact: true })).toBeVisible();
     await expect(page.getByText("9–3", { exact: true })).toBeVisible(); // with Javi
     await expect(page.getByText("5–3", { exact: true })).toBeVisible(); // vs Marta & Leo

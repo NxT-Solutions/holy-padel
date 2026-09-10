@@ -32,7 +32,7 @@ test.describe("multi-match journeys", () => {
 
     // Profile counted one win and one loss.
     await page.goto("/profile");
-    await expect(page.getByText("9–5", { exact: true })).toBeVisible();
+    await expect(page.getByText("9–5", { exact: true }).first()).toBeVisible();
   });
 
   test("two live matches keep separate scores end to end", async ({ page }) => {

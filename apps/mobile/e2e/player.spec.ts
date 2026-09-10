@@ -14,16 +14,19 @@ test.describe("player profiles", () => {
     await page.getByTestId("player-javi").click();
     await expect(page.getByText("JAVI", { exact: true })).toBeVisible();
     await expect(page.getByText("Club Padel Norte · plays right side")).toBeVisible();
-    await expect(page.getByText("PLAYED", { exact: true })).toBeVisible();
-    await expect(page.getByText("WITH YOU")).toBeVisible();
-    await expect(page.getByText("MATCHES WITH YOU")).toBeVisible();
+    // The profile tab stays mounted (hidden) behind the player route.
+    await expect(page.getByText("PLAYED", { exact: true }).last()).toBeVisible();
+    await expect(page.getByText("WITH YOU", { exact: true })).toBeVisible();
+    await expect(page.getByText("MATCHES WITH YOU", { exact: true })).toBeVisible();
   });
 
   test("a partner row opens that player's profile", async ({ page }) => {
     await gotoProfile(page);
     await page.getByTestId("partner-javi").click();
     await expect(page.getByText("JAVI", { exact: true })).toBeVisible();
-    await expect(page.getByText("vs you")).toBeVisible();
+    // Javi partners the owner in the seed but never opposes him, so the
+    // profile shows the together card rather than a "vs you" row.
+    await expect(page.getByText("MATCHES WITH YOU", { exact: true })).toBeVisible();
   });
 
   test("editing a player updates name and side", async ({ page }) => {
@@ -37,7 +40,8 @@ test.describe("player profiles", () => {
     await page.getByTestId("save-profile").click();
 
     await expect(page.getByText("JAVIER", { exact: true })).toBeVisible();
-    await expect(page.getByText("Club Padel Norte · plays left side")).toBeVisible();
+    // The edit screen stays mounted (hidden) behind the player profile.
+    await expect(page.getByText("Club Padel Norte · plays left side").last()).toBeVisible();
   });
 
   test("a player added from the players card lands on their new profile", async ({ page }) => {
@@ -77,9 +81,9 @@ test.describe("player profiles", () => {
 
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
     await gotoProfile(page);
-    // Javi was in 12 of the 13 stored matches — only the live match remains,
-    // which itself features Javi, so everything goes.
-    await expect(page.getByText(/SQLite · 0 matches/u)).toBeVisible();
+    // Javi was in 12 of the 13 stored matches; seed-07 (partnered with Ana)
+    // never featured him, so exactly that one match survives.
+    await expect(page.getByText(/SQLite · 1 matches/u)).toBeVisible();
   });
 
   test("deleting a player without matches is a single confirm", async ({ page }) => {
