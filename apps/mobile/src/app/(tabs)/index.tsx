@@ -30,6 +30,7 @@ import {
   pairLabel,
 } from "@/lib/format.ts";
 import { computeHistory } from "@/lib/history.ts";
+import { rematchConfig } from "@/lib/match-actions.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
@@ -196,10 +197,7 @@ export default function HomeScreen(): ReactNode {
     mutate((driver) => {
       createMatch(driver, {
         id,
-        config: {
-          ...lastFinished.config,
-          firstServePending: lastFinished.config.firstServeOriginallyUndecided ?? false,
-        },
+        config: rematchConfig(lastFinished.config),
         players: lastFinished.players,
         ...(lastFinished.court === undefined ? {} : { court: lastFinished.court }),
         ...(lastFinished.location === undefined ? {} : { location: lastFinished.location }),

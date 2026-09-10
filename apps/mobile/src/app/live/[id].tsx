@@ -32,7 +32,7 @@ import { WatchSyncLine } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
 import { scoreHaptic, undoHaptic } from "@/lib/haptics.ts";
-import { stopAndSaveMatch } from "@/lib/match-actions.ts";
+import { rematchConfig, stopAndSaveMatch } from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors } from "@/theme/colors.ts";
@@ -126,10 +126,7 @@ export default function LiveScreen(): ReactNode {
           mutate((driver) => {
             createMatch(driver, {
               id: rematchId,
-              config: {
-                ...match.config,
-                firstServePending: match.config.firstServeOriginallyUndecided ?? false,
-              },
+              config: rematchConfig(match.config),
               players: match.players,
               ...(match.court === undefined ? {} : { court: match.court }),
               ...(match.location === undefined ? {} : { location: match.location }),

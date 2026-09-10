@@ -77,6 +77,31 @@ describe("applyWatchIntent", () => {
     expect(live?.court).toBe("COURT 4");
   });
 
+  it("leaves the rematch's first serve undecided when the original was", () => {
+    const driver = freshDb();
+    createMatch(driver, {
+      id: "m1",
+      config: { ...config, firstServePending: true, firstServeOriginallyUndecided: true },
+      players,
+      startedAt: 0,
+    });
+    finishMatch(driver, "m1", { winner: "A", endedAt: 10, scoreLine: "6-0 · 6-0" });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
+
+    expect(getLiveMatch(driver)?.config.firstServePending).toBe(true);
+  });
+
+  it("resolves a decided first serve in the rematch", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    finishMatch(driver, "m1", { winner: "A", endedAt: 10, scoreLine: "6-0 · 6-0" });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
+
+    expect(getLiveMatch(driver)?.config.firstServePending).toBe(false);
+  });
+
   it("does not rematch while a match is already live", () => {
     const driver = freshDb();
     createMatch(driver, { id: "m1", config, players, startedAt: 0 });

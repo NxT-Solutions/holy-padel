@@ -1,7 +1,22 @@
 import type { SqlDriver } from "@holy-padel/db";
 import { finishMatch, getMatch, loadEvents } from "@holy-padel/db";
+import type { MatchConfig } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
 import { currentLeader, finalScoreLine, liveScoreLine } from "@/lib/format.ts";
+
+/**
+ * The config for a rematch: the same scoring setup, except a match whose first
+ * serve was originally undecided starts its rematch undecided too. Rematching
+ * must not silently award the serve to whichever team the coin toss happened
+ * to resolve to last time. Shared by the two phone rematch buttons and the
+ * watch's `start-last` intent so all three behave identically.
+ */
+export function rematchConfig(config: MatchConfig): MatchConfig {
+  return {
+    ...config,
+    firstServePending: config.firstServeOriginallyUndecided ?? false,
+  };
+}
 
 /**
  * Stop AND save a match in whatever state it's in — the "court time's up, don't

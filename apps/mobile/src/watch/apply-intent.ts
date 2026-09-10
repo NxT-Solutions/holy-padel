@@ -10,7 +10,7 @@ import {
   scorePoint,
   setPendingGameSet,
 } from "@holy-padel/db";
-import { stopAndSaveMatch } from "@/lib/match-actions.ts";
+import { rematchConfig, stopAndSaveMatch } from "@/lib/match-actions.ts";
 
 /** The watch → phone intents (docs/watch-sync.md). */
 export const INTENT_PATHS = {
@@ -117,7 +117,7 @@ function applyStartLast(driver: SqlDriver, ctx: IntentContext): void {
   }
   createMatch(driver, {
     id: ctx.newMatchId(),
-    config: last.config,
+    config: rematchConfig(last.config),
     players: last.players,
     ...(last.court === undefined ? {} : { court: last.court }),
     ...(last.location === undefined ? {} : { location: last.location }),
