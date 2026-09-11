@@ -15,12 +15,14 @@ test.describe("profile tab (design 3f)", () => {
 
     // 12 finished matches, 8 won: 67%.
     await expect(page.getByText("12", { exact: true })).toBeVisible();
-    // The record shows in the tile and again in the by-sport breakdown.
+    // The record shows in the tile and again in the by-sport table.
     await expect(page.getByText("8–4", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("67%", { exact: true })).toBeVisible();
     await expect(page.getByText("FORM · LAST 5")).toBeVisible();
+    await expect(page.getByText("BEST RUN")).toBeVisible();
 
     // Partner records (Javi also appears in the players card below).
+    await expect(page.getByText("RECORDS")).toBeVisible();
     await expect(page.getByText("WITH PARTNER")).toBeVisible();
     await expect(page.getByText("Javi", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("8–3", { exact: true })).toBeVisible();
@@ -34,6 +36,15 @@ test.describe("profile tab (design 3f)", () => {
     await expect(page.getByText("vs Ana & Pablo")).toBeVisible();
     await expect(page.getByText("3–1", { exact: true })).toBeVisible();
     await expect(page.getByText("vs Carla & Hugo")).toBeVisible();
+
+    // Sport table pairs the record with lifetime rally points.
+    await expect(page.getByText("BY SPORT")).toBeVisible();
+    await expect(page.getByText("POINTS", { exact: true })).toBeVisible();
+    await expect(page.getByText("543–502", { exact: true })).toBeVisible();
+
+    // Settings are grouped in one card.
+    await expect(page.getByText("SETTINGS")).toBeVisible();
+    await expect(page.getByText("Match defaults")).toBeVisible();
 
     // Storage row counts every stored match, live included.
     await expect(page.getByText(/SQLite · 13 matches · .+ MB/u)).toBeVisible();
