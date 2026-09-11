@@ -118,7 +118,7 @@ function HealthBanner(): ReactNode {
       </YStack>
       {denied ? null : (
         <Pill
-          backgroundColor={colors.ink}
+          backgroundColor={colors.tileInk}
           paddingVertical={9}
           paddingHorizontal={15}
           pressStyle={{ opacity: 0.7 }}
@@ -249,41 +249,53 @@ export default function ProfileScreen(): ReactNode {
 
       <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
         <Overline>WITH PARTNER</Overline>
-        {stats.partners.map((partner) => (
-          <XStack
-            key={partner.playerId}
-            alignItems="center"
-            gap={12}
-            pressStyle={{ opacity: 0.75 }}
-            role="button"
-            onPress={() => {
-              router.push(`/player/${partner.playerId}`);
-            }}
-            testID={`partner-${partner.playerId}`}
-          >
-            <Avatar letter={partner.name.charAt(0)} size={30} />
-            <Body flex={1} fontSize={14.5} fontWeight="700">
-              {partner.name}
-            </Body>
-            <RecordBar won={partner.won} lost={partner.lost} />
-            <Display fontSize={15} width={36} textAlign="right">
-              {`${String(partner.won)}–${String(partner.lost)}`}
-            </Display>
-            <ChevronRight size={13} color={textAlpha(0.3)} />
-          </XStack>
-        ))}
+        {stats.partners.length === 0 ? (
+          <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)}>
+            No finished matches yet.
+          </Body>
+        ) : (
+          stats.partners.map((partner) => (
+            <XStack
+              key={partner.playerId}
+              alignItems="center"
+              gap={12}
+              pressStyle={{ opacity: 0.75 }}
+              role="button"
+              onPress={() => {
+                router.push(`/player/${partner.playerId}`);
+              }}
+              testID={`partner-${partner.playerId}`}
+            >
+              <Avatar letter={partner.name.charAt(0)} size={30} />
+              <Body flex={1} fontSize={14.5} fontWeight="700">
+                {partner.name}
+              </Body>
+              <RecordBar won={partner.won} lost={partner.lost} />
+              <Display fontSize={15} width={36} textAlign="right">
+                {`${String(partner.won)}–${String(partner.lost)}`}
+              </Display>
+              <ChevronRight size={13} color={textAlpha(0.3)} />
+            </XStack>
+          ))
+        )}
       </Card>
 
       <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
         <Overline>HEAD-TO-HEAD</Overline>
-        {stats.headToHead.map((record) => (
-          <XStack key={record.label} alignItems="center" justifyContent="space-between">
-            <Body fontSize={14.5} fontWeight="700">
-              {`vs ${record.label}`}
-            </Body>
-            <Display fontSize={15}>{`${String(record.won)}–${String(record.lost)}`}</Display>
-          </XStack>
-        ))}
+        {stats.headToHead.length === 0 ? (
+          <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)}>
+            No finished matches yet.
+          </Body>
+        ) : (
+          stats.headToHead.map((record) => (
+            <XStack key={record.label} alignItems="center" justifyContent="space-between">
+              <Body fontSize={14.5} fontWeight="700">
+                {`vs ${record.label}`}
+              </Body>
+              <Display fontSize={15}>{`${String(record.won)}–${String(record.lost)}`}</Display>
+            </XStack>
+          ))
+        )}
       </Card>
 
       <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={11}>
@@ -410,7 +422,7 @@ export default function ProfileScreen(): ReactNode {
       </Card>
 
       <XStack
-        backgroundColor={colors.ink}
+        backgroundColor={colors.tileInk}
         borderRadius={18}
         paddingVertical={13}
         paddingHorizontal={17}
@@ -435,7 +447,7 @@ export default function ProfileScreen(): ReactNode {
       </XStack>
 
       <XStack
-        backgroundColor={colors.ink}
+        backgroundColor={colors.tileInk}
         borderRadius={18}
         paddingVertical={13}
         paddingHorizontal={17}

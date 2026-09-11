@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { View } from "tamagui";
 import { Body, Display } from "@/components/ui.tsx";
-import { colors, whiteAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
 
 /** A profile stat tile: ink, lime or white with the value in Anton. */
 export function StatTile({
@@ -13,12 +13,13 @@ export function StatTile({
   readonly label: string;
   readonly variant: "ink" | "lime" | "white";
 }): ReactNode {
-  // The lime and white tiles keep constant backgrounds, so their text stays
-  // ink in both themes — only the ink tile's label follows the theme.
+  // The tile surfaces are theme tokens (dark tile, light tile), so the
+  // hierarchy holds in both palettes: the ink tile stays the darkest surface,
+  // the white tile the lightest. Lime is lime in both modes.
   const palette = {
-    ink: { background: colors.ink, value: colors.white, label: whiteAlpha(0.5) },
+    ink: { background: colors.tileInk, value: colors.white, label: whiteAlpha(0.5) },
     lime: { background: colors.lime, value: colors.ink, label: colors.ink },
-    white: { background: colors.white, value: colors.ink, label: colors.ink },
+    white: { background: colors.tileWhite, value: colors.text, label: textAlpha(0.45) },
   }[variant];
   const { background, value: valueColor, label: labelColor } = palette;
   return (

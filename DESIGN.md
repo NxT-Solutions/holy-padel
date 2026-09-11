@@ -16,6 +16,11 @@ colors:
   ink-raised: "#151922"   # raised dark tile (won-screen stats)
   ink-chip: "#1B2027"     # dark chip on a dark surface
   ink-button: "#181D24"   # dark secondary button
+  # Theme-aware tiles — the profile stat tiles swap between these so the
+  # hierarchy holds on the dark screen: in dark mode tile-ink is a raised
+  # surface and tile-white becomes the chip surface (never pure white).
+  tile-ink: "#0E1116"     # darkest tile (light mode) → raised #151922 (dark)
+  tile-white: "#FFFFFF"   # lightest tile (light mode) → #1B2027 (dark)
   # Accent — the ball. Shared anchor: lime.
   lime: "#C6F135"         # live/serve, primary CTA, wins, active accents
   lime-ink: "#7F9A12"     # lime that stays legible on white (active-set label)

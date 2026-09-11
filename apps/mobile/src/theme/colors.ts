@@ -23,6 +23,10 @@ const LIGHT = {
   inkChip: "#1B2027",
   /** Dark secondary button. */
   inkButton: "#181D24",
+  /** Dark panel that hugs the screen in light mode (stat tiles, settings rows). */
+  tileInk: "#0E1116",
+  /** Light tile surface (stat tiles) — a card surface in dark mode. */
+  tileWhite: "#FFFFFF",
   /** Ball-lime accent. */
   lime: "#C6F135",
   /** Lime legible on a light card (active set label). */
@@ -58,6 +62,11 @@ const DARK: typeof LIGHT = {
   inkRaised: "#151922",
   inkChip: "#1B2027",
   inkButton: "#181D24",
+  // The dark tile turns into a raised surface (still the darkest tile) and the
+  // white tile into the raised card, so the light-mode hierarchy survives the
+  // palette flip without a black tile vanishing into the near-black screen.
+  tileInk: "#151922",
+  tileWhite: "#1B2027",
   lime: "#C6F135",
   limeOnCard: "#C6F135",
   screen: "#0B0D11",
