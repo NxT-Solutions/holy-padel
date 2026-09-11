@@ -77,7 +77,7 @@ test.describe("home screen (design 3a)", () => {
   test("season calendar fills the card width and opens a day", async ({ page }) => {
     await gotoHome(page);
 
-    await expect(page.getByText("YOUR SEASON")).toBeVisible();
+    await expect(page.getByText("LAST 6 WEEKS")).toBeVisible();
     // The grid spans the card (the old GitHub-style columns left a gap) and
     // its day cells are big enough to tap.
     const gridBox = await page.getByTestId("history-grid").boundingBox();

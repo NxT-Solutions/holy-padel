@@ -10,7 +10,7 @@ import { colors, textAlpha } from "@/theme/colors.ts";
 /**
  * The home screen's season calendar — one row per week, seven day columns
  * stretched across the full card width, so it reads like a normal calendar:
- * a weekday header along the top, weeks oldest (top) to current (bottom), and
+ * a weekday header along the top, the last six weeks (oldest at the top), and
  * a month label in the left gutter wherever the month changes.
  *
  * The day colour is a scale, not a category: 0% wins sits at the opponents'
@@ -226,7 +226,7 @@ export function HistoryGrid({
     <Card borderRadius={22} paddingVertical={16} paddingHorizontal={16} gap={14}>
       <XStack alignItems="center" justifyContent="space-between">
         <YStack>
-          <Overline>YOUR SEASON</Overline>
+          <Overline>LAST 6 WEEKS</Overline>
           <Display fontSize={17}>{`${String(won)}W · ${String(lost)}L`}</Display>
         </YStack>
         {streak === undefined ? null : (

@@ -44,7 +44,7 @@ export function computeHistory(
   matches: readonly MatchSummary[],
   ownerId: string,
   now: number,
-  weeks = 10,
+  weeks = 6,
 ): History {
   const byDay = new Map<number, { played: number; won: number; lost: number }>();
   const playedByOwner = matches.filter((match) => ownerTeamIn(match, ownerId) !== undefined);
