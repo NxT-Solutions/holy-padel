@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { armConfirm, gotoHome, gotoLive, score, winLoveGames } from "./helpers.ts";
+import { confirmSheet, gotoHome, gotoLive, score, winLoveGames } from "./helpers.ts";
 
 test.describe("input edges", () => {
   test("a player picked for one team disappears from the other picker", async ({ page }) => {
@@ -145,8 +145,8 @@ test.describe("empty ledger", () => {
       const id = `seed-${String(index).padStart(2, "0")}`;
       await page.goto(`/match/${id}`);
       await expect(page.getByText("MATCH TOTALS")).toBeVisible();
-      armConfirm(page, true);
-      await page.getByText("DELETE MATCH").click();
+      await page.getByTestId("delete-match").click();
+      await confirmSheet(page);
       await expect(page.getByText("HOLA, NICO")).toBeVisible();
     }
 

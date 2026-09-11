@@ -3,7 +3,7 @@ import { requireOptionalNativeModule } from "expo";
 import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
-import { useColorScheme } from "react-native";
+import { Appearance, useColorScheme } from "react-native";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import {
   applyTheme,
@@ -36,18 +36,33 @@ export function loadThemeSetting(driver: SqlDriver): ThemeSetting | undefined {
  * the `SystemTheme` native module reads the CURRENT activity configuration
  * instead (MainActivity pins it to follow the system). On web (e2e) there is
  * no native module, so the emulated `useColorScheme()` stands.
+ *
+ * Subscribes to Appearance changes so a system flip (e.g. night mode) follows
+ * live instead of only on the next launch.
  */
 function useSystemTheme(): ThemeMode {
   const seeded = useColorScheme();
-  const [system, setSystem] = useState<ThemeMode>(seeded === "dark" ? "dark" : "light");
-  useEffect(() => {
+  const read = useCallback((fallback: string | null | undefined): ThemeMode => {
     try {
-      const dark = requireOptionalNativeModule("SystemTheme")?.isDarkMode() === true;
-      setSystem(dark ? "dark" : "light");
+      const dark = requireOptionalNativeModule("SystemTheme")?.isDarkMode();
+      if (typeof dark === "boolean") {
+        return dark ? "dark" : "light";
+      }
     } catch {
-      // No native module (web, Expo Go) — keep the seeded scheme.
+      // No native module (web, Expo Go) — fall back to the seeded scheme.
     }
+    return fallback === "dark" ? "dark" : "light";
   }, []);
+  const [system, setSystem] = useState<ThemeMode>(() => read(seeded));
+  useEffect(() => {
+    setSystem(read(seeded));
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystem(read(colorScheme));
+    });
+    return (): void => {
+      subscription.remove();
+    };
+  }, [read, seeded]);
   return system;
 }
 

@@ -51,11 +51,9 @@ export async function expectPoints(page: Page, a: string, b: string): Promise<vo
   await expect(page.getByTestId("point-B")).toHaveText(b);
 }
 
-/** Arm the next confirm() dialog before clicking the trigger. */
-export function armConfirm(page: Page, accept: boolean): void {
-  page.once("dialog", (dialog) => {
-    void (accept ? dialog.accept() : dialog.dismiss());
-  });
+/** Accept the in-app confirm sheet that guards destructive actions. */
+export async function confirmSheet(page: Page): Promise<void> {
+  await page.getByTestId("confirm-action").click();
 }
 
 export interface NewMatchOptions {

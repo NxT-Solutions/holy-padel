@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { armConfirm } from "./helpers.ts";
+import { confirmSheet } from "./helpers.ts";
 
 async function gotoOverview(
-  page: Parameters<typeof armConfirm>[0],
+  page: Parameters<typeof confirmSheet>[0],
   id: string,
   marker: string,
 ): Promise<void> {
@@ -40,8 +40,9 @@ test.describe("match overview (design 3d)", () => {
 
   test("delete asks first; cancel keeps the match", async ({ page }) => {
     await gotoOverview(page, "seed-12", "DEF. MARTA & LEO");
-    armConfirm(page, false);
-    await page.getByText("DELETE MATCH").click();
+    await page.getByTestId("delete-match").click();
+    await expect(page.getByTestId("confirm-sheet")).toBeVisible();
+    await page.getByTestId("confirm-cancel").click();
     await expect(page.getByText("DEF. MARTA & LEO")).toBeVisible();
 
     await page.goto("/matches");
@@ -50,8 +51,8 @@ test.describe("match overview (design 3d)", () => {
 
   test("delete removes the match and its stats everywhere", async ({ page }) => {
     await gotoOverview(page, "seed-12", "DEF. MARTA & LEO");
-    armConfirm(page, true);
-    await page.getByText("DELETE MATCH").click();
+    await page.getByTestId("delete-match").click();
+    await confirmSheet(page);
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
     await page.goto("/matches");

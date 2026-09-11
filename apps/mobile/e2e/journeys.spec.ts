@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  armConfirm,
+  confirmSheet,
   expectPoints,
   gotoHome,
   gotoLive,
@@ -76,8 +76,8 @@ test.describe("multi-match journeys", () => {
   }) => {
     await page.goto("/match/seed-12");
     await expect(page.getByText("DEF. MARTA & LEO")).toBeVisible({ timeout: 90_000 });
-    armConfirm(page, true);
-    await page.getByText("DELETE MATCH").click();
+    await page.getByTestId("delete-match").click();
+    await confirmSheet(page);
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
     // Returning to the deleted id must not leave a blank screen.
