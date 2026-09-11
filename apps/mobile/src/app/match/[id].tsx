@@ -13,12 +13,12 @@ import { useState } from "react";
 import { Alert, Platform, ScrollView, Share, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
+import { ConfirmSheet } from "@/components/confirm-sheet.tsx";
 import { ChevronLeft } from "@/components/icons.tsx";
 import { ScoreRaceCard } from "@/components/score-race-card.tsx";
 import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { isHealthLogAvailable, logMatchWorkout } from "@/health/health-log.ts";
-import { confirmDestructive } from "@/lib/confirm.ts";
 import {
   durationLabel,
   fullDayLabel,
@@ -155,11 +155,39 @@ function MatchNoteCard({
   );
 }
 
+/**
+ * The delete confirmation, split out so the overview's cognitive complexity
+ * stays inside the linter budget (the branch lives in this tiny component).
+ */
+function DeleteConfirm({
+  visible,
+  onConfirm,
+  onCancel,
+}: {
+  readonly visible: boolean;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
+}): ReactNode {
+  if (!visible) {
+    return null;
+  }
+  return (
+    <ConfirmSheet
+      title="Delete match?"
+      message="This removes the match and its points from this phone."
+      confirmLabel="DELETE"
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+    />
+  );
+}
+
 export default function MatchOverviewScreen(): ReactNode {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const mutate = useDbMutation();
   const [workoutLogged, setWorkoutLogged] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const match = useDbQuery((driver) => getMatch(driver, id));
   const events = useDbQuery((driver) => loadEvents(driver, id));
@@ -190,18 +218,11 @@ export default function MatchOverviewScreen(): ReactNode {
   const service = stats.service[winner];
   const longest = stats.longestGame;
 
-  const confirmDelete = (): void => {
-    confirmDestructive({
-      title: "Delete match?",
-      message: "This removes the match and its points from this phone.",
-      confirmLabel: "Delete",
-      onConfirm: () => {
-        mutate((driver) => {
-          deleteMatch(driver, id);
-        });
-        goBack();
-      },
+  const deleteConfirmed = (): void => {
+    mutate((driver) => {
+      deleteMatch(driver, id);
     });
+    goBack();
   };
 
   const exportMatch = (): void => {
@@ -228,229 +249,243 @@ export default function MatchOverviewScreen(): ReactNode {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        paddingTop: insets.top + 12,
-        paddingHorizontal: 16,
-        paddingBottom: insets.bottom + 24,
-        gap: 13,
-      }}
-      style={{ backgroundColor: colors.screen }}
-    >
-      <XStack alignItems="center" justifyContent="space-between">
-        <View
-          width={38}
-          height={38}
-          borderRadius={19}
-          backgroundColor={colors.card}
-          alignItems="center"
-          justifyContent="center"
-          boxShadow="0 2px 8px rgba(14, 17, 22, 0.08)"
-          pressStyle={{ opacity: 0.8 }}
-          role="button"
-          aria-label="Back"
-          onPress={() => {
-            goBack();
-          }}
-        >
-          <ChevronLeft size={15} color={colors.text} />
-        </View>
-        <Body fontSize={11} fontWeight="800" letterSpacing={1.6} color={textAlpha(0.45)}>
-          {[fullDayLabel(match.startedAt), timeLabel(match.startedAt), match.court?.toUpperCase()]
-            .filter((part): part is string => part !== undefined)
-            .join(" · ")}
-        </Body>
-        <View width={38} />
-      </XStack>
-
-      <YStack
-        backgroundColor={colors.ink}
-        borderRadius={22}
-        paddingVertical={22}
-        paddingHorizontal={20}
-        alignItems="center"
+    <View flex={1} backgroundColor={colors.screen}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: 16,
+          paddingBottom: insets.bottom + 24,
+          gap: 13,
+        }}
+        style={{ backgroundColor: colors.screen }}
       >
-        <Display fontSize={26} color={colors.white}>
-          {names[winner].toUpperCase()}
-        </Display>
-        <Body
-          fontSize={10}
-          fontWeight="800"
-          letterSpacing={1.6}
-          color={whiteAlpha(0.4)}
-          marginTop={4}
+        <XStack alignItems="center" justifyContent="space-between">
+          <View
+            width={38}
+            height={38}
+            borderRadius={19}
+            backgroundColor={colors.card}
+            alignItems="center"
+            justifyContent="center"
+            boxShadow="0 2px 8px rgba(14, 17, 22, 0.08)"
+            pressStyle={{ opacity: 0.8 }}
+            role="button"
+            aria-label="Back"
+            onPress={() => {
+              goBack();
+            }}
+          >
+            <ChevronLeft size={15} color={colors.text} />
+          </View>
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.6} color={textAlpha(0.45)}>
+            {[fullDayLabel(match.startedAt), timeLabel(match.startedAt), match.court?.toUpperCase()]
+              .filter((part): part is string => part !== undefined)
+              .join(" · ")}
+          </Body>
+          <View width={38} />
+        </XStack>
+
+        <YStack
+          backgroundColor={colors.ink}
+          borderRadius={22}
+          paddingVertical={22}
+          paddingHorizontal={20}
+          alignItems="center"
         >
-          {`DEF. ${names[loser].toUpperCase()}`}
-        </Body>
-        <Display fontSize={58} color={colors.lime} marginTop={12} testID="overview-score">
-          {match.scoreLine ?? ""}
-        </Display>
-        <Body
-          fontSize={11}
-          fontWeight="700"
-          letterSpacing={1.4}
-          color={whiteAlpha(0.45)}
-          marginTop={10}
-        >
-          {`${durationLabel(stats.durationMs)} · BEST OF ${String(match.config.bestOf)} · ${DEUCE_LABELS[match.config.deuceMode] ?? ""}`}
-        </Body>
-      </YStack>
-
-      <Card borderRadius={18} paddingVertical={13} paddingHorizontal={17}>
-        <MatchNoteCard matchId={match.id} initialNote={match.note} />
-      </Card>
-
-      <YStack gap={8}>
-        {stats.sets.map((set) => {
-          const note = setNote(set, match.config.sport === "squash");
-          return (
-            <Card
-              key={set.setNumber}
-              borderRadius={17}
-              paddingVertical={14}
-              paddingHorizontal={17}
-              flexDirection="row"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <YStack gap={3}>
-                <Overline letterSpacing={1.4}>
-                  {`${match.config.sport === "squash" ? "GAME" : "SET"} ${String(set.setNumber)} · ${String(Math.round(set.durationMs / 60_000))} MIN`}
-                </Overline>
-                {note === undefined ? null : (
-                  <Body fontSize={13} fontWeight="700" color={textAlpha(0.55)}>
-                    {note}
-                  </Body>
-                )}
-              </YStack>
-              <XStack alignItems="center" gap={11}>
-                <Display fontSize={26}>
-                  {`${String(set.summary.games.A)}–${String(set.summary.games.B)}`}
-                </Display>
-                <Pill
-                  backgroundColor={colors.lime}
-                  borderRadius={7}
-                  paddingVertical={4}
-                  paddingHorizontal={8}
-                >
-                  <Display fontSize={11} letterSpacing={0.5} color={colors.text}>
-                    {initials[set.summary.winner]}
-                  </Display>
-                </Pill>
-              </XStack>
-            </Card>
-          );
-        })}
-      </YStack>
-
-      <ScoreRaceCard
-        series={series}
-        sport={match.config.sport}
-        {...(heartRate === undefined ? {} : { heartRate })}
-      />
-
-      <Card borderRadius={20} paddingVertical={16} paddingHorizontal={17} gap={13}>
-        <Overline>MATCH TOTALS</Overline>
-        <YStack gap={6}>
-          <XStack alignItems="center" justifyContent="space-between">
-            <YStack alignItems="center" gap={1} maxWidth="32%">
-              <Display fontSize={16}>{String(pointsWinner)}</Display>
-              <Body fontSize={9} fontWeight="800" color={colors.limeOnCard} textAlign="center">
-                {names[winner].toUpperCase()}
-              </Body>
-            </YStack>
-            <Body fontSize={10} fontWeight="800" letterSpacing={1.3} color={textAlpha(0.4)}>
-              POINTS WON
-            </Body>
-            <YStack alignItems="center" gap={1} maxWidth="32%">
-              <Display fontSize={16} color={textAlpha(0.45)}>
-                {String(pointsLoser)}
-              </Display>
-              <Body fontSize={9} fontWeight="800" color={textAlpha(0.4)} textAlign="center">
-                {names[loser].toUpperCase()}
-              </Body>
-            </YStack>
-          </XStack>
-          <XStack height={8} borderRadius={999} overflow="hidden" gap={2}>
-            <View flex={winnerShare} backgroundColor={colors.lime} />
-            <View flex={100 - winnerShare} backgroundColor={colors.greige} />
-          </XStack>
+          <Display fontSize={26} color={colors.white}>
+            {names[winner].toUpperCase()}
+          </Display>
+          <Body
+            fontSize={10}
+            fontWeight="800"
+            letterSpacing={1.6}
+            color={whiteAlpha(0.4)}
+            marginTop={4}
+          >
+            {`DEF. ${names[loser].toUpperCase()}`}
+          </Body>
+          <Display fontSize={58} color={colors.lime} marginTop={12} testID="overview-score">
+            {match.scoreLine ?? ""}
+          </Display>
+          <Body
+            fontSize={11}
+            fontWeight="700"
+            letterSpacing={1.4}
+            color={whiteAlpha(0.45)}
+            marginTop={10}
+          >
+            {`${durationLabel(stats.durationMs)} · BEST OF ${String(match.config.bestOf)} · ${DEUCE_LABELS[match.config.deuceMode] ?? ""}`}
+          </Body>
         </YStack>
-        {longest === undefined ? null : (
-          <XStack alignItems="center" justifyContent="space-between">
-            <Body fontSize={13} fontWeight="700">
-              Longest game
-            </Body>
-            <Display fontSize={15}>
-              {/* biome-ignore lint/nursery/noUselessTypeConversion: the operands are numbers; the rule misreads the sum as a string */}
-              {`${String(longest.points.A + longest.points.B)} POINTS · GAME ${String(
-                longest.gameNumber,
-              )}`}
-            </Display>
-          </XStack>
-        )}
-        {match.config.sport === "squash" ? (
-          stats.longestRun === undefined ? null : (
+
+        <Card borderRadius={18} paddingVertical={13} paddingHorizontal={17}>
+          <MatchNoteCard matchId={match.id} initialNote={match.note} />
+        </Card>
+
+        <YStack gap={8}>
+          {stats.sets.map((set) => {
+            const note = setNote(set, match.config.sport === "squash");
+            return (
+              <Card
+                key={set.setNumber}
+                borderRadius={17}
+                paddingVertical={14}
+                paddingHorizontal={17}
+                flexDirection="row"
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <YStack gap={3}>
+                  <Overline letterSpacing={1.4}>
+                    {`${match.config.sport === "squash" ? "GAME" : "SET"} ${String(set.setNumber)} · ${String(Math.round(set.durationMs / 60_000))} MIN`}
+                  </Overline>
+                  {note === undefined ? null : (
+                    <Body fontSize={13} fontWeight="700" color={textAlpha(0.55)}>
+                      {note}
+                    </Body>
+                  )}
+                </YStack>
+                <XStack alignItems="center" gap={11}>
+                  <Display fontSize={26}>
+                    {`${String(set.summary.games.A)}–${String(set.summary.games.B)}`}
+                  </Display>
+                  <Pill
+                    backgroundColor={colors.lime}
+                    borderRadius={7}
+                    paddingVertical={4}
+                    paddingHorizontal={8}
+                  >
+                    <Display fontSize={11} letterSpacing={0.5} color={colors.text}>
+                      {initials[set.summary.winner]}
+                    </Display>
+                  </Pill>
+                </XStack>
+              </Card>
+            );
+          })}
+        </YStack>
+
+        <ScoreRaceCard
+          series={series}
+          sport={match.config.sport}
+          {...(heartRate === undefined ? {} : { heartRate })}
+        />
+
+        <Card borderRadius={20} paddingVertical={16} paddingHorizontal={17} gap={13}>
+          <Overline>MATCH TOTALS</Overline>
+          <YStack gap={6}>
+            <XStack alignItems="center" justifyContent="space-between">
+              <YStack alignItems="center" gap={1} maxWidth="32%">
+                <Display fontSize={16}>{String(pointsWinner)}</Display>
+                <Body fontSize={9} fontWeight="800" color={colors.limeOnCard} textAlign="center">
+                  {names[winner].toUpperCase()}
+                </Body>
+              </YStack>
+              <Body fontSize={10} fontWeight="800" letterSpacing={1.3} color={textAlpha(0.4)}>
+                POINTS WON
+              </Body>
+              <YStack alignItems="center" gap={1} maxWidth="32%">
+                <Display fontSize={16} color={textAlpha(0.45)}>
+                  {String(pointsLoser)}
+                </Display>
+                <Body fontSize={9} fontWeight="800" color={textAlpha(0.4)} textAlign="center">
+                  {names[loser].toUpperCase()}
+                </Body>
+              </YStack>
+            </XStack>
+            <XStack height={8} borderRadius={999} overflow="hidden" gap={2}>
+              <View flex={winnerShare} backgroundColor={colors.lime} />
+              <View flex={100 - winnerShare} backgroundColor={colors.greige} />
+            </XStack>
+          </YStack>
+          {longest === undefined ? null : (
             <XStack alignItems="center" justifyContent="space-between">
               <Body fontSize={13} fontWeight="700">
-                Longest point run
+                Longest game
               </Body>
               <Display fontSize={15}>
-                {`${names[stats.longestRun.team]} · ${String(stats.longestRun.count)} in a row`}
+                {/* biome-ignore lint/nursery/noUselessTypeConversion: the operands are numbers; the rule misreads the sum as a string */}
+                {`${String(longest.points.A + longest.points.B)} POINTS · GAME ${String(
+                  longest.gameNumber,
+                )}`}
               </Display>
             </XStack>
-          )
-        ) : (
-          <XStack alignItems="center" justifyContent="space-between">
-            <Body fontSize={13} fontWeight="700">
-              Service games held
-            </Body>
-            <Display fontSize={15}>{`${String(service.held)} / ${String(service.served)}`}</Display>
-          </XStack>
-        )}
-      </Card>
+          )}
+          {match.config.sport === "squash" ? (
+            stats.longestRun === undefined ? null : (
+              <XStack alignItems="center" justifyContent="space-between">
+                <Body fontSize={13} fontWeight="700">
+                  Longest point run
+                </Body>
+                <Display fontSize={15}>
+                  {`${names[stats.longestRun.team]} · ${String(stats.longestRun.count)} in a row`}
+                </Display>
+              </XStack>
+            )
+          ) : (
+            <XStack alignItems="center" justifyContent="space-between">
+              <Body fontSize={13} fontWeight="700">
+                Service games held
+              </Body>
+              <Display
+                fontSize={15}
+              >{`${String(service.held)} / ${String(service.served)}`}</Display>
+            </XStack>
+          )}
+        </Card>
 
-      <XStack alignItems="center" justifyContent="center" gap={18} marginTop={8}>
-        {isHealthLogAvailable() ? (
-          <>
-            <Body
-              fontSize={11}
-              fontWeight="800"
-              letterSpacing={1.3}
-              color={workoutLogged ? colors.limeOnCard : textAlpha(0.45)}
-              pressStyle={{ opacity: 0.6 }}
-              role="button"
-              onPress={workoutLogged ? undefined : logWorkout}
-            >
-              {workoutLogged ? "WORKOUT LOGGED ✓" : "LOG WORKOUT"}
-            </Body>
-            <View width={3} height={3} borderRadius={2} backgroundColor={textAlpha(0.25)} />
-          </>
-        ) : null}
-        <Body
-          fontSize={11}
-          fontWeight="800"
-          letterSpacing={1.3}
-          color={textAlpha(0.45)}
-          pressStyle={{ opacity: 0.6 }}
-          role="button"
-          onPress={exportMatch}
-        >
-          EXPORT
-        </Body>
-        <View width={3} height={3} borderRadius={2} backgroundColor={textAlpha(0.25)} />
-        <Body
-          fontSize={11}
-          fontWeight="800"
-          letterSpacing={1.3}
-          color={colors.danger}
-          pressStyle={{ opacity: 0.6 }}
-          role="button"
-          onPress={confirmDelete}
-        >
-          DELETE MATCH
-        </Body>
-      </XStack>
-    </ScrollView>
+        <XStack alignItems="center" justifyContent="center" gap={18} marginTop={8}>
+          {isHealthLogAvailable() ? (
+            <>
+              <Body
+                fontSize={11}
+                fontWeight="800"
+                letterSpacing={1.3}
+                color={workoutLogged ? colors.limeOnCard : textAlpha(0.45)}
+                pressStyle={{ opacity: 0.6 }}
+                role="button"
+                onPress={workoutLogged ? undefined : logWorkout}
+              >
+                {workoutLogged ? "WORKOUT LOGGED ✓" : "LOG WORKOUT"}
+              </Body>
+              <View width={3} height={3} borderRadius={2} backgroundColor={textAlpha(0.25)} />
+            </>
+          ) : null}
+          <Body
+            fontSize={11}
+            fontWeight="800"
+            letterSpacing={1.3}
+            color={textAlpha(0.45)}
+            pressStyle={{ opacity: 0.6 }}
+            role="button"
+            onPress={exportMatch}
+          >
+            EXPORT
+          </Body>
+          <View width={3} height={3} borderRadius={2} backgroundColor={textAlpha(0.25)} />
+          <Body
+            fontSize={11}
+            fontWeight="800"
+            letterSpacing={1.3}
+            color={colors.danger}
+            pressStyle={{ opacity: 0.6 }}
+            role="button"
+            onPress={() => {
+              setConfirmingDelete(true);
+            }}
+            testID="delete-match"
+          >
+            DELETE MATCH
+          </Body>
+        </XStack>
+      </ScrollView>
+      <DeleteConfirm
+        visible={confirmingDelete}
+        onConfirm={deleteConfirmed}
+        onCancel={() => {
+          setConfirmingDelete(false);
+        }}
+      />
+    </View>
   );
 }

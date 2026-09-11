@@ -15,10 +15,10 @@ import { useState } from "react";
 import { Alert, Platform, Share, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { XStack, YStack } from "tamagui";
+import { ConfirmSheet } from "@/components/confirm-sheet.tsx";
 import { ModalHeader } from "@/components/modal-header.tsx";
 import { Body, Card, Display, Overline } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import { confirmDestructive } from "@/lib/confirm.ts";
 import { megabytesLabel } from "@/lib/format.ts";
 import { goBack } from "@/lib/navigation.ts";
 import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
@@ -45,6 +45,9 @@ export default function DataScreen(): ReactNode {
   const sizeBytes = useDbQuery(databaseSizeBytes);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
+  /** A parsed backup awaiting the themed "replace everything" confirmation. */
+  const [pendingBackup, setPendingBackup] = useState<BackupData | undefined>(undefined);
+  const [confirmingDeleteAll, setConfirmingDeleteAll] = useState(false);
 
   const exportAll = (): void => {
     mutate((driver) => {
@@ -104,36 +107,31 @@ export default function DataScreen(): ReactNode {
       );
       return;
     }
-    const n = backup.matches.length;
-    confirmDestructive({
-      title: "Restore backup?",
-      message: `Replaces everything on this phone with the backup's ${String(n)} matches. This can't be undone.`,
-      confirmLabel: "Restore",
-      onConfirm: () => {
-        mutate((driver) => {
-          importBackup(driver, backup);
-        });
-        setImportOpen(false);
-        setImportText("");
-        Alert.alert("Backup restored", `${String(n)} matches are back on this phone.`);
-      },
-    });
+    setPendingBackup(backup);
   };
 
-  const deleteAll = (): void => {
-    confirmDestructive({
-      title: "Delete all matches?",
-      message: "Removes every match and its points from this phone. This can't be undone.",
-      confirmLabel: "Delete all",
-      onConfirm: () => {
-        mutate((driver) => {
-          for (const match of listMatches(driver)) {
-            deleteMatch(driver, match.id);
-          }
-        });
-        goBack();
-      },
+  const restoreConfirmed = (): void => {
+    if (pendingBackup === undefined) {
+      return;
+    }
+    const n = pendingBackup.matches.length;
+    mutate((driver) => {
+      importBackup(driver, pendingBackup);
     });
+    setImportOpen(false);
+    setImportText("");
+    setPendingBackup(undefined);
+    Alert.alert("Backup restored", `${String(n)} matches are back on this phone.`);
+  };
+
+  const deleteAllConfirmed = (): void => {
+    mutate((driver) => {
+      for (const match of listMatches(driver)) {
+        deleteMatch(driver, match.id);
+      }
+    });
+    setConfirmingDeleteAll(false);
+    goBack();
   };
 
   return (
@@ -278,7 +276,9 @@ export default function DataScreen(): ReactNode {
           pressStyle={{ opacity: 0.85 }}
           role="button"
           aria-label="Delete all matches"
-          onPress={deleteAll}
+          onPress={() => {
+            setConfirmingDeleteAll(true);
+          }}
           testID="delete-all-data"
         >
           <Body fontSize={15} fontWeight="800" color={colors.danger}>
@@ -289,6 +289,32 @@ export default function DataScreen(): ReactNode {
           </Body>
         </Card>
       </YStack>
+
+      {pendingBackup === undefined ? null : (
+        <ConfirmSheet
+          title="Restore backup?"
+          message={`Replaces everything on this phone with the backup's ${String(
+            pendingBackup.matches.length,
+          )} matches. This can't be undone.`}
+          confirmLabel="RESTORE"
+          onConfirm={restoreConfirmed}
+          onCancel={() => {
+            setPendingBackup(undefined);
+          }}
+        />
+      )}
+
+      {confirmingDeleteAll ? (
+        <ConfirmSheet
+          title="Delete all matches?"
+          message="Removes every match and its points from this phone. This can't be undone."
+          confirmLabel="DELETE ALL"
+          onConfirm={deleteAllConfirmed}
+          onCancel={() => {
+            setConfirmingDeleteAll(false);
+          }}
+        />
+      ) : null}
     </YStack>
   );
 }
