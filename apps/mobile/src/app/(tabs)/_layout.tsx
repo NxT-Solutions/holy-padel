@@ -1,7 +1,7 @@
 import type { TabTriggerSlotProps } from "expo-router/ui";
 import { TabList, TabSlot, Tabs, TabTrigger } from "expo-router/ui";
 import type { ReactNode } from "react";
-import { Pressable } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View } from "tamagui";
 import { Body, LiveDot } from "@/components/ui.tsx";
@@ -16,7 +16,13 @@ function TabButton({
   return (
     // testID keeps the tab tap unambiguous — "HOME" as text collides with the
     // Android system navigation bar's Home button.
-    <Pressable {...props} testID={`tab-${label.toLowerCase()}`} style={{ flex: 1 }}>
+    <Pressable
+      {...props}
+      testID={`tab-${label.toLowerCase()}`}
+      aria-label={label}
+      style={styles.tab}
+      unstable_pressDelay={0}
+    >
       <View alignItems="center" gap={3}>
         <Body
           fontSize={11}
@@ -32,6 +38,17 @@ function TabButton({
   );
 }
 
+const styles = StyleSheet.create({
+  // The pressable stretches to the full height of the tab bar so the whole
+  // third of the pill is tappable — the label alone was a ~15pt target.
+  tab: {
+    flex: 1,
+    alignSelf: "stretch",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
+
 /** The design's floating dark pill: three labels, lime dot under the active one. */
 export default function TabsLayout(): ReactNode {
   const insets = useSafeAreaInsets();
@@ -44,7 +61,7 @@ export default function TabsLayout(): ReactNode {
           left={16}
           right={16}
           bottom={insets.bottom + 8}
-          height={58}
+          height={64}
           borderRadius={999}
           backgroundColor={colors.ink}
           flexDirection="row"

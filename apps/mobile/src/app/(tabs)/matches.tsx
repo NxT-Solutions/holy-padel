@@ -172,7 +172,7 @@ export default function MatchesScreen(): ReactNode {
 
   return (
     <ScrollView
-      style={{ backgroundColor: colors.screen }}
+      style={{ flex: 1, backgroundColor: colors.screen }}
       contentContainerStyle={{
         paddingTop: insets.top + 12,
         paddingHorizontal: 16,
