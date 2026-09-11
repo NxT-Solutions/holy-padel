@@ -57,6 +57,11 @@ Six workflows in `.github/workflows` (see the README's CI table). `main` is prot
 ## Gotchas that have bitten us (read `~/.claude` memory too)
 
 - **Local Expo modules** need all three: a `package.json`, a `link:` dependency in the app, and `.gitignore` negation for their native dirs — or iOS silently drops the module while Android looks green. Copy `modules/watch-bridge` exactly.
+- **Changing `userInterfaceStyle` (or any config) needs `npx expo prebuild --clean`.** The
+  generated `android/` is gitignored and keeps its old value otherwise: an `expo-system-ui`
+  listener reads the generated `expo_system_ui_user_interface_style` string at startup and
+  overrides `MainActivity`'s follow-system mode, so a stale `light` there pins the whole app
+  to light no matter what the OS does.
 - **androidx APIs**: verify signatures against the pinned **release AAR** (`javap` on the downloaded `.aar`), never androidx-main source (it's ahead of releases).
 - **`androidx.core`** is pinned to 1.18.0 (1.19.0 demands compileSdk 37, absent from the CI SDK repo).
 - **pnpm supply-chain gate**: new deps get an approval appended to `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` on local install — commit that file with the lockfile or CI fails.

@@ -32,10 +32,12 @@ export function loadThemeSetting(driver: SqlDriver): ThemeSetting | undefined {
 
 /**
  * The SYSTEM theme, read the reliable way. RN's `useColorScheme()` mirrors the
- * application context, whose configuration Android can leave pinned to light —
- * the `SystemTheme` native module reads the CURRENT activity configuration
- * instead (MainActivity pins it to follow the system). On web (e2e) there is
- * no native module, so the emulated `useColorScheme()` stands.
+ * application context, which Android can leave pinned to light; the
+ * `SystemTheme` native module reads the CURRENT activity configuration instead.
+ * Note that `expo-system-ui` also forces the app's night mode from the
+ * generated `expo_system_ui_user_interface_style` resource — a stale `android/`
+ * prebuild can pin that to "light" and override everything (see CLAUDE.md).
+ * On web (e2e) there is no native module, so `useColorScheme()` stands.
  *
  * Subscribes to Appearance changes so a system flip (e.g. night mode) follows
  * live instead of only on the next launch.
