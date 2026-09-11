@@ -1,7 +1,6 @@
 import type { MatchSummary } from "@holy-padel/db";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { ScrollView } from "react-native";
 import { View, XStack, YStack } from "tamagui";
 import { Body, Card, Display, Overline, ResultBadge } from "@/components/ui.tsx";
 import { fullDayLabel, opponentsOf, ownerTeamOf, pairLabel } from "@/lib/format.ts";
@@ -9,20 +8,29 @@ import type { DayCell } from "@/lib/history.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 /**
- * The home screen's season calendar — a GitHub-contribution-graph style grid
- * of the last ten weeks, rebuilt for legibility: 24pt cells, a three-state
- * colour language (won = lime, lost = ink, mixed = outlined), month markers,
- * Mon/Wed/Fri row labels and a streak headline so the card answers "how have
- * I been playing?" without any decoding. Tapping a day with matches expands
- * that day's results beneath the grid.
+ * The home screen's season calendar — one row per week, seven day columns
+ * stretched across the full card width, so it reads like a normal calendar:
+ * a weekday header along the top, weeks oldest (top) to current (bottom), and
+ * a month label in the left gutter wherever the month changes.
+ *
+ * The day colour is a scale, not a category: 0% wins sits at the opponents'
+ * blue, 100% at the brand lime, so a glance separates "lost everything" from
+ * "won everything" and every shade between is a real win share. Tapping a day
+ * with matches expands that day's results beneath the grid.
  */
 
-const CELL = 24;
 const GAP = 5;
-const AXIS_WIDTH = 20;
-const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"] as const;
-/** GitHub shows only Mon/Wed/Fri so the axis reads without noise. */
-const LABELLED_ROWS = [1, 3, 5] as const;
+/** Left column holding the month label, so the 7 day columns stay aligned. */
+const GUTTER = 34;
+const DAY_LABELS = [
+  { key: "sun", label: "S" },
+  { key: "mon", label: "M" },
+  { key: "tue", label: "T" },
+  { key: "wed", label: "W" },
+  { key: "thu", label: "T" },
+  { key: "fri", label: "F" },
+  { key: "sat", label: "S" },
+] as const;
 const MONTHS = [
   "JAN",
   "FEB",
@@ -38,14 +46,8 @@ const MONTHS = [
   "DEC",
 ] as const;
 
-const RADIUS = 7;
+const RADIUS = 8;
 
-/**
- * The day colour is a scale, not a category: 0% wins sits at the opponents'
- * blue, 100% at the brand lime, with the middle blending through a muted
- * green — so a quick glance separates "lost everything" from "won
- * everything" and every shade between is a real win share.
- */
 const SCALE_LOST = [46, 91, 255];
 const SCALE_WON = [198, 241, 53];
 
@@ -55,6 +57,22 @@ function winShareColor(won: number, lost: number): string {
   const [wr = 0, wg = 0, wb = 0] = SCALE_WON;
   const channel = (l: number, w: number): number => Math.round(l + (w - l) * share);
   return `rgb(${String(channel(lr, wr))}, ${String(channel(lg, wg))}, ${String(channel(lb, wb))})`;
+}
+
+/** The month label for a week row, or "" when the month hasn't changed. */
+function monthLabelFor(weeks: readonly (readonly DayCell[])[], index: number): string {
+  const first = weeks[index]?.[0];
+  if (first === undefined || first.future) {
+    return "";
+  }
+  const previous = index > 0 ? weeks[index - 1]?.[0] : undefined;
+  if (
+    previous !== undefined &&
+    new Date(previous.day).getMonth() === new Date(first.day).getMonth()
+  ) {
+    return "";
+  }
+  return MONTHS[new Date(first.day).getMonth()] ?? "";
 }
 
 function DaySquare({
@@ -67,50 +85,35 @@ function DaySquare({
   readonly onPress: (day: number) => void;
 }): ReactNode {
   if (cell.future) {
-    return <View width={CELL} height={CELL} />;
+    return <View flex={1} aspectRatio={1} />;
   }
 
-  // Today and the tapped day carry a white ring; everything else speaks
-  // through its fill alone.
+  // Today and the tapped day carry a ring; everything else speaks through its
+  // fill alone.
   const ringed = selected || cell.today;
-  const box = (() => {
-    if (cell.played === 0) {
-      return (
-        <View width={CELL} height={CELL} borderRadius={RADIUS} backgroundColor={textAlpha(0.05)} />
-      );
-    }
-    // The whole cell is one shade on the lost→won scale, positioned by the
-    // day's win percentage.
-    return (
-      <View
-        width={CELL}
-        height={CELL}
-        borderRadius={RADIUS}
-        backgroundColor={winShareColor(cell.won, cell.lost)}
-      />
-    );
-  })();
+  const played = cell.played > 0;
+  const fill = played ? winShareColor(cell.won, cell.lost) : textAlpha(0.05);
+  const inner = <View width="100%" height="100%" borderRadius={RADIUS} backgroundColor={fill} />;
 
-  const interactive = cell.played > 0;
-  if (!interactive) {
+  if (!played) {
     return (
       <View
-        width={CELL}
-        height={CELL}
+        flex={1}
+        aspectRatio={1}
         borderRadius={RADIUS + 2}
         borderWidth={ringed ? 2 : 0}
         borderColor={colors.white}
         alignItems="center"
         justifyContent="center"
       >
-        {box}
+        {inner}
       </View>
     );
   }
   return (
     <View
-      width={CELL}
-      height={CELL}
+      flex={1}
+      aspectRatio={1}
       borderRadius={RADIUS + 2}
       borderWidth={ringed ? 2 : 0}
       borderColor={colors.white}
@@ -123,7 +126,7 @@ function DaySquare({
         onPress(cell.day);
       }}
     >
-      {box}
+      {inner}
     </View>
   );
 }
@@ -219,21 +222,6 @@ export function HistoryGrid({
     onSelectDay(selectedDay === day ? undefined : day);
   };
 
-  // A month marker sits above the first column that starts a new month.
-  const monthMarkers = weeks.map((week, index) => {
-    const { day } = week[0] ?? {};
-    if (day === undefined) {
-      return "";
-    }
-    const previous = weeks[index - 1]?.[0];
-    const previousMonth = previous === undefined ? undefined : new Date(previous.day).getMonth();
-    const month = new Date(day).getMonth();
-    if (previousMonth === month && previous?.future === week[0]?.future) {
-      return "";
-    }
-    return MONTHS[month] ?? "";
-  });
-
   return (
     <Card borderRadius={22} paddingVertical={16} paddingHorizontal={16} gap={14}>
       <XStack alignItems="center" justifyContent="space-between">
@@ -243,7 +231,7 @@ export function HistoryGrid({
         </YStack>
         {streak === undefined ? null : (
           <XStack
-            backgroundColor={colors.ink}
+            backgroundColor={colors.tileInk}
             borderRadius={14}
             paddingVertical={9}
             paddingHorizontal={14}
@@ -259,50 +247,40 @@ export function HistoryGrid({
         )}
       </XStack>
 
-      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
-        <YStack gap={4}>
-          <XStack paddingLeft={AXIS_WIDTH} gap={GAP}>
-            {monthMarkers.map((label, index) => (
-              <View key={`month-${String(weeks[index]?.[0]?.day)}`} width={CELL * 2}>
-                <Body fontSize={10} fontWeight="800" color={textAlpha(0.4)} numberOfLines={1}>
-                  {label}
-                </Body>
+      <YStack gap={GAP} testID="history-grid">
+        <XStack gap={GAP}>
+          <View width={GUTTER} />
+          {DAY_LABELS.map((day) => (
+            <View key={day.key} flex={1} alignItems="center">
+              <Body fontSize={10} fontWeight="800" color={textAlpha(0.35)}>
+                {day.label}
+              </Body>
+            </View>
+          ))}
+        </XStack>
+        {weeks.map((week, index) => {
+          const monthLabel = monthLabelFor(weeks, index);
+          return (
+            <XStack key={String(week[0]?.day)} gap={GAP}>
+              <View width={GUTTER} justifyContent="center">
+                {monthLabel === "" ? null : (
+                  <Body fontSize={9} fontWeight="800" letterSpacing={0.8} color={textAlpha(0.4)}>
+                    {monthLabel}
+                  </Body>
+                )}
               </View>
-            ))}
-          </XStack>
-          <XStack gap={GAP}>
-            <YStack justifyContent="space-between" width={AXIS_WIDTH} paddingVertical={2}>
-              {DAY_LABELS.map((label, index) => (
-                <Body
-                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed 7-slot axis
-                  key={index}
-                  fontSize={10}
-                  fontWeight="700"
-                  color={textAlpha(0.35)}
-                  lineHeight={CELL}
-                  opacity={(LABELLED_ROWS as readonly number[]).includes(index) ? 1 : 0}
-                >
-                  {label}
-                </Body>
-              ))}
-            </YStack>
-            <XStack gap={GAP}>
-              {weeks.map((week) => (
-                <YStack key={String(week[0]?.day)} gap={GAP}>
-                  {week.map((cell) => (
-                    <DaySquare
-                      key={String(cell.day)}
-                      cell={cell}
-                      selected={cell.day === selectedDay}
-                      onPress={handleSelect}
-                    />
-                  ))}
-                </YStack>
+              {week.map((cell) => (
+                <DaySquare
+                  key={String(cell.day)}
+                  cell={cell}
+                  selected={cell.day === selectedDay}
+                  onPress={handleSelect}
+                />
               ))}
             </XStack>
-          </XStack>
-        </YStack>
-      </ScrollView>
+          );
+        })}
+      </YStack>
 
       <XStack alignItems="center" justifyContent="center" gap={10}>
         <Body fontSize={11} fontWeight="700" color={textAlpha(0.5)}>
@@ -310,7 +288,6 @@ export function HistoryGrid({
         </Body>
         {[0, 0.25, 0.5, 0.75, 1].map((share) => (
           <View
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed 5-stop scale
             key={share}
             width={15}
             height={13}

@@ -62,4 +62,52 @@ test.describe("home screen (design 3a)", () => {
     await page.getByRole("link", { name: "HOME" }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
   });
+
+  test("tab targets fill the tab bar (not just the label)", async ({ page }) => {
+    await gotoHome(page);
+    // Regression: the pressable used to hug the ~15pt label, so taps near the
+    // edges missed. Each third of the pill must be tappable full-height.
+    for (const name of ["HOME", "MATCHES", "PROFILE"]) {
+      const box = await page.getByRole("link", { name }).boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(56);
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(100);
+    }
+  });
+
+  test("season calendar fills the card width and opens a day", async ({ page }) => {
+    await gotoHome(page);
+
+    await expect(page.getByText("YOUR SEASON")).toBeVisible();
+    // The grid spans the card (the old GitHub-style columns left a gap) and
+    // its day cells are big enough to tap.
+    const gridBox = await page.getByTestId("history-grid").boundingBox();
+    expect(gridBox?.width ?? 0).toBeGreaterThan(330);
+
+    // Scroll to the end so the newest weeks sit clear of the floating tab bar
+    // (on web the page scrolls as one, so the bar drifts over the content).
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    const bar = await page.getByTestId("tab-profile").boundingBox();
+    const cells = page.getByRole("button", { name: /^\d+ match(es)? played, \d+ won$/u });
+    expect(await cells.count()).toBeGreaterThan(0);
+    expect((await cells.first().boundingBox())?.width ?? 0).toBeGreaterThan(30);
+
+    // Tap the newest day cell whose centre is clear of the bar.
+    const count = await cells.count();
+    let target: { x: number; y: number } | undefined;
+    for (let i = count - 1; i >= 0 && target === undefined; i -= 1) {
+      const box = await cells.nth(i).boundingBox();
+      if (box === null || bar === null) {
+        continue;
+      }
+      const centre = box.y + box.height / 2;
+      if (centre > bar.y + bar.height + 8) {
+        target = { x: box.x + box.width / 2, y: centre };
+      }
+    }
+    expect(target).toBeDefined();
+    if (target !== undefined) {
+      await page.mouse.click(target.x, target.y);
+    }
+    await expect(page.getByText("CLOSE")).toBeVisible();
+  });
 });
