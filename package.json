@@ -21,8 +21,8 @@
     "check": "turbo run lint typecheck test"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.2",
-    "turbo": "2.10.3",
+    "@biomejs/biome": "2.5.12",
+    "turbo": "2.10.12",
     "typescript": "6.0.3"
   }
 }
