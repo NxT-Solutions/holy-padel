@@ -54,6 +54,19 @@ test.describe("multi-match journeys", () => {
     await expect(page.getByTestId("home-score-line")).toHaveText("0-0");
   });
 
+  test("a match started and left straight away shows on home at once", async ({ page }) => {
+    // Regression: home's live-card snapshot query was cached for the new DB
+    // version with the previous render's (old) live match, so leaving a just-
+    // started match showed the old score — or no card — until another write.
+    await gotoHome(page);
+    await startNewMatch(page); // saves the seeded live match, starts a fresh one
+    await page.goBack();
+    await expect(page.getByText("HOLA, NICO")).toBeVisible();
+    await expect(page.getByTestId("home-point-A")).toHaveText("0");
+    await expect(page.getByTestId("home-point-B")).toHaveText("0");
+    await expect(page.getByTestId("home-score-line")).toHaveText("0-0");
+  });
+
   test("a mis-tapped match point can be undone from the result screen", async ({ page }) => {
     await gotoLive(page, "seed-live");
     await score(page, "A", 1); // game -> 5-3

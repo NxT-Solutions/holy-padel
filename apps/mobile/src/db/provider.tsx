@@ -103,17 +103,36 @@ export function useDbStore(): DbStore {
   return store;
 }
 
+/**
+ * Read from the database and re-render when it changes.
+ *
+ * The cached result is reused only while BOTH the database version and the
+ * query function are unchanged. Keying on the version alone went stale: a
+ * mutation notifies subscribers before the component re-renders, so a query
+ * closing over render-time values (another query's result, a route id, the
+ * owner id) was re-run with the PREVIOUS render's values and cached under the
+ * new version — e.g. home kept showing no live card for a just-started match
+ * until some unrelated write bumped the version again. Inline closures are new
+ * each render, so they recompute per render; pass a stable function (like
+ * `listMatches`) to keep the result cached across renders.
+ */
 export function useDbQuery<T>(query: (driver: SqlDriver) => T): T {
   const store = useDbStore();
   const queryRef = useRef(query);
   queryRef.current = query;
-  const cacheRef = useRef<{ version: number; value: T } | undefined>(undefined);
+  const cacheRef = useRef<
+    { version: number; query: (driver: SqlDriver) => T; value: T } | undefined
+  >(undefined);
   return useSyncExternalStore(store.subscribe, () => {
     const version = store.version();
-    if (cacheRef.current === undefined || cacheRef.current.version !== version) {
-      cacheRef.current = { version, value: queryRef.current(store.driver) };
+    const { current } = queryRef;
+    const cached = cacheRef.current;
+    if (cached !== undefined && cached.version === version && cached.query === current) {
+      return cached.value;
     }
-    return cacheRef.current.value;
+    const value = current(store.driver);
+    cacheRef.current = { version, query: current, value };
+    return value;
   });
 }
 
