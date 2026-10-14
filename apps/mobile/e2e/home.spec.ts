@@ -23,10 +23,6 @@ test.describe("home screen (design 3a)", () => {
     // Form strip: 8–4 over the season, five recent results.
     await expect(page.getByText("FORM", { exact: true })).toBeVisible();
     await expect(page.getByText("8–4")).toBeVisible();
-
-    // The two most recent finished matches.
-    await expect(page.getByText("6-3 · 7-6")).toBeVisible();
-    await expect(page.getByText("4-6 · 6-7")).toBeVisible();
   });
 
   test("resume scoring opens the live match", async ({ page }) => {
@@ -47,8 +43,10 @@ test.describe("home screen (design 3a)", () => {
     await expect(page.getByRole("button", { name: "Point Marta & Leo" })).toBeVisible();
   });
 
-  test("recent match row opens the overview", async ({ page }) => {
+  test("a finished match opens the overview from the Matches tab", async ({ page }) => {
     await gotoHome(page);
+    await page.getByRole("link", { name: "MATCHES" }).click();
+    await expect(page.getByText("stored locally")).toBeVisible();
     await page.getByText("6-3 · 7-6").click();
     await expect(page).toHaveURL(/\/match\/seed-12/u);
     await expect(page.getByText("DEF. MARTA & LEO")).toBeVisible();
@@ -84,31 +82,16 @@ test.describe("home screen (design 3a)", () => {
     const gridBox = await page.getByTestId("history-grid").boundingBox();
     expect(gridBox?.width ?? 0).toBeGreaterThan(330);
 
-    // Scroll to the end so the newest weeks sit clear of the floating tab bar
-    // (on web the page scrolls as one, so the bar drifts over the content).
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    const bar = await page.getByTestId("tab-profile").boundingBox();
     const cells = page.getByRole("button", { name: /^\d+ match(es)? played, \d+ won$/u });
     expect(await cells.count()).toBeGreaterThan(0);
     expect((await cells.first().boundingBox())?.width ?? 0).toBeGreaterThan(30);
 
-    // Tap the newest day cell whose centre is clear of the bar.
-    const count = await cells.count();
-    let target: { x: number; y: number } | undefined;
-    for (let i = count - 1; i >= 0 && target === undefined; i -= 1) {
-      const box = await cells.nth(i).boundingBox();
-      if (box === null || bar === null) {
-        continue;
-      }
-      const centre = box.y + box.height / 2;
-      if (centre > bar.y + bar.height + 8) {
-        target = { x: box.x + box.width / 2, y: centre };
-      }
-    }
-    expect(target).toBeDefined();
-    if (target !== undefined) {
-      await page.mouse.click(target.x, target.y);
-    }
+    // Tap a day cell. The floating tab bar drifts over the lower rows on web
+    // (the page scrolls as one), so use a cell from the first week — clear of
+    // the bar — rather than trusting a screen coordinate at the bottom.
+    const cell = cells.first();
+    await cell.scrollIntoViewIfNeeded();
+    await cell.click();
     await expect(page.getByText("CLOSE")).toBeVisible();
   });
 });

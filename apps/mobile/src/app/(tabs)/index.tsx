@@ -15,7 +15,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
-import { CourtLines, FloodlightGlow, SportStripe } from "@/components/court-art.tsx";
+import { CourtLines, FloodlightGlow } from "@/components/court-art.tsx";
 import { HistoryGrid } from "@/components/history-grid.tsx";
 import { ArrowRight, Plus } from "@/components/icons.tsx";
 import { useLiveConflictGuard } from "@/components/live-conflict-sheet.tsx";
@@ -25,7 +25,6 @@ import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import {
   durationLabel,
   liveScoreLine,
-  matchMetaLabel,
   opponentsOf,
   ownerTeamOf,
   pairInitials,
@@ -150,46 +149,6 @@ function LiveCard({
   );
 }
 
-function RecentRow({
-  match,
-  now,
-  ownerId,
-}: {
-  readonly match: MatchSummary;
-  readonly now: number;
-  readonly ownerId: string;
-}): ReactNode {
-  const ownerTeam = ownerTeamOf(match, ownerId);
-  const won = match.winner === ownerTeam;
-  return (
-    <Card
-      borderRadius={16}
-      paddingVertical={13}
-      paddingHorizontal={16}
-      flexDirection="row"
-      alignItems="center"
-      justifyContent="space-between"
-      gap={12}
-      pressStyle={{ opacity: 0.9 }}
-      role="button"
-      onPress={() => {
-        router.push(`/match/${match.id}`);
-      }}
-    >
-      <SportStripe sport={match.config.sport} />
-      <Body fontSize={12.5} fontWeight="700" flex={1}>
-        {`${matchMetaLabel(match, now).split(" · ")[0] ?? ""} · vs ${pairLabel(opponentsOf(match, ownerTeam))}`}
-      </Body>
-      <XStack alignItems="center" gap={10}>
-        <Display fontSize={14} color={textAlpha(0.6)} letterSpacing={0.5}>
-          {match.scoreLine ?? ""}
-        </Display>
-        <ResultBadge won={won} size={24} />
-      </XStack>
-    </Card>
-  );
-}
-
 /** The NEW MATCH action — the primary (orange) CTA only when no match is live. */
 function NewMatchButton({ live }: { readonly live: boolean }): ReactNode {
   return (
@@ -232,16 +191,13 @@ export default function HomeScreen(): ReactNode {
   );
   const stats = useDbQuery((driver) => computeProfileStats(driver, ownerId));
   const allMatches = useDbQuery(listMatches);
-  const recent = useMemo(
-    () => allMatches.filter((match) => match.status === "finished").slice(0, 2),
-    [allMatches],
-  );
   const history = useMemo(
     () => computeHistory(allMatches, ownerId, now),
     [allMatches, ownerId, now],
   );
   const [selectedDay, setSelectedDay] = useState<number | undefined>(undefined);
-  const [lastFinished] = recent;
+  // The REMATCH target: the most recent finished match.
+  const lastFinished = allMatches.find((match) => match.status === "finished");
 
   const rematchStarted = useRef(false);
   useFocusEffect(
@@ -346,12 +302,6 @@ export default function HomeScreen(): ReactNode {
           fontSize={16}
         >{`${String(stats.record.won)}–${String(stats.record.lost)}`}</Display>
       </Card>
-
-      <YStack gap={8}>
-        {recent.map((match) => (
-          <RecentRow key={match.id} match={match} now={now} ownerId={ownerId} />
-        ))}
-      </YStack>
 
       <HistoryGrid
         weeks={history.weeks}
