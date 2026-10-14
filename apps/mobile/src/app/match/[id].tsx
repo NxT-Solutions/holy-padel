@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ConfirmSheet } from "@/components/confirm-sheet.tsx";
 import { ChevronLeft } from "@/components/icons.tsx";
+import { KeyMomentsCard } from "@/components/key-moments-card.tsx";
 import { MatchWorkoutSection } from "@/components/match-workout-section.tsx";
 import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
@@ -358,12 +359,9 @@ export default function MatchOverviewScreen(): ReactNode {
           })}
         </YStack>
 
-        <MatchWorkoutSection
-          matchId={id}
-          matchStartedAt={match.startedAt}
-          series={series}
-          sport={match.config.sport}
-        />
+        <KeyMomentsCard match={match} events={events} />
+
+        <MatchWorkoutSection match={match} series={series} />
 
         <Card borderRadius={20} paddingVertical={16} paddingHorizontal={17} gap={13}>
           <Overline>MATCH TOTALS</Overline>
