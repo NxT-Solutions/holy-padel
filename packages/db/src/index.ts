@@ -11,11 +11,20 @@ export {
   DRAFT_TTL_MS,
   loadMatchDefaults,
   loadMatchDraft,
+  parseNewMatchDefaults,
   pickDefaults,
   resolveNewMatchDefaults,
   saveMatchDefaults,
   saveMatchDraft,
 } from "./match-defaults.ts";
+export type { MatchPreset } from "./match-presets.ts";
+export {
+  deleteMatchPreset,
+  loadLastSetup,
+  loadMatchPresets,
+  saveLastSetup,
+  saveMatchPreset,
+} from "./match-presets.ts";
 export type {
   MatchStatus,
   MatchSummary,

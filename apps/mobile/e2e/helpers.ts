@@ -63,27 +63,9 @@ export interface NewMatchOptions {
   readonly firstServe?: "Team A" | "Team B";
 }
 
-/**
- * Drive the full new-match flow from home with the seeded roster:
- * Javi joins team A, Marta & Leo form team B.
- */
-export async function startNewMatch(page: Page, options: NewMatchOptions = {}): Promise<void> {
-  await page.getByRole("button", { name: "NEW MATCH" }).click();
-  await expect(page.getByText("Doubles · FIP scoring")).toBeVisible();
-
-  // Team A: pick the partner.
-  await page.getByText("Pick a player").first().click();
-  await expect(page.getByText("PICK TEAM A")).toBeVisible();
-  await page.getByRole("button", { name: /Javi/u }).click();
-  await page.getByRole("button", { name: "DONE" }).click();
-
-  // Team B: pick both opponents.
-  await page.getByText("Pick a player").first().click();
-  await expect(page.getByText("PICK TEAM B")).toBeVisible();
-  await page.getByRole("button", { name: /Marta/u }).click();
-  await page.getByRole("button", { name: /Leo/u }).click();
-  await page.getByRole("button", { name: "DONE" }).click();
-
+/** Open the rules editor sheet and change options; closes via "Use these rules". */
+export async function editRules(page: Page, options: NewMatchOptions): Promise<void> {
+  await page.getByRole("button", { name: "Edit match rules" }).click();
   if (options.bestOf !== undefined) {
     await page.getByRole("button", { name: String(options.bestOf), exact: true }).click();
   }
@@ -95,6 +77,33 @@ export async function startNewMatch(page: Page, options: NewMatchOptions = {}): 
   }
   if (options.firstServe !== undefined) {
     await page.getByRole("button", { name: options.firstServe, exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Use these rules" }).click();
+}
+
+/**
+ * Drive the full new-match flow from home with the seeded roster:
+ * Javi joins team A, Marta & Leo form team B.
+ */
+export async function startNewMatch(page: Page, options: NewMatchOptions = {}): Promise<void> {
+  await page.getByRole("button", { name: "NEW MATCH" }).click();
+  await expect(page.getByText("Doubles · FIP scoring")).toBeVisible();
+
+  // Team A: pick the partner.
+  await page.getByText("Pick a player").first().click();
+  await expect(page.getByText("PICK TEAM A")).toBeVisible();
+  await page.getByRole("button", { name: /Javi .* with you/u }).click();
+  await page.getByRole("button", { name: "DONE" }).click();
+
+  // Team B: pick both opponents.
+  await page.getByText("Pick a player").first().click();
+  await expect(page.getByText("PICK TEAM B")).toBeVisible();
+  await page.getByRole("button", { name: /Marta .* with you/u }).click();
+  await page.getByRole("button", { name: /Leo .* with you/u }).click();
+  await page.getByRole("button", { name: "DONE" }).click();
+
+  if (Object.keys(options).length > 0) {
+    await editRules(page, options);
   }
 
   await page.getByRole("button", { name: "START MATCH" }).click();

@@ -1,5 +1,5 @@
-import type { MatchSummary } from "@holy-padel/db";
-import type { MatchSnapshot, TeamId, TeamValues } from "@holy-padel/scoring";
+import type { MatchSummary, NewMatchDefaults } from "@holy-padel/db";
+import type { DeuceMode, MatchSnapshot, TeamId, TeamValues } from "@holy-padel/scoring";
 
 const DAY_MS = 86_400_000;
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
@@ -210,4 +210,97 @@ export function watchSetLabel(snapshot: MatchSnapshot): string {
 export function megabytesLabel(bytes: number): string {
   const megabytes = bytes / (1024 * 1024);
   return `${megabytes.toFixed(1)} MB`;
+}
+
+const SPORT_LABELS: Record<NewMatchDefaults["sport"], string> = {
+  padel: "Padel",
+  squash: "Squash",
+  pickleball: "Pickleball",
+};
+
+/** "Padel · Doubles" — the rules summary card's title. */
+export function setupTitle(setup: NewMatchDefaults): string {
+  return `${SPORT_LABELS[setup.sport]} · ${setup.format === "singles" ? "Singles" : "Doubles"}`;
+}
+
+/**
+ * Whether two setups describe the exact same rules — the saved preset chip
+ * for the current setup reads as active. Compared field by field (not
+ * stringified) so key ordering can never make equal setups look different.
+ */
+export function sameSetup(left: NewMatchDefaults, right: NewMatchDefaults): boolean {
+  return (
+    left.format === right.format &&
+    left.bestOf === right.bestOf &&
+    left.thirdSet === right.thirdSet &&
+    left.deuceMode === right.deuceMode &&
+    left.firstServe === right.firstServe &&
+    left.sport === right.sport &&
+    left.squashMode === right.squashMode &&
+    left.squashTarget === right.squashTarget &&
+    left.squashTiebreak === right.squashTiebreak &&
+    left.squashServeBoxes === right.squashServeBoxes &&
+    left.pbTarget === right.pbTarget &&
+    left.pbTiebreak === right.pbTiebreak
+  );
+}
+
+function serveLabel(firstServe: NewMatchDefaults["firstServe"]): string {
+  if (firstServe === "undecided") {
+    return "Serve: toss";
+  }
+  return `Serve: Team ${firstServe}`;
+}
+
+function squashTiebreakLabel(setup: NewMatchDefaults): string {
+  if (setup.squashTiebreak === "winByTwo") {
+    return "Win by 2";
+  }
+  if (setup.squashTiebreak === "choice") {
+    return `Ask at ${String(setup.squashTarget - 1)}`;
+  }
+  return setup.squashTiebreak === "setOne" ? "Set 1" : "Set 2";
+}
+
+function squashBoxLabel(boxes: NewMatchDefaults["squashServeBoxes"]): string {
+  return `Box: ${boxes === "player" ? "auto" : boxes}`;
+}
+
+/**
+ * The rules summary card's small pills — the current setup in the sport's own
+ * vocabulary, most distinctive rule first. Squash leads with its mode and
+ * target; padel and pickleball lead with the set/goal format.
+ */
+export function setupSummary(setup: NewMatchDefaults): string[] {
+  if (setup.sport === "squash") {
+    return [
+      `${setup.squashMode === "par" ? "PAR" : "HIHO"} to ${String(setup.squashTarget)}`,
+      `Best of ${String(setup.bestOf)}`,
+      squashTiebreakLabel(setup),
+      squashBoxLabel(setup.squashServeBoxes),
+    ];
+  }
+  if (setup.sport === "pickleball") {
+    return [
+      `To ${String(setup.pbTarget)}`,
+      `Best of ${String(setup.bestOf)}`,
+      setup.pbTiebreak === "winByTwo" ? "Win by 2" : "Win by 1",
+      serveLabel(setup.firstServe),
+    ];
+  }
+  const thirdSet = setup.thirdSet === "superTieBreak" ? "Super TB" : "Full set";
+  return [
+    `Best of ${String(setup.bestOf)}`,
+    // A single set has no decider to describe.
+    ...(setup.bestOf === 1 ? [] : [`${thirdSet} decider`]),
+    deuceLabel(setup.deuceMode),
+    serveLabel(setup.firstServe),
+  ];
+}
+
+function deuceLabel(deuceMode: DeuceMode): "Golden pt" | "Star pt" | "Advantage" {
+  if (deuceMode === "goldenPoint") {
+    return "Golden pt";
+  }
+  return deuceMode === "starPoint" ? "Star pt" : "Advantage";
 }

@@ -73,7 +73,7 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 /** Strictly validate a stored defaults blob; anything off returns undefined. */
-function parseDefaults(value: unknown): NewMatchDefaults | undefined {
+export function parseNewMatchDefaults(value: unknown): NewMatchDefaults | undefined {
   if (typeof value !== "object" || value === null) {
     return;
   }
@@ -137,7 +137,7 @@ function readJson(driver: SqlDriver, key: string): unknown {
 }
 
 export function loadMatchDefaults(driver: SqlDriver): NewMatchDefaults | undefined {
-  return parseDefaults(readJson(driver, DEFAULTS_KEY));
+  return parseNewMatchDefaults(readJson(driver, DEFAULTS_KEY));
 }
 
 export function saveMatchDefaults(driver: SqlDriver, defaults: NewMatchDefaults): void {
@@ -162,7 +162,7 @@ export function loadMatchDraft(driver: SqlDriver, now = Date.now()): MatchDraft 
   if (typeof savedAt !== "number" || now - savedAt > DRAFT_TTL_MS) {
     return;
   }
-  const defaults = parseDefaults(value);
+  const defaults = parseNewMatchDefaults(value);
   const teamA1 = row["teamA1"];
   const partner = row["partner"];
   const teamB = row["teamB"];

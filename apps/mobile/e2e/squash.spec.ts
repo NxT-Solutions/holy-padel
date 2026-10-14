@@ -21,19 +21,22 @@ async function startSquashHiho(page: Page, options: { choice?: boolean } = {}): 
   await page.getByRole("button", { name: "NEW MATCH" }).click();
   await expect(page.getByText("Doubles · FIP scoring")).toBeVisible();
 
+  // Format, sport and squash rules all live behind the rules sheet now.
+  await page.getByRole("button", { name: "Edit match rules" }).click();
   await page.getByRole("button", { name: "Singles", exact: true }).click();
   await page.getByRole("button", { name: "Squash", exact: true }).click();
-
-  // Team A is the owner; pick the opponent for team B.
-  await page.getByText("Pick a player").first().click();
-  await expect(page.getByText("PICK TEAM B")).toBeVisible();
-  await page.getByRole("button", { name: /Marta/u }).click();
-  await page.getByRole("button", { name: "DONE" }).click();
-
   await page.getByRole("button", { name: "HIHO", exact: true }).click();
   if (options.choice === true) {
     await page.getByRole("button", { name: "Ask at 10", exact: true }).click();
   }
+  await page.getByRole("button", { name: "Use these rules" }).click();
+
+  // Team A is the owner; pick the opponent for team B.
+  await page.getByText("Pick a player").first().click();
+  await expect(page.getByText("PICK TEAM B")).toBeVisible();
+  await page.getByRole("button", { name: /Marta .* with you/u }).click();
+  await page.getByRole("button", { name: "DONE" }).click();
+
   await page.getByRole("button", { name: "START MATCH" }).click();
   await saveLiveMatchIfAsked(page);
   await expect(page.getByTestId("point-A")).toBeVisible();

@@ -29,17 +29,19 @@ test.describe("match defaults and draft persistence", () => {
     await page.getByRole("button", { name: "NEW MATCH" }).click();
     await expect(page.getByText("Doubles · FIP scoring")).toBeVisible();
 
-    // Pick the partner and both opponents, then switch sport.
+    // Pick the partner and both opponents, then switch sport (in the sheet).
     await page.getByText("Pick a player").first().click();
     await expect(page.getByText("PICK TEAM A")).toBeVisible();
-    await page.getByRole("button", { name: /Javi/u }).click();
+    await page.getByRole("button", { name: /Javi .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
     await page.getByText("Pick a player").first().click();
     await expect(page.getByText("PICK TEAM B")).toBeVisible();
-    await page.getByRole("button", { name: /Marta/u }).click();
-    await page.getByRole("button", { name: /Leo/u }).click();
+    await page.getByRole("button", { name: /Marta .* with you/u }).click();
+    await page.getByRole("button", { name: /Leo .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
+    await page.getByRole("button", { name: "Edit match rules" }).click();
     await page.getByRole("button", { name: "Squash", exact: true }).click();
+    await page.getByRole("button", { name: "Use these rules" }).click();
     await expect(page.getByText("Doubles · Squash scoring")).toBeVisible();
 
     // Leave without starting — nothing is lost.

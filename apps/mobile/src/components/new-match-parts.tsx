@@ -9,12 +9,11 @@ import type {
   ThirdSetMode,
 } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
-import { TextInput } from "react-native";
 import { XStack, YStack } from "tamagui";
 import { ArrowRight } from "@/components/icons.tsx";
 import { PickerSheet } from "@/components/picker-sheet.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
-import { Avatar, Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
+import { Avatar, Body, Card, Display, Pill } from "@/components/ui.tsx";
 import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
 
 export function PlayerRow({
@@ -349,42 +348,6 @@ export function MatchPickerSheet({
 }
 
 /** The optional pre-match note input, shown on the setup screen. */
-export function MatchNoteInput({
-  value,
-  onChange,
-}: {
-  readonly value: string;
-  readonly onChange: (next: string) => void;
-}): ReactNode {
-  return (
-    <Card borderRadius={20} padding={16} gap={10}>
-      <Overline color={textAlpha(0.45)}>NOTE · OPTIONAL</Overline>
-      <TextInput
-        style={noteInputStyle}
-        value={value}
-        onChangeText={onChange}
-        placeholder="e.g. league night, new racket…"
-        placeholderTextColor={textAlpha(0.4)}
-        multiline={true}
-        testID="match-note"
-      />
-    </Card>
-  );
-}
-
-const noteInputStyle = {
-  fontSize: 14,
-  fontFamily: "Archivo_600SemiBold",
-  color: colors.text,
-  paddingVertical: 10,
-  paddingHorizontal: 13,
-  backgroundColor: colors.row,
-  borderRadius: 13,
-  minHeight: 44,
-  textAlignVertical: "top",
-} as const;
-
-/** The accent START MATCH action plus the watch hint beneath it. */
 export function StartMatchButton({
   ready,
   onStart,

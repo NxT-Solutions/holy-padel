@@ -15,7 +15,7 @@ test.describe("input edges", () => {
 
     await page.getByText("Pick a player").first().click();
     await expect(page.getByText("PICK TEAM A")).toBeVisible();
-    await page.getByRole("button", { name: /Javi/u }).click();
+    await page.getByRole("button", { name: /Javi .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
 
     await page.getByText("Pick a player").first().click();
@@ -35,11 +35,11 @@ test.describe("input edges", () => {
     await gotoHome(page);
     await page.getByRole("button", { name: "NEW MATCH" }).click();
     await page.getByText("Pick a player").first().click();
-    await page.getByRole("button", { name: /Javi/u }).click();
+    await page.getByRole("button", { name: /Javi .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
     await page.getByText("Pick a player").first().click();
-    await page.getByRole("button", { name: /Marta/u }).click();
-    await page.getByRole("button", { name: /Leo/u }).click();
+    await page.getByRole("button", { name: /Marta .* with you/u }).click();
+    await page.getByRole("button", { name: /Leo .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
 
     // The seeded match is still live, so starting asks to save it first.
@@ -73,7 +73,7 @@ test.describe("input edges", () => {
     await page.getByText("Pick a player").first().click();
     await page.getByPlaceholder("New player").fill("Rita");
     await page.getByPlaceholder("New player").press("Enter");
-    await page.getByRole("button", { name: /Rita/u }).click();
+    await page.getByRole("button", { name: /Rita .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
 
     await page.getByText("Pick a player").first().click();
@@ -81,8 +81,8 @@ test.describe("input edges", () => {
     await page.getByPlaceholder("New player").press("Enter");
     await page.getByPlaceholder("New player").fill("Tess");
     await page.getByPlaceholder("New player").press("Enter");
-    await page.getByRole("button", { name: /Sam/u }).click();
-    await page.getByRole("button", { name: /Tess/u }).click();
+    await page.getByRole("button", { name: /Sam .* with you/u }).click();
+    await page.getByRole("button", { name: /Tess .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
 
     await page.getByRole("button", { name: "START MATCH" }).click();
@@ -100,12 +100,12 @@ test.describe("input edges", () => {
     await page.getByText("Pick a player").first().click();
 
     await page.getByPlaceholder("Search players…").fill("zzz");
-    await expect(page.getByRole("button", { name: /Javi/u })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Javi .* with you/u })).toHaveCount(0);
     await page.getByPlaceholder("New player").fill("Bob");
     await page.getByPlaceholder("New player").press("Enter");
     // The filter clears so the creation is visible immediately.
-    await expect(page.getByRole("button", { name: /Bob/u })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Javi/u })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Bob .* with you/u })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Javi .* with you/u })).toBeVisible();
   });
 
   test("blank and whitespace player names are rejected", async ({ page }) => {
