@@ -50,7 +50,7 @@ function hrPointsOf(
   }));
 }
 
-const colorFor = (lead: number): string => (lead >= 0 ? colors.lime : colors.teamBlue);
+const colorFor = (lead: number): string => (lead >= 0 ? colors.accent : colors.teamBlue);
 
 function buildSegments(
   steps: readonly GameSeriesStep[],
@@ -179,7 +179,7 @@ export function SnakeChart({
               cx={firstX}
               cy={yOf(firstStep.lead)}
               r={4}
-              fill={firstStep.lead >= 0 ? colors.lime : colors.teamBlue}
+              fill={firstStep.lead >= 0 ? colors.accent : colors.teamBlue}
             />
           )}
           {lastX !== undefined && lastStep !== undefined && count > 1 && (
@@ -187,7 +187,7 @@ export function SnakeChart({
               cx={lastX}
               cy={yOf(lastStep.lead)}
               r={4}
-              fill={lastStep.lead >= 0 ? colors.lime : colors.teamBlue}
+              fill={lastStep.lead >= 0 ? colors.accent : colors.teamBlue}
             />
           )}
           {hrPoints.length >= 2 && (
@@ -203,7 +203,7 @@ export function SnakeChart({
       )}
       <XStack alignItems="center" justifyContent="center" gap={14} marginTop={6}>
         <XStack alignItems="center" gap={5}>
-          <View width={8} height={8} borderRadius={4} backgroundColor={colors.lime} />
+          <View width={8} height={8} borderRadius={4} backgroundColor={colors.accent} />
           <Body fontSize={9.5} fontWeight="700" color={textAlpha(0.5)}>
             TEAM A AHEAD
           </Body>

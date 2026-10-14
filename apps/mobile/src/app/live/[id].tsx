@@ -303,7 +303,7 @@ export default function LiveScreen(): ReactNode {
         {handOut ? (
           <Pill
             alignSelf="center"
-            backgroundColor={colors.lime}
+            backgroundColor={colors.accent}
             paddingVertical={10}
             paddingHorizontal={22}
             testID="hand-out-pill"
@@ -320,7 +320,7 @@ export default function LiveScreen(): ReactNode {
             paddingHorizontal={22}
             testID="status-pill"
           >
-            <Display fontSize={15} letterSpacing={1.5} color={colors.lime}>
+            <Display fontSize={15} letterSpacing={1.5} color={colors.accent}>
               {label}
             </Display>
           </Pill>

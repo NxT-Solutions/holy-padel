@@ -36,7 +36,7 @@ struct IdleView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .foregroundStyle(Court.ink)
-                .background(Court.lime, in: Capsule())
+                .background(Court.accent, in: Capsule())
             }
             .buttonStyle(.plain)
 
@@ -127,7 +127,7 @@ private struct ScoreTab: View {
             if liveBpm > 0 {
                 Text("\(liveBpm)♥")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Court.lime)
+                    .foregroundStyle(Court.accent)
             } else {
                 Text(state.clock)
                     .font(.system(size: 12, weight: .medium))
@@ -148,8 +148,8 @@ private struct ScoreTab: View {
                 }
             } else {
                 HStack(spacing: 3) {
-                    Circle().fill(Court.lime).frame(width: 6, height: 6)
-                    Text("LIVE").font(.system(size: 10, weight: .bold)).foregroundStyle(Court.lime)
+                    Circle().fill(Court.accent).frame(width: 6, height: 6)
+                    Text("LIVE").font(.system(size: 10, weight: .bold)).foregroundStyle(Court.accent)
                 }
             }
         }
@@ -172,7 +172,7 @@ private struct ControlsTab: View {
             Text(state.paused ? "PAUSED" : "CONTROLS")
                 .font(.system(size: 11, weight: .bold))
                 .tracking(1.5)
-                .foregroundStyle(state.paused ? Court.white.opacity(0.5) : Court.lime)
+                .foregroundStyle(state.paused ? Court.white.opacity(0.5) : Court.accent)
 
             HStack(spacing: 18) {
                 labeled("UNDO") {
@@ -184,7 +184,7 @@ private struct ControlsTab: View {
                     CircleIcon(
                         system: state.paused ? "play.fill" : "pause.fill",
                         tint: Court.ink,
-                        fill: Court.lime,
+                        fill: Court.accent,
                         diameter: 44,
                         action: onPause
                     )
@@ -200,7 +200,7 @@ private struct ControlsTab: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
                 .foregroundStyle(Court.ink)
-                .background(Court.lime, in: RoundedRectangle(cornerRadius: 12))
+                .background(Court.accent, in: RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
 
@@ -297,7 +297,7 @@ private struct ChoiceButtons: View {
         VStack(spacing: 6) {
             Text("SET 1 OR 2?")
                 .font(.system(size: 15, weight: .heavy))
-                .foregroundStyle(Court.lime)
+                .foregroundStyle(Court.accent)
             Button(action: { onChoose("one") }) {
                 choiceLabel("SHORT · SET 1", "next point wins")
             }
@@ -320,7 +320,7 @@ private struct ChoiceButtons: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 10).fill(Court.lime))
+        .background(RoundedRectangle(cornerRadius: 10).fill(Court.accent))
     }
 }
 
@@ -334,7 +334,7 @@ struct WonView: View {
         VStack(spacing: 5) {
             Text("MATCH WON")
                 .font(.system(size: 20, weight: .heavy))
-                .foregroundStyle(Court.lime)
+                .foregroundStyle(Court.accent)
             Text(state.won?.winnerShort ?? state.teamA.short)
                 .font(.system(size: 26, weight: .black))
                 .foregroundStyle(Court.white)
@@ -353,7 +353,7 @@ struct WonView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .foregroundStyle(Court.ink)
-                    .background(Court.lime, in: Capsule())
+                    .background(Court.accent, in: Capsule())
             }
             .buttonStyle(.plain)
             .padding(.top, 4)
@@ -372,7 +372,7 @@ private struct ServingDot: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(active ? Court.lime : Color.clear)
+                .fill(active ? Court.accent : Color.clear)
                 .frame(width: side != nil ? 14 : 8, height: side != nil ? 14 : 8)
             
             if active, let side = side {
@@ -393,7 +393,7 @@ private struct ResultBadge: View {
             .foregroundStyle(won ? Court.ink : Court.white)
             .frame(width: 20, height: 20)
             .background(
-                won ? Court.lime : Court.white.opacity(0.15),
+                won ? Court.accent : Court.white.opacity(0.15),
                 in: RoundedRectangle(cornerRadius: 5)
             )
     }

@@ -83,12 +83,12 @@ export function Pill({ children, ...rest }: ViewProps): ReactNode {
   );
 }
 
-/** Round monogram avatar: ink disc, lime letter (blue for team B). */
+/** Round monogram avatar: ink disc, accent letter (blue for team B). */
 export function Avatar({
   letter,
   size = 36,
   background = colors.ink,
-  color = colors.lime,
+  color = colors.accent,
 }: {
   readonly letter: string;
   readonly size?: number;
@@ -124,7 +124,7 @@ export function ResultBadge({
       width={size}
       height={size}
       borderRadius={size * 0.3}
-      backgroundColor={won ? colors.lime : colors.greige}
+      backgroundColor={won ? colors.accent : colors.greige}
       alignItems="center"
       justifyContent="center"
     >
@@ -135,7 +135,9 @@ export function ResultBadge({
   );
 }
 
-/** The lime pulse dot marking live state and the serving pair. */
+/** The accent pulse dot marking live state and the serving pair. */
 export function LiveDot({ size = 7 }: { readonly size?: number }): ReactNode {
-  return <View width={size} height={size} borderRadius={size / 2} backgroundColor={colors.lime} />;
+  return (
+    <View width={size} height={size} borderRadius={size / 2} backgroundColor={colors.accent} />
+  );
 }

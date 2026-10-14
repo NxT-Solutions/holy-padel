@@ -58,7 +58,7 @@ export function MatchWon({
       <Body fontSize={11} fontWeight="800" letterSpacing={2} color={whiteAlpha(0.45)}>
         {meta}
       </Body>
-      <Display fontSize={58} color={colors.lime} letterSpacing={1} marginTop={14}>
+      <Display fontSize={58} color={colors.accent} letterSpacing={1} marginTop={14}>
         {ownerWon ? "MATCH WON" : "MATCH LOST"}
       </Display>
       <Display fontSize={34} color={colors.white} marginTop={18}>
@@ -97,7 +97,7 @@ export function MatchWon({
       <YStack marginTop="auto" width="100%" gap={9}>
         <XStack
           height={60}
-          backgroundColor={colors.lime}
+          backgroundColor={colors.accent}
           borderRadius={17}
           alignItems="center"
           justifyContent="center"

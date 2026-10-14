@@ -20,7 +20,7 @@ export function RecordBar({
       backgroundColor={colors.greige}
       overflow="hidden"
     >
-      <View width={`${String(share * 100)}%`} height="100%" backgroundColor={colors.lime} />
+      <View width={`${String(share * 100)}%`} height="100%" backgroundColor={colors.accent} />
     </View>
   );
 }

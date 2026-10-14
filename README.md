@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml"><img src="https://github.com/NxT-Solutions/holy-padel/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
   <a href="https://github.com/NxT-Solutions/holy-padel/actions/workflows/site.yml"><img src="https://github.com/NxT-Solutions/holy-padel/actions/workflows/site.yml/badge.svg" alt="Site status" /></a>
-  <a href="https://nxt-solutions.github.io/holy-padel/"><img src="https://img.shields.io/badge/site-GitHub%20Pages-C6F135?labelColor=0E1116&color=C6F135" alt="GitHub Pages site" /></a>
+  <a href="https://nxt-solutions.github.io/holy-padel/"><img src="https://img.shields.io/badge/site-GitHub%20Pages-FF6B35?labelColor=0E1116&color=FF6B35" alt="GitHub Pages site" /></a>
 </p>
 
 Holy Padel is an open-source Expo / React Native app built around one simple idea:
@@ -198,7 +198,7 @@ not feed on its own output.
 
 ## Design language
 
-Holy Padel uses a court-bold visual system: dark match surfaces, lime scoring
+Holy Padel uses a court-bold visual system: dark match surfaces, orange scoring
 accents, compact typography, and dense match cards that are built for repeated use
 during real court time. The source of truth is [DESIGN.md](DESIGN.md) plus
 `apps/mobile/src/theme/colors.ts`.

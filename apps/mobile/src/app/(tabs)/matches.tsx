@@ -87,7 +87,7 @@ function MatchRow({
             paddingHorizontal={9}
             borderRadius={8}
           >
-            <Display fontSize={12} letterSpacing={1} color={colors.lime}>
+            <Display fontSize={12} letterSpacing={1} color={colors.accent}>
               LIVE
             </Display>
           </Pill>
@@ -198,8 +198,8 @@ export default function MatchesScreen(): ReactNode {
             router.push("/new-match");
           }}
         >
-          <Plus size={12} color={colors.lime} />
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.lime}>
+          <Plus size={12} color={colors.accent} />
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.accent}>
             NEW
           </Body>
         </Pill>
@@ -288,8 +288,8 @@ export default function MatchesScreen(): ReactNode {
                   router.push("/new-match");
                 }}
               >
-                <Plus size={13} color={colors.lime} />
-                <Display fontSize={14} letterSpacing={1.2} color={colors.lime}>
+                <Plus size={13} color={colors.accent} />
+                <Display fontSize={14} letterSpacing={1.2} color={colors.accent}>
                   START YOUR FIRST MATCH
                 </Display>
               </XStack>

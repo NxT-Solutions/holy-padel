@@ -14,6 +14,6 @@ module.exports = () => ({
   entitlements: {
     "com.apple.developer.healthkit": true,
   },
-  // $accent drives the system tint; matches the design's lime.
-  colors: { $accent: "#C6F135" },
+  // $accent drives the system tint; matches the design's signal orange.
+  colors: { $accent: "#FF6B35" },
 });

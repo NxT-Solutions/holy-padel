@@ -28,7 +28,7 @@ function TabButton({
           fontSize={11}
           fontWeight="800"
           letterSpacing={1.4}
-          color={isFocused ? colors.lime : whiteAlpha(0.45)}
+          color={isFocused ? colors.accent : whiteAlpha(0.45)}
         >
           {label}
         </Body>
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   },
 });
 
-/** The design's floating dark pill: three labels, lime dot under the active one. */
+/** The design's floating dark pill: three labels, accent dot under the active one. */
 export default function TabsLayout(): ReactNode {
   const insets = useSafeAreaInsets();
   return (

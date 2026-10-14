@@ -1,9 +1,9 @@
 /**
  * "Court Bold" palette, lifted verbatim from design/Padel Score Tracker.dc.html:
- * Anton numerals, Archivo UI, ball-lime on near-black over warm cream.
+ * Anton numerals, Archivo UI, signal orange on near-black over warm cream.
  *
  * Two palettes — light (the design default) and dark — share every *surface*
- * token that is already dark (ink family, lime) and swap the light screen,
+ * token that is already dark (ink family, accent) and swap the light screen,
  * cards, and text colors. Theme selection lives in the `theme` setting
  * (settings table) and is applied by the ThemeProvider via `applyTheme`.
  */
@@ -27,10 +27,10 @@ const LIGHT = {
   tileInk: "#0E1116",
   /** Light tile surface (stat tiles) — a card surface in dark mode. */
   tileWhite: "#FFFFFF",
-  /** Ball-lime accent. */
-  lime: "#C6F135",
-  /** Lime legible on a light card (active set label). */
-  limeOnCard: "#7F9A12",
+  /** Signal-orange accent. */
+  accent: "#FF6B35",
+  /** Orange legible as text on a light card (active set label). */
+  accentOnCard: "#C2410C",
   /** Screen background. */
   screen: "#F1F0EA",
   /** Card surface on the screen background. */
@@ -67,8 +67,8 @@ const DARK: typeof LIGHT = {
   // palette flip without a black tile vanishing into the near-black screen.
   tileInk: "#151922",
   tileWhite: "#1B2027",
-  lime: "#C6F135",
-  limeOnCard: "#C6F135",
+  accent: "#FF6B35",
+  accentOnCard: "#FF6B35",
   screen: "#0B0D11",
   card: "#12161C",
   sheet: "#10141A",
@@ -97,9 +97,9 @@ export function whiteAlpha(alpha: number): string {
   return `rgba(255, 255, 255, ${String(alpha)})`;
 }
 
-/** rgba(198, 241, 53, alpha) — the lime glow behind serve dots and CTAs. */
-export function limeAlpha(alpha: number): string {
-  return `rgba(198, 241, 53, ${String(alpha)})`;
+/** rgba(255, 107, 53, alpha) — the orange glow behind serve dots and CTAs. */
+export function accentAlpha(alpha: number): string {
+  return `rgba(255, 107, 53, ${String(alpha)})`;
 }
 
 let mode: ThemeMode = "light";

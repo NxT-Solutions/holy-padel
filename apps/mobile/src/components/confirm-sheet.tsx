@@ -6,13 +6,13 @@ import { colors, textAlpha } from "@/theme/colors.ts";
 
 /**
  * The in-app destructive confirmation, used instead of the platform alert so
- * it follows the selected theme and the Court Bold shapes (rounded sheet, lime
+ * it follows the selected theme and the Court Bold shapes (rounded sheet, accent
  * ink system, Anton title). The native alert on Android is always light with
  * square corners, which broke the dark theme.
  *
  * The whole sheet is dismissable (backdrop tap and CANCEL), and the confirm
  * action is the danger fill so "this deletes something" reads instantly. The
- * `primary` tone (ink fill, lime label) is for confirmations that keep data.
+ * `primary` tone (ink fill, accent label) is for confirmations that keep data.
  */
 export function ConfirmSheet({
   title,
@@ -69,7 +69,7 @@ export function ConfirmSheet({
           <Display
             fontSize={17}
             letterSpacing={1.2}
-            color={tone === "danger" ? colors.white : colors.lime}
+            color={tone === "danger" ? colors.white : colors.accent}
           >
             {confirmLabel}
           </Display>

@@ -28,7 +28,7 @@ function RosterRow({
       gap={12}
       backgroundColor={colors.card}
       borderWidth={2}
-      borderColor={picked ? colors.lime : "transparent"}
+      borderColor={picked ? colors.accent : "transparent"}
       borderRadius={15}
       paddingVertical={11}
       paddingHorizontal={14}
@@ -42,7 +42,7 @@ function RosterRow({
         letter={entry.name.charAt(0)}
         size={36}
         background={opponentPick ? colors.teamBlue : colors.ink}
-        color={opponentPick ? colors.white : colors.lime}
+        color={opponentPick ? colors.white : colors.accent}
       />
       <YStack flex={1}>
         <Body fontSize={15} fontWeight="700">
@@ -57,7 +57,7 @@ function RosterRow({
           width={24}
           height={24}
           borderRadius={12}
-          backgroundColor={colors.lime}
+          backgroundColor={colors.accent}
           alignItems="center"
           justifyContent="center"
         >
@@ -180,7 +180,7 @@ export function PickerSheet({
         </ScrollView>
         <XStack
           height={56}
-          backgroundColor={colors.lime}
+          backgroundColor={colors.accent}
           borderRadius={16}
           alignItems="center"
           justifyContent="center"

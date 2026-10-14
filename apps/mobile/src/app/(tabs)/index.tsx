@@ -63,7 +63,7 @@ function LiveCard({
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap={6}>
           <LiveDot size={7} />
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.lime}>
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.accent}>
             LIVE NOW
           </Body>
         </XStack>
@@ -77,7 +77,7 @@ function LiveCard({
             <Display fontSize={22} color={colors.white} width={64}>
               {pairInitials(match.names.A)}
             </Display>
-            <Display fontSize={40} color={colors.lime} testID="home-point-A">
+            <Display fontSize={40} color={colors.accent} testID="home-point-A">
               {pointCallOf(snapshot, "A")}
             </Display>
           </XStack>
@@ -99,7 +99,7 @@ function LiveCard({
       </XStack>
       <XStack
         height={48}
-        backgroundColor={colors.lime}
+        backgroundColor={colors.accent}
         borderRadius={14}
         alignItems="center"
         justifyContent="center"

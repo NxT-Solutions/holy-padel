@@ -152,7 +152,7 @@ export default function DataScreen(): ReactNode {
         paddingHorizontal={18}
         gap={4}
       >
-        <Overline color={colors.lime}>ON THIS PHONE</Overline>
+        <Overline color={colors.accent}>ON THIS PHONE</Overline>
         <Display fontSize={30} color={colors.white}>
           {`${String(count)} matches`}
         </Display>
@@ -242,7 +242,7 @@ export default function DataScreen(): ReactNode {
                 }}
                 testID="import-restore"
               >
-                <Display fontSize={14} letterSpacing={1.2} color={colors.lime}>
+                <Display fontSize={14} letterSpacing={1.2} color={colors.accent}>
                   RESTORE
                 </Display>
               </XStack>

@@ -73,9 +73,9 @@ export function EditPlayerForm({
                   borderRadius={16}
                   alignItems="center"
                   justifyContent="center"
-                  backgroundColor={selected ? colors.lime : colors.toggle}
+                  backgroundColor={selected ? colors.accent : colors.toggle}
                   borderWidth={1}
-                  borderColor={selected ? colors.lime : textAlpha(0.12)}
+                  borderColor={selected ? colors.accent : textAlpha(0.12)}
                   pressStyle={{ opacity: 0.85 }}
                   role="button"
                   aria-label={`Play ${option} side`}
@@ -104,7 +104,7 @@ export function EditPlayerForm({
       <XStack
         height={58}
         borderRadius={18}
-        backgroundColor={colors.lime}
+        backgroundColor={colors.accent}
         alignItems="center"
         justifyContent="center"
         pressStyle={{ opacity: 0.9 }}

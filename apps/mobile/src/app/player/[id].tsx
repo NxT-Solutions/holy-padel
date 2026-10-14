@@ -92,7 +92,7 @@ export default function PlayerScreen(): ReactNode {
         <StatTile
           value={`${String(stats.record.won)}–${String(stats.record.lost)}`}
           label="RECORD"
-          variant="lime"
+          variant="accent"
         />
         <StatTile value={`${String(stats.winRatePercent)}%`} label="WIN RATE" variant="white" />
       </XStack>

@@ -117,7 +117,7 @@ function MatchNoteCard({
             fontSize={11.5}
             fontWeight="800"
             letterSpacing={1.2}
-            color={colors.limeOnCard}
+            color={colors.accentOnCard}
             pressStyle={{ opacity: 0.6 }}
             role="button"
             onPress={save}
@@ -304,7 +304,7 @@ export default function MatchOverviewScreen(): ReactNode {
           >
             {`DEF. ${names[loser].toUpperCase()}`}
           </Body>
-          <Display fontSize={58} color={colors.lime} marginTop={12} testID="overview-score">
+          <Display fontSize={58} color={colors.accent} marginTop={12} testID="overview-score">
             {match.scoreLine ?? ""}
           </Display>
           <Body
@@ -350,7 +350,7 @@ export default function MatchOverviewScreen(): ReactNode {
                     {`${String(set.summary.games.A)}–${String(set.summary.games.B)}`}
                   </Display>
                   <Pill
-                    backgroundColor={colors.lime}
+                    backgroundColor={colors.accent}
                     borderRadius={7}
                     paddingVertical={4}
                     paddingHorizontal={8}
@@ -377,7 +377,7 @@ export default function MatchOverviewScreen(): ReactNode {
             <XStack alignItems="center" justifyContent="space-between">
               <YStack alignItems="center" gap={1} maxWidth="32%">
                 <Display fontSize={16}>{String(pointsWinner)}</Display>
-                <Body fontSize={9} fontWeight="800" color={colors.limeOnCard} textAlign="center">
+                <Body fontSize={9} fontWeight="800" color={colors.accentOnCard} textAlign="center">
                   {names[winner].toUpperCase()}
                 </Body>
               </YStack>
@@ -394,7 +394,7 @@ export default function MatchOverviewScreen(): ReactNode {
               </YStack>
             </XStack>
             <XStack height={8} borderRadius={999} overflow="hidden" gap={2}>
-              <View flex={winnerShare} backgroundColor={colors.lime} />
+              <View flex={winnerShare} backgroundColor={colors.accent} />
               <View flex={100 - winnerShare} backgroundColor={colors.greige} />
             </XStack>
           </YStack>
@@ -441,7 +441,7 @@ export default function MatchOverviewScreen(): ReactNode {
                 fontSize={11}
                 fontWeight="800"
                 letterSpacing={1.3}
-                color={workoutLogged ? colors.limeOnCard : textAlpha(0.45)}
+                color={workoutLogged ? colors.accentOnCard : textAlpha(0.45)}
                 pressStyle={{ opacity: 0.6 }}
                 role="button"
                 onPress={workoutLogged ? undefined : logWorkout}

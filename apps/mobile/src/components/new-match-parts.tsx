@@ -39,7 +39,7 @@ export function PlayerRow({
         letter={empty ? "?" : name.charAt(0)}
         size={34}
         background={teamColor === "blue" ? colors.teamBlue : colors.ink}
-        color={teamColor === "blue" ? colors.white : colors.lime}
+        color={teamColor === "blue" ? colors.white : colors.accent}
       />
       <Body fontSize={15.5} fontWeight="700" color={empty ? textAlpha(0.35) : colors.text}>
         {displayName}
@@ -69,7 +69,7 @@ export function TeamCard({
     >
       <Pill
         alignSelf="flex-start"
-        backgroundColor={teamA ? colors.lime : colors.teamBlue}
+        backgroundColor={teamA ? colors.accent : colors.teamBlue}
         paddingVertical={4}
         paddingHorizontal={10}
       >
@@ -384,7 +384,7 @@ const noteInputStyle = {
   textAlignVertical: "top",
 } as const;
 
-/** The lime START MATCH action plus the watch hint beneath it. */
+/** The accent START MATCH action plus the watch hint beneath it. */
 export function StartMatchButton({
   ready,
   onStart,
@@ -404,13 +404,13 @@ export function StartMatchButton({
     >
       <XStack
         height={62}
-        backgroundColor={colors.lime}
+        backgroundColor={colors.accent}
         borderRadius={18}
         alignItems="center"
         justifyContent="center"
         gap={10}
         opacity={ready ? 1 : 0.5}
-        boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
+        boxShadow="0 6px 18px rgba(255, 107, 53, 0.45)"
         pressStyle={{ opacity: 0.85 }}
         role="button"
         aria-label="Start match"

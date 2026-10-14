@@ -14,7 +14,7 @@ import { colors, textAlpha } from "@/theme/colors.ts";
  * a month label in the left gutter wherever the month changes.
  *
  * The day colour is a scale, not a category: 0% wins sits at the opponents'
- * blue, 100% at the brand lime, so a glance separates "lost everything" from
+ * blue, 100% at the brand accent, so a glance separates "lost everything" from
  * "won everything" and every shade between is a real win share. Tapping a day
  * with matches expands that day's results beneath the grid.
  */
@@ -49,7 +49,7 @@ const MONTHS = [
 const RADIUS = 8;
 
 const SCALE_LOST = [46, 91, 255];
-const SCALE_WON = [198, 241, 53];
+const SCALE_WON = [255, 107, 53];
 
 function winShareColor(won: number, lost: number): string {
   const share = won + lost === 0 ? 0 : won / (won + lost);
@@ -238,7 +238,7 @@ export function HistoryGrid({
             alignItems="center"
             gap={8}
           >
-            <Display fontSize={14} color={streak.kind === "won" ? colors.lime : colors.white}>
+            <Display fontSize={14} color={streak.kind === "won" ? colors.accent : colors.white}>
               {streak.kind === "won"
                 ? `Won last ${String(streak.count)}`
                 : `Lost last ${String(streak.count)}`}

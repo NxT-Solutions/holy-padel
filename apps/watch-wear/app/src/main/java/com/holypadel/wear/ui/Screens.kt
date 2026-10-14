@@ -89,7 +89,7 @@ private fun IdleScreen(state: MatchState, onStartLast: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(28.dp))
-                .background(CourtColors.Lime)
+                .background(CourtColors.Accent)
                 .clickable { onStartLast() }
                 .padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -156,17 +156,17 @@ private fun ScorePage(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (liveBpm > 0) {
-                BodyText("$liveBpm♥", color = CourtColors.Lime, sizeSp = 12)
+                BodyText("$liveBpm♥", color = CourtColors.Accent, sizeSp = 12)
             } else {
                 BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
             }
             LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Lime)
+                Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Accent)
                 Spacer(Modifier.width(4.dp))
                 LabelText(
                     if (paused) "PAUSED" else "LIVE",
-                    color = if (paused) CourtColors.White45 else CourtColors.Lime,
+                    color = if (paused) CourtColors.White45 else CourtColors.Accent,
                     sizeSp = 10,
                 )
             }
@@ -222,12 +222,12 @@ private fun ChoiceButtons(onChoose: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        LabelText("SET 1 OR 2?", color = CourtColors.Lime, sizeSp = 14)
+        LabelText("SET 1 OR 2?", color = CourtColors.Accent, sizeSp = 14)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(CourtColors.Lime)
+                .background(CourtColors.Accent)
                 .clickable { onChoose("one") }
                 .padding(vertical = 10.dp),
             contentAlignment = Alignment.Center,
@@ -241,7 +241,7 @@ private fun ChoiceButtons(onChoose: (String) -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(CourtColors.Lime)
+                .background(CourtColors.Accent)
                 .clickable { onChoose("two") }
                 .padding(vertical = 10.dp),
             contentAlignment = Alignment.Center,
@@ -272,7 +272,7 @@ private fun ControlsPage(
     ) {
         LabelText(
             if (paused) "PAUSED" else "CONTROLS",
-            color = if (paused) CourtColors.White45 else CourtColors.Lime,
+            color = if (paused) CourtColors.White45 else CourtColors.Accent,
             sizeSp = 11,
         )
         Row(
@@ -296,7 +296,7 @@ private fun ControlsPage(
             LabelText("DISCARD? SCORE LOST", color = CourtColors.White45, sizeSp = 9)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton("DISCARD", CourtColors.White.copy(alpha = 0.14f), CourtColors.White, onCancel)
-                PillButton("KEEP", CourtColors.Lime, CourtColors.Ink) { confirmingCancel = false }
+                PillButton("KEEP", CourtColors.Accent, CourtColors.Ink) { confirmingCancel = false }
             }
         } else {
             // Stop AND save — the filled square, "court time's up, don't lose the score".
@@ -304,7 +304,7 @@ private fun ControlsPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CourtColors.Lime)
+                    .background(CourtColors.Accent)
                     .clickable { onStop() }
                     .padding(vertical = 9.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
@@ -353,7 +353,7 @@ private fun PagerDots(count: Int, current: Int, modifier: Modifier = Modifier) {
         for (index in 0 until count) {
             Dot(
                 sizeDp = 5,
-                color = if (index == current) CourtColors.Lime else CourtColors.White.copy(alpha = 0.3f),
+                color = if (index == current) CourtColors.Accent else CourtColors.White.copy(alpha = 0.3f),
             )
         }
     }
@@ -370,7 +370,7 @@ private fun CircleIconButton(
     enabled: Boolean = true,
     diameterDp: Int = 36,
 ) {
-    val background = if (accent) CourtColors.Lime else CourtColors.White.copy(alpha = 0.14f)
+    val background = if (accent) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f)
     val tint = if (accent) CourtColors.Ink else CourtColors.White
     Box(
         modifier = Modifier
@@ -464,7 +464,7 @@ private fun MatchWonScreen(state: MatchState, onEnd: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        DisplayText("MATCH WON", sizeSp = 24, color = CourtColors.Lime)
+        DisplayText("MATCH WON", sizeSp = 24, color = CourtColors.Accent)
         Spacer(Modifier.height(6.dp))
         DisplayText(won?.winnerShort ?: state.teamA.short, sizeSp = 30, color = CourtColors.White)
         Spacer(Modifier.height(6.dp))
@@ -480,7 +480,7 @@ private fun MatchWonScreen(state: MatchState, onEnd: () -> Unit) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(28.dp))
-                .background(CourtColors.Lime)
+                .background(CourtColors.Accent)
                 .clickable { onEnd() }
                 .padding(horizontal = 22.dp, vertical = 10.dp),
         ) {

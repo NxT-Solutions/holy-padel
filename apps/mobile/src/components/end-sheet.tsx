@@ -41,12 +41,12 @@ export function EndSheet({
         <XStack
           height={60}
           marginTop={4}
-          backgroundColor={colors.lime}
+          backgroundColor={colors.accent}
           borderRadius={17}
           alignItems="center"
           justifyContent="center"
           gap={10}
-          boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
+          boxShadow="0 6px 18px rgba(255, 107, 53, 0.45)"
           pressStyle={{ opacity: 0.85 }}
           role="button"
           aria-label="Stop and save"

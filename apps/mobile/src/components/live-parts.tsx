@@ -4,7 +4,7 @@ import { View, XStack, YStack } from "tamagui";
 import { Pause, Play, Square, Undo } from "@/components/icons.tsx";
 import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
 import { currentSetScore } from "@/lib/format.ts";
-import { colors, limeAlpha, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { accentAlpha, colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
 
 function SetChip({
   label,
@@ -40,13 +40,13 @@ function SetChip({
         flex={1}
         backgroundColor={colors.card}
         borderWidth={2}
-        borderColor={colors.lime}
+        borderColor={colors.accent}
         borderRadius={14}
         paddingVertical={7}
         alignItems="center"
         boxShadow="0 2px 10px rgba(14, 17, 22, 0.06)"
       >
-        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={colors.limeOnCard}>
+        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={colors.accentOnCard}>
           {label}
         </Body>
         <Display fontSize={20} marginTop={2} testID={testId}>
@@ -171,14 +171,14 @@ export function TeamCard({
               width={20}
               height={20}
               borderRadius={10}
-              backgroundColor={colors.lime}
+              backgroundColor={colors.accent}
               alignItems="center"
               justifyContent="center"
-              boxShadow={serving ? `0 0 0 4px ${limeAlpha(0.3)}` : "unset"}
+              boxShadow={serving ? `0 0 0 4px ${accentAlpha(0.3)}` : "unset"}
               testID={`${testID}-serve${serving ? "-on" : "-off"}`}
             >
               {Boolean(serving && servingSide) && (
-                <Body fontSize={11} fontWeight="900" color={colors.white}>
+                <Body fontSize={11} fontWeight="900" color={colors.ink}>
                   {serveBadge(serverNumber, servingSide)}
                 </Body>
               )}
@@ -230,7 +230,7 @@ export function SetChoiceSheet({
         boxShadow="0 12px 40px rgba(14, 17, 22, 0.35)"
       >
         <YStack gap={6} alignItems="center">
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.8} color={colors.lime}>
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.8} color={colors.accent}>
             {`LEVEL AT ${String(target - 1)}-${String(target - 1)}`}
           </Body>
           <Display fontSize={22} color={colors.white} letterSpacing={1}>
@@ -380,9 +380,9 @@ export function LiveActionBar({
       <XStack
         flex={1.3}
         height={58}
-        backgroundColor={paused ? colors.lime : colors.card}
+        backgroundColor={paused ? colors.accent : colors.card}
         borderWidth={1}
-        borderColor={paused ? colors.lime : textAlpha(0.08)}
+        borderColor={paused ? colors.accent : textAlpha(0.08)}
         borderRadius={16}
         alignItems="center"
         justifyContent="center"

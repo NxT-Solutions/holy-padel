@@ -29,7 +29,7 @@ import {
   requestHealthAuthorization,
 } from "@/health/health-log.ts";
 import { durationLabel, megabytesLabel } from "@/lib/format.ts";
-import { colors, limeAlpha, textAlpha } from "@/theme/colors.ts";
+import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
 import { loadThemeSetting, useSetThemeSetting } from "@/theme/theme.tsx";
 
 const HEALTH_PLATFORM = Platform.OS === "android" ? "Health Connect" : "Apple Health";
@@ -98,11 +98,11 @@ function HealthBanner(): ReactNode {
         width={40}
         height={40}
         borderRadius={20}
-        backgroundColor={limeAlpha(0.22)}
+        backgroundColor={accentAlpha(0.22)}
         alignItems="center"
         justifyContent="center"
       >
-        <Heart size={19} color={colors.limeOnCard} strokeWidth={2.4} />
+        <Heart size={19} color={colors.accentOnCard} strokeWidth={2.4} />
       </View>
       <YStack flex={1} gap={2}>
         <Body fontSize={14.5} fontWeight="800">
@@ -130,7 +130,7 @@ function HealthBanner(): ReactNode {
           role="button"
           onPress={connect}
         >
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.lime}>
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.accent}>
             CONNECT
           </Body>
         </Pill>
@@ -273,7 +273,7 @@ export default function ProfileScreen(): ReactNode {
         <StatTile
           value={`${String(stats.record.won)}–${String(stats.record.lost)}`}
           label="RECORD"
-          variant="lime"
+          variant="accent"
         />
         <StatTile value={winRate} label="WIN RATE" variant="white" />
       </XStack>
