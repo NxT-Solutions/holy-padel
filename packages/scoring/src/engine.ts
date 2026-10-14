@@ -153,6 +153,28 @@ export function computeMatch(config: MatchConfig, events: readonly PointEvent[])
   return toSnapshot(state, config);
 }
 
+/**
+ * Every snapshot along the ledger in one pass: `[0]` is before the first event
+ * and `[i]` is after the first `i` events, so `replayMatch(c, e)[i]` equals
+ * `computeMatch(c, e.slice(0, i))`. Point-by-point analysis (stats, insights)
+ * reads this instead of re-folding a prefix for every event. Events after the
+ * match is decided repeat the final snapshot, matching `computeMatch`.
+ */
+export function replayMatch(config: MatchConfig, events: readonly PointEvent[]): MatchSnapshot[] {
+  let state = initialState(config);
+  const snapshots = [toSnapshot(state, config)];
+  for (const event of events) {
+    if (!state.finished) {
+      state =
+        event.kind === "serve"
+          ? applyServeEvent(state, config, event.winner)
+          : applyPoint(state, config, event.winner, event.gameSet);
+    }
+    snapshots.push(toSnapshot(state, config));
+  }
+  return snapshots;
+}
+
 /** Undo is just forgetting the last event — the fold does the rest. */
 export function undoLastPoint(events: readonly PointEvent[]): readonly PointEvent[] {
   return events.slice(0, -1);

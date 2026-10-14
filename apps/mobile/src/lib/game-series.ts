@@ -1,5 +1,5 @@
 import type { MatchConfig, PointEvent } from "@holy-padel/scoring";
-import { computeMatch } from "@holy-padel/scoring";
+import { replayMatch } from "@holy-padel/scoring";
 
 /** One point inside a game: when it was played and the lead after it. */
 export interface GameSeriesStep {
@@ -63,13 +63,14 @@ export function computeGameSeries(
   let open: OpenGame | undefined;
   let previousTotalGames = { A: 0, B: 0 };
   let previousSetCount = 0;
+  const snapshots = replayMatch(config, events);
 
   events.forEach((event, index) => {
-    if (event.kind === "serve") {
+    const before = snapshots[index];
+    const after = snapshots[index + 1];
+    if (event.kind === "serve" || before === undefined || after === undefined) {
       return;
     }
-    const before = computeMatch(config, events.slice(0, index));
-    const after = computeMatch(config, events.slice(0, index + 1));
     const gameFinished =
       after.totalGames.A !== previousTotalGames.A || after.totalGames.B !== previousTotalGames.B;
     const setFinished = after.completedSets.length > previousSetCount;

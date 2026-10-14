@@ -1,4 +1,4 @@
-export { computeMatch, undoLastPoint } from "./engine.ts";
+export { computeMatch, replayMatch, undoLastPoint } from "./engine.ts";
 export { statusLabel, watchStatusLabel } from "./labels.ts";
 export {
   EXTENDED_SET_TARGET,
