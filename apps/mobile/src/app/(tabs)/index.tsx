@@ -15,7 +15,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
-import { CourtLines, FloodlightGlow } from "@/components/court-art.tsx";
+import { FloodlightGlow } from "@/components/court-art.tsx";
 import { HistoryGrid } from "@/components/history-grid.tsx";
 import { ArrowRight, Plus } from "@/components/icons.tsx";
 import { useLiveConflictGuard } from "@/components/live-conflict-sheet.tsx";
@@ -88,7 +88,6 @@ function LiveCard({
       position="relative"
     >
       <FloodlightGlow color={sportColor(match.config.sport)} opacity={0.28} />
-      <CourtLines sport={match.config.sport} color={colors.white} opacity={0.07} />
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap={6}>
           <LiveDot size={7} />
