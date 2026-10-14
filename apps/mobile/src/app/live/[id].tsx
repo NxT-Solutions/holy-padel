@@ -2,14 +2,13 @@ import type { MatchSummary } from "@holy-padel/db";
 import {
   createMatch,
   deleteMatch,
-  finishMatch,
+  getLiveMatch,
   getMatch,
   getOwner,
   loadEvents,
   pauseMatch,
   removeLastEvent,
   resumeMatch,
-  scorePoint as scorePointDb,
   setPendingGameSet,
 } from "@holy-padel/db";
 import type { MatchSnapshot, PointEvent, TeamId } from "@holy-padel/scoring";
@@ -31,45 +30,20 @@ import { MatchWon } from "@/components/match-won.tsx";
 import { Display, Pill } from "@/components/ui.tsx";
 import { WatchSyncLine } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
+import { durationLabel, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
 import { scoreHaptic, undoHaptic } from "@/lib/haptics.ts";
-import { rematchConfig, stopAndSaveMatch } from "@/lib/match-actions.ts";
+import {
+  closeLiveMatch,
+  recordPoint,
+  rematchConfig,
+  stopAndSaveMatch,
+  undoMatchPoint,
+} from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors } from "@/theme/colors.ts";
+import { acknowledgeWon } from "@/watch/gather-input.ts";
 import { useWatchLink } from "@/watch/use-watch-connection.ts";
-
-/** Persist the finished result once the engine says the match is over. */
-function usePersistFinish(
-  id: string,
-  match: MatchSummary | undefined,
-  snapshot: MatchSnapshot | undefined,
-  events: readonly PointEvent[],
-): void {
-  const mutate = useDbMutation();
-  // Keyed by match id: a rematch replaces the route param without remounting.
-  const persistedFinish = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    const pending =
-      match?.status === "live" &&
-      snapshot?.finished === true &&
-      snapshot.winner !== undefined &&
-      persistedFinish.current !== id;
-    if (!pending) {
-      return;
-    }
-    persistedFinish.current = id;
-    const winner = snapshot.winner ?? "A";
-    const lastEvent = events.at(-1);
-    mutate((driver) => {
-      finishMatch(driver, id, {
-        winner,
-        endedAt: lastEvent?.at ?? Date.now(),
-        scoreLine: finalScoreLine(snapshot),
-      });
-    });
-  }, [match, snapshot, events, id, mutate]);
-}
 
 function squashTargetOf(snapshot: MatchSnapshot): number {
   return snapshot.config.sport === "squash" ? snapshot.config.squashTarget : 11;
@@ -78,6 +52,73 @@ function squashTargetOf(snapshot: MatchSnapshot): number {
 /** The status-pill call while a long/short decision is staged for the next rally. */
 function stagedChoiceLabel(staged: "one" | "two", target: number): string {
   return staged === "one" ? `SHORT · TO ${String(target)}` : `LONG · TO ${String(target + 1)}`;
+}
+
+/**
+ * The result screen for a decided match. The deciding rally already saved it
+ * (`recordPoint`); this only offers rematch and undo.
+ */
+function FinishedMatch({
+  match,
+  snapshot,
+  events,
+  now,
+  ownerId,
+}: {
+  readonly match: MatchSummary;
+  readonly snapshot: MatchSnapshot;
+  readonly events: readonly PointEvent[];
+  readonly now: number;
+  readonly ownerId: string;
+}): ReactNode {
+  const { id } = match;
+  const mutate = useDbMutation();
+  // Undoing a finished match point is only offered while no other match is live.
+  const liveId = useDbQuery((driver) => getLiveMatch(driver)?.id);
+  const rematchStarted = useRef(false);
+  return (
+    <MatchWon
+      match={match}
+      snapshot={snapshot}
+      stats={computeStats(match.config, events)}
+      now={now}
+      ownerId={ownerId}
+      onDone={() => {
+        mutate(acknowledgeWon);
+        goHome();
+      }}
+      onRematch={() => {
+        if (rematchStarted.current) {
+          return;
+        }
+        rematchStarted.current = true;
+        const rematchId = newMatchId();
+        mutate((driver) => {
+          // A match the watch started meanwhile is saved, not orphaned.
+          closeLiveMatch(driver, Date.now());
+          createMatch(driver, {
+            id: rematchId,
+            config: rematchConfig(match.config),
+            players: match.players,
+            ...(match.court === undefined ? {} : { court: match.court }),
+            ...(match.location === undefined ? {} : { location: match.location }),
+            startedAt: Date.now(),
+          });
+        });
+        router.replace(`/live/${rematchId}`);
+      }}
+      {...(liveId === undefined || liveId === id
+        ? {
+            onUndo: () => {
+              undoHaptic();
+              mutate((driver) => {
+                undoMatchPoint(driver, id);
+              });
+            },
+          }
+        : {})}
+    />
+  );
 }
 
 export default function LiveScreen(): ReactNode {
@@ -106,17 +147,7 @@ export default function LiveScreen(): ReactNode {
   // finishing the match (which renders MatchWon) doesn't change the hook count.
   const watch = useWatchLink();
   const events = useDbQuery((driver) => loadEvents(driver, id));
-  const rematchStarted = useRef(false);
-  useEffect(() => {
-    rematchStarted.current = false;
-  }, []);
   const snapshot = match === undefined ? undefined : computeMatch(match.config, events);
-  const finishedStats =
-    match !== undefined && snapshot?.finished === true
-      ? computeStats(match.config, events)
-      : undefined;
-
-  usePersistFinish(id, match, snapshot, events);
 
   if (match === undefined || snapshot === undefined) {
     // Deleted or unknown match (stale link, back after discard): recover home.
@@ -125,32 +156,14 @@ export default function LiveScreen(): ReactNode {
 
   const names = teamNames(match);
 
-  if (snapshot.finished && finishedStats !== undefined) {
+  if (snapshot.finished) {
     return (
-      <MatchWon
+      <FinishedMatch
         match={match}
         snapshot={snapshot}
-        stats={finishedStats}
+        events={events}
         now={now}
         ownerId={ownerId}
-        onRematch={() => {
-          if (rematchStarted.current) {
-            return;
-          }
-          rematchStarted.current = true;
-          const rematchId = newMatchId();
-          mutate((driver) => {
-            createMatch(driver, {
-              id: rematchId,
-              config: rematchConfig(match.config),
-              players: match.players,
-              ...(match.court === undefined ? {} : { court: match.court }),
-              ...(match.location === undefined ? {} : { location: match.location }),
-              startedAt: Date.now(),
-            });
-          });
-          router.replace(`/live/${rematchId}`);
-        }}
       />
     );
   }
@@ -169,12 +182,13 @@ export default function LiveScreen(): ReactNode {
       snapshot.servingTeam !== undefined &&
       snapshot.servingTeam !== team &&
       !(snapshot.moment.kind === "setChoice" && match.pendingGameSet === undefined);
-    // scorePointDb re-reads committed state and refuses once the match is
+    // recordPoint re-reads committed state and refuses once the match is
     // paused or decided. It also resolves undecided first serves (game 1 and
-    // pickleball games 2+) and attaches a staged squash long/short decision,
-    // so the phone, the watch, and replays all share one code path.
+    // pickleball games 2+), attaches a staged squash long/short decision, and
+    // saves the result on the deciding rally — so the phone, the watch, and
+    // replays all share one code path.
     mutate((driver) => {
-      scorePointDb(driver, id, team, Date.now());
+      recordPoint(driver, id, team, Date.now());
     });
     if (isHandOut) {
       setHandOut(true);

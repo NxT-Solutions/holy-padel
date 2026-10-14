@@ -35,6 +35,7 @@ export {
   loadEvents,
   pauseMatch,
   removeLastEvent,
+  reopenMatch,
   resumeMatch,
   scorePoint,
   setMatchNote,

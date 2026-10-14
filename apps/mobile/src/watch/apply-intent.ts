@@ -7,10 +7,10 @@ import {
   pauseMatch,
   removeLastEvent,
   resumeMatch,
-  scorePoint,
   setPendingGameSet,
 } from "@holy-padel/db";
-import { rematchConfig, stopAndSaveMatch } from "@/lib/match-actions.ts";
+import { recordPoint, rematchConfig, stopAndSaveMatch } from "@/lib/match-actions.ts";
+import { acknowledgeWon } from "./gather-input.ts";
 
 /** The watch → phone intents (docs/watch-sync.md). */
 export const INTENT_PATHS = {
@@ -45,11 +45,12 @@ function applyScore(driver: SqlDriver, body: string, now: number): void {
     return;
   }
   const live = getLiveMatch(driver);
-  // scorePoint re-reads fresh state and refuses if paused/finished, so a burst
+  // recordPoint re-reads fresh state and refuses if paused/finished, so a burst
   // of fast watch taps can't append past match point. It also resolves
-  // undecided first serves (game 1 and pickleball games 2+) with the tap.
+  // undecided first serves (game 1 and pickleball games 2+) with the tap, and
+  // saves the result the moment a rally decides the match.
   if (live !== undefined) {
-    scorePoint(driver, live.id, body, now);
+    recordPoint(driver, live.id, body, now);
   }
 }
 
@@ -88,11 +89,13 @@ function applyPauseToggle(driver: SqlDriver, now: number): void {
  * Stop AND save the live match in whatever state it's in — the "court time's up,
  * don't lose the score" path. Shares `stopAndSaveMatch` with the phone's END
  * sheet so both surfaces persist identically. The match then leaves "live" and
- * the watch returns to idle.
+ * the watch returns to idle. With nothing live it's the MATCH WON screen's DONE:
+ * the result is already saved, so it just dismisses the screen.
  */
 function applyStop(driver: SqlDriver, now: number): void {
   const live = getLiveMatch(driver);
   if (live === undefined) {
+    acknowledgeWon(driver);
     return;
   }
   stopAndSaveMatch(driver, live.id, now);

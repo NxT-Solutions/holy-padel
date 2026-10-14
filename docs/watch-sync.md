@@ -74,7 +74,15 @@ is `phase = "idle"`. This is shared with the phone's END sheet via
 `stopAndSaveMatch` (`apps/mobile/src/lib/match-actions.ts`) so the two surfaces
 persist identically. `end` remains a back-compat alias for `stop`, and still
 backs the **DONE** control on the `won` screen — the user is never stuck on MATCH
-WON; DONE persists the finished match and the watch returns to idle.
+WON; with nothing live, `stop`/`end` just dismisses it and the watch returns to idle.
+
+**Finishing is saved on the deciding rally.** `score` goes through `recordPoint`
+(`match-actions.ts`), which marks the match finished in the same write as the
+rally that decides it — whether or not the phone's scoreboard is open. The phone
+then keeps the `won` phase for that match (`gatherWatchInput` in
+`apps/mobile/src/watch/gather-input.ts`) until DONE on either surface, a new
+match starts, or `WON_HOLD_MS` (30 min) passes. A match stopped mid-play goes
+straight to idle.
 
 ### Watch → phone: workout summary
 

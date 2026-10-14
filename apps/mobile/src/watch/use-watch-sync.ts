@@ -1,12 +1,5 @@
 import type { SqlDriver } from "@holy-padel/db";
-import {
-  getLiveMatch,
-  getOwner,
-  listMatches,
-  loadEvents,
-  saveMatchHeartRate,
-} from "@holy-padel/db";
-import { computeMatch } from "@holy-padel/scoring";
+import { listMatches, saveMatchHeartRate } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
@@ -15,8 +8,8 @@ import { parseWorkoutSummary, WORKOUT_PATH } from "@/health/watch-workout.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { applyWatchIntent } from "./apply-intent.ts";
 import { addIntentListener, pushWatchStateJson } from "./bridge.ts";
-import type { WatchStateInput } from "./build-state.ts";
 import { buildWatchState } from "./build-state.ts";
+import { gatherWatchInput } from "./gather-input.ts";
 
 const CLOCK_REFRESH_MS = 30_000;
 
@@ -38,20 +31,6 @@ export function matchIdForWorkout(driver: SqlDriver, startedAt: number): string 
   return best?.id;
 }
 
-type GatheredInput = Pick<WatchStateInput, "ownerId" | "live" | "last">;
-
-function gatherWatchInput(driver: SqlDriver): GatheredInput {
-  const owner = getOwner(driver);
-  const ownerId = owner === undefined ? "nico" : owner.id;
-  const live = getLiveMatch(driver);
-  if (live !== undefined) {
-    const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
-    return { ownerId, live: { match: live, snapshot } };
-  }
-  const last = listMatches(driver).find((match) => match.status === "finished");
-  return last === undefined ? { ownerId } : { ownerId, last };
-}
-
 /**
  * Keeps the watches in sync with the live match: rebuilds and pushes the state
  * payload on every ledger change (and on a slow clock tick), and applies the
@@ -64,7 +43,8 @@ function gatherWatchInput(driver: SqlDriver): GatheredInput {
  */
 export function useWatchSync(): void {
   const mutate = useDbMutation();
-  const input = useDbQuery(gatherWatchInput);
+  // Re-gathered on every ledger change; `now` ages out a held MATCH WON.
+  const input = useDbQuery((driver) => gatherWatchInput(driver, Date.now()));
   const inputRef = useRef(input);
   inputRef.current = input;
 

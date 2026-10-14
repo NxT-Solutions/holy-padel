@@ -302,6 +302,19 @@ export function finishMatch(
   );
 }
 
+/**
+ * Put a finished match back into play — the result screen's "undo last point"
+ * after a mis-tapped match point. Clears the cached result; the caller then
+ * drops the deciding rally. A no-op unless the match is finished.
+ */
+export function reopenMatch(driver: SqlDriver, id: string): void {
+  driver.execute(
+    `UPDATE matches SET status = 'live', winner = NULL, ended_at = NULL, score_line = NULL
+     WHERE id = ? AND status = 'finished'`,
+    [id],
+  );
+}
+
 /** Pause a live match — records the pause start; a no-op if already paused. */
 export function pauseMatch(driver: SqlDriver, id: string, now: number): void {
   driver.execute(
