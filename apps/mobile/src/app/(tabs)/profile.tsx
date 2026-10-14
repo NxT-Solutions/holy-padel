@@ -16,6 +16,7 @@ import { useCallback, useState } from "react";
 import { Platform, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
+import { ColorSettings } from "@/components/color-settings.tsx";
 import { ChevronRight, Heart } from "@/components/icons.tsx";
 import { NewPlayerRow } from "@/components/new-player-row.tsx";
 import { RecordBar } from "@/components/record-bar.tsx";
@@ -473,6 +474,8 @@ export default function ProfileScreen(): ReactNode {
           value={themeSetting ?? "system"}
           onChange={setThemeSetting}
         />
+        <Rule />
+        <ColorSettings />
         <Rule />
         <SettingsRow
           label="Match defaults"

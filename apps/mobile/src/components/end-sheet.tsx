@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { Square } from "@/components/icons.tsx";
 import { Body, Display } from "@/components/ui.tsx";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
 
 /**
  * The END sheet — the crux of "don't lose the score". Court time runs out
@@ -46,7 +46,7 @@ export function EndSheet({
           alignItems="center"
           justifyContent="center"
           gap={10}
-          boxShadow="0 6px 18px rgba(255, 107, 53, 0.45)"
+          boxShadow={`0 6px 18px ${accentAlpha(0.45)}`}
           pressStyle={{ opacity: 0.85 }}
           role="button"
           aria-label="Stop and save"

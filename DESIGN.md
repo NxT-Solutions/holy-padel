@@ -39,7 +39,7 @@ colors:
   # Neutrals & semantics.
   greige: "#E4E2D9"       # muted chip: losses, empty bars, the L badge
   white: "#FFFFFF"        # white cards; light text on ink. Shared anchor.
-  team-b: "#5B6B82"       # Team B identity (avatar disc + letter)
+  team-b: "#8B7CFF"       # Team B identity (avatar disc + letter); default violet, user-selectable
   danger: "#C43F3F"       # destructive actions (delete, discard)
   # Text-opacity helpers are functions of alpha, not fixed tokens — see Colors
   # prose. Canonical rgba: inkAlpha=rgb(14,17,22), whiteAlpha=rgb(255,255,255),
@@ -181,8 +181,15 @@ all three platforms; everything else is platform-scoped.
   than pure white. Companion light surfaces: `sheet`, `input`, `row`, `toggle`.
 - **Greige (`#E4E2D9`)** — the muted neutral for losses, empty progress bars,
   and the L badge.
-- **Team B slate (`#5B6B82`)** — Team B's identity (avatar disc + letter). Team A
-  is accent-on-ink.
+- **Team B violet (`#8B7CFF`)** — Team B's identity (avatar disc + letter) and the
+  "Team B ahead" side of the score race and calendar. Team A is the accent.
+- **User colour choices.** Settings → Highlight colour (orange default; gold, mint,
+  sky, pink) and Team B colour (violet default; slate, blue, teal) override
+  `accent` / `accentOnCard` / `teamB` on the phone via `applyColors` in
+  `colors.ts` (`ACCENT_CHOICES`, `TEAM_B_CHOICES`). Every highlight is light enough
+  for ink (`onAccent`) text. Glows and colour scales read `accentAlpha`,
+  `accentRgb` and `teamBRgb` so they follow the choice; never hard-code the
+  default hex. The watches keep the default palette.
 - **Danger (`#C43F3F`)** — destructive actions only (delete match, discard).
 
 **Opacity helpers, not new colors.** Muted text and hairlines are the anchors at

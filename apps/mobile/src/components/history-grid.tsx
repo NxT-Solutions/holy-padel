@@ -5,7 +5,7 @@ import { View, XStack, YStack } from "tamagui";
 import { Body, Card, Display, Overline, ResultBadge } from "@/components/ui.tsx";
 import { fullDayLabel, opponentsOf, ownerTeamOf, pairLabel } from "@/lib/format.ts";
 import type { DayCell } from "@/lib/history.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { accentRgb, colors, teamBRgb, textAlpha } from "@/theme/colors.ts";
 
 /**
  * The home screen's season calendar — one row per week, seven day columns
@@ -13,10 +13,11 @@ import { colors, textAlpha } from "@/theme/colors.ts";
  * a weekday header along the top, the last six weeks (oldest at the top), and
  * a month label in the left gutter wherever the month changes.
  *
- * The day colour is a scale, not a category: 0% wins sits at the opponents'
- * slate, 100% at the brand accent, so a glance separates "lost everything" from
- * "won everything" and every shade between is a real win share. Tapping a day
- * with matches expands that day's results beneath the grid.
+ * The day colour is a scale, not a category: 0% wins sits at the Team B
+ * colour, 100% at the accent (both chosen in Settings), so a glance separates
+ * "lost everything" from "won everything" and every shade between is a real
+ * win share. Tapping a day with matches expands that day's results beneath
+ * the grid.
  */
 
 const GAP = 5;
@@ -48,13 +49,11 @@ const MONTHS = [
 
 const RADIUS = 8;
 
-const SCALE_LOST = [91, 107, 130];
-const SCALE_WON = [255, 107, 53];
-
+/** Lost-everything is the Team B colour, won-everything the accent — both user-chosen. */
 function winShareColor(won: number, lost: number): string {
   const share = won + lost === 0 ? 0 : won / (won + lost);
-  const [lr = 0, lg = 0, lb = 0] = SCALE_LOST;
-  const [wr = 0, wg = 0, wb = 0] = SCALE_WON;
+  const [lr, lg, lb] = teamBRgb();
+  const [wr, wg, wb] = accentRgb();
   const channel = (l: number, w: number): number => Math.round(l + (w - l) * share);
   return `rgb(${String(channel(lr, wr))}, ${String(channel(lg, wg))}, ${String(channel(lb, wb))})`;
 }

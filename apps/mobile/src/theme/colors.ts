@@ -56,7 +56,7 @@ const LIGHT = {
   /** Body text on cards. */
   text: "#0E1116",
   /** Team B identity — slate. */
-  teamB: "#5B6B82",
+  teamB: "#8B7CFF",
   /** Destructive actions (delete match). */
   danger: "#C43F3F",
 };
@@ -88,7 +88,7 @@ const DARK: typeof LIGHT = {
   greige: "#262C36",
   white: "#FFFFFF",
   text: "#F1F0EA",
-  teamB: "#5B6B82",
+  teamB: "#8B7CFF",
   danger: "#C43F3F",
 };
 
@@ -107,9 +107,88 @@ export function whiteAlpha(alpha: number): string {
   return `rgba(255, 255, 255, ${String(alpha)})`;
 }
 
-/** rgba(255, 107, 53, alpha) — the orange glow behind serve dots and CTAs. */
+/** One selectable highlight colour, with its darker text-on-light variant. */
+export interface AccentChoice {
+  readonly id: string;
+  readonly label: string;
+  readonly accent: string;
+  /** The accent legible as TEXT on a light card (light mode only). */
+  readonly onCard: string;
+  readonly rgb: readonly [number, number, number];
+}
+
+/** One selectable Team B colour. */
+export interface TeamColorChoice {
+  readonly id: string;
+  readonly label: string;
+  readonly color: string;
+  readonly rgb: readonly [number, number, number];
+}
+
+/**
+ * The highlight colours offered in Settings. All are light enough that ink
+ * (`onAccent`) reads on them, so no fill needs a per-colour text colour.
+ */
+export const ACCENT_CHOICES: readonly AccentChoice[] = [
+  { id: "orange", label: "Orange", accent: "#FF6B35", onCard: "#C2410C", rgb: [255, 107, 53] },
+  { id: "gold", label: "Gold", accent: "#FFB627", onCard: "#A16207", rgb: [255, 182, 39] },
+  { id: "mint", label: "Mint", accent: "#2EE6A0", onCard: "#0F8A5F", rgb: [46, 230, 160] },
+  { id: "sky", label: "Sky", accent: "#38BDF8", onCard: "#0369A1", rgb: [56, 189, 248] },
+  { id: "pink", label: "Pink", accent: "#FF5FA2", onCard: "#BE185D", rgb: [255, 95, 162] },
+];
+
+/** The Team B colours offered in Settings; violet is the default. */
+export const TEAM_B_CHOICES: readonly TeamColorChoice[] = [
+  { id: "violet", label: "Violet", color: "#8B7CFF", rgb: [139, 124, 255] },
+  { id: "slate", label: "Slate", color: "#5B6B82", rgb: [91, 107, 130] },
+  { id: "blue", label: "Blue", color: "#2E5BFF", rgb: [46, 91, 255] },
+  { id: "teal", label: "Teal", color: "#12A594", rgb: [18, 165, 148] },
+];
+
+const [DEFAULT_ACCENT] = ACCENT_CHOICES as readonly [AccentChoice];
+const [DEFAULT_TEAM_B] = TEAM_B_CHOICES as readonly [TeamColorChoice];
+let accentChoice: AccentChoice = DEFAULT_ACCENT;
+let teamBChoice: TeamColorChoice = DEFAULT_TEAM_B;
+
+/** The user's colour picks layered over a theme palette. */
+function colorOverrides(): Pick<typeof LIGHT, "accent" | "accentOnCard" | "teamB"> {
+  return {
+    accent: accentChoice.accent,
+    accentOnCard: mode === "dark" ? accentChoice.accent : accentChoice.onCard,
+    teamB: teamBChoice.color,
+  };
+}
+
+/** The ids of the colours currently applied. */
+export function appliedColors(): { readonly accent: string; readonly teamB: string } {
+  return { accent: accentChoice.id, teamB: teamBChoice.id };
+}
+
+/**
+ * Apply the user's accent and Team B colours (unknown ids fall back to the
+ * defaults). Like `applyTheme`, it swaps `colors` in place during render;
+ * the caller notifies subscribers after commit.
+ */
+export function applyColors(accentId: string | undefined, teamBId: string | undefined): void {
+  accentChoice = ACCENT_CHOICES.find((choice) => choice.id === accentId) ?? DEFAULT_ACCENT;
+  teamBChoice = TEAM_B_CHOICES.find((choice) => choice.id === teamBId) ?? DEFAULT_TEAM_B;
+  Object.assign(colors, colorOverrides());
+}
+
+/** The current accent as RGB — for colour scales that interpolate. */
+export function accentRgb(): readonly [number, number, number] {
+  return accentChoice.rgb;
+}
+
+/** The current Team B colour as RGB — for colour scales that interpolate. */
+export function teamBRgb(): readonly [number, number, number] {
+  return teamBChoice.rgb;
+}
+
+/** The current accent at `alpha` — the glow behind serve dots and CTAs. */
 export function accentAlpha(alpha: number): string {
-  return `rgba(255, 107, 53, ${String(alpha)})`;
+  const [r, g, b] = accentChoice.rgb;
+  return `rgba(${String(r)}, ${String(g)}, ${String(b)}, ${String(alpha)})`;
 }
 
 /**
@@ -153,7 +232,7 @@ export function subscribeTheme(listener: () => void): () => void {
  */
 export function applyTheme(next: ThemeMode): void {
   mode = next;
-  Object.assign(colors, next === "dark" ? DARK : LIGHT);
+  Object.assign(colors, next === "dark" ? DARK : LIGHT, colorOverrides());
 }
 
 /** Fire the theme subscriptions — after commit (useLayoutEffect). */

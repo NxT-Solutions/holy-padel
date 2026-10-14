@@ -36,8 +36,10 @@ count, and display heading across phone and both watches.
 - **Orange is reserved for signal only** — serve indicator, primary CTA, the live /
   active accent. It is not a decorative fill. Ink and cream carry the layout;
   orange marks the one thing that matters right now.
-- **Teams read by colour**: Team A is orange-on-ink; Team B is `teamB`
-  (`#5B6B82` slate). Keep that pairing consistent wherever both teams appear.
+- **Teams read by colour**: Team A is the accent-on-ink; Team B is `teamB`
+  (default `#8B7CFF` violet). Both are user-selectable in Settings, so always
+  read them from `colors` / `accentAlpha` / `accentRgb` / `teamBRgb` — never
+  hard-code the default hex. Keep the pairing consistent wherever both teams appear.
 - Use `danger` for destructive actions only.
 
 ## Cross-surface

@@ -67,4 +67,20 @@ test.describe("profile tab (design 3f)", () => {
     await expect(page.getByText("6–3", { exact: true })).toBeVisible(); // vs Marta & Leo
     await expect(page.getByText(/SQLite · 14 matches/u)).toBeVisible();
   });
+
+  test("highlight and Team B colours can be chosen and persist", async ({ page }) => {
+    await gotoProfile(page);
+    // Defaults: orange highlight, violet Team B.
+    await expect(page.getByTestId("accent-orange")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("teamb-violet")).toHaveAttribute("aria-selected", "true");
+
+    await page.getByRole("button", { name: "Pink highlight" }).click();
+    await page.getByRole("button", { name: "Teal Team B" }).click();
+    await expect(page.getByTestId("accent-pink")).toHaveAttribute("aria-selected", "true");
+
+    await page.reload();
+    await expect(page.getByText("WIN RATE")).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByTestId("accent-pink")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("teamb-teal")).toHaveAttribute("aria-selected", "true");
+  });
 });

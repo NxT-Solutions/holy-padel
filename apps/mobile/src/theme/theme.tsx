@@ -6,6 +6,8 @@ import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore
 import { Appearance, useColorScheme } from "react-native";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import {
+  appliedColors,
+  applyColors,
   applyTheme,
   notifyThemeChanged,
   subscribeTheme,
@@ -23,6 +25,19 @@ function resolveTheme(setting: ThemeSetting | undefined, systemDark: boolean): T
 }
 
 const SETTING_KEY = "theme";
+const ACCENT_KEY = "accentColor";
+const TEAM_B_KEY = "teamBColor";
+
+/** The user's colour picks (ids); undefined = the default (orange / violet). */
+export interface ColorSetting {
+  readonly accent: string | undefined;
+  readonly teamB: string | undefined;
+}
+
+/** Read the persisted accent and Team B colour choices. */
+export function loadColorSetting(driver: SqlDriver): ColorSetting {
+  return { accent: getSetting(driver, ACCENT_KEY), teamB: getSetting(driver, TEAM_B_KEY) };
+}
 
 /** Read the persisted theme setting (undefined = follow the system). */
 export function loadThemeSetting(driver: SqlDriver): ThemeSetting | undefined {
@@ -75,11 +90,12 @@ export function useThemeMode(): ThemeMode {
 
 export function ThemeController(): ReactNode {
   const mode = useTheme();
+  const { accent, teamB } = appliedColors();
   // Notify subscribers after commit (before paint) so root-level consumers —
   // the navigator background in _layout — re-render with the new palette.
   useLayoutEffect(() => {
     notifyThemeChanged();
-  }, [mode]);
+  }, [mode, accent, teamB]);
   // Rendered here — above the screens but inside the db-reactive tree — so
   // the OS chrome flips in the same render as the palette.
   return <StatusBar style={mode === "dark" ? "light" : "dark"} />;
@@ -88,6 +104,7 @@ export function ThemeController(): ReactNode {
 /** Resolve the setting + system scheme into the active palette. Idempotent. */
 export function useTheme(): ThemeMode {
   const setting = useDbQuery(loadThemeSetting);
+  const colorSetting = useDbQuery(loadColorSetting);
   const system = useSystemTheme();
   const resolved = resolveTheme(setting, system === "dark");
 
@@ -95,6 +112,13 @@ export function useTheme(): ThemeMode {
   // state flips above this component re-render the tree afterwards.
   if (themeMode() !== resolved) {
     applyTheme(resolved);
+  }
+  const applied = appliedColors();
+  if (
+    applied.accent !== (colorSetting.accent ?? "orange") ||
+    applied.teamB !== (colorSetting.teamB ?? "violet")
+  ) {
+    applyColors(colorSetting.accent, colorSetting.teamB);
   }
 
   return resolved;
@@ -107,6 +131,19 @@ export function useSetThemeSetting(): (value: ThemeSetting) => void {
     (value: ThemeSetting) => {
       mutate((driver) => {
         setSetting(driver, SETTING_KEY, value);
+      });
+    },
+    [mutate],
+  );
+}
+
+/** Persist an accent or Team B colour choice (by id). */
+export function useSetColorSetting(): (which: "accent" | "teamB", id: string) => void {
+  const mutate = useDbMutation();
+  return useCallback(
+    (which: "accent" | "teamB", id: string) => {
+      mutate((driver) => {
+        setSetting(driver, which === "accent" ? ACCENT_KEY : TEAM_B_KEY, id);
       });
     },
     [mutate],
