@@ -189,7 +189,12 @@ all three platforms; everything else is platform-scoped.
   `colors.ts` (`ACCENT_CHOICES`, `TEAM_B_CHOICES`). Every highlight is light enough
   for ink (`onAccent`) text. Glows and colour scales read `accentAlpha`,
   `accentRgb` and `teamBRgb` so they follow the choice; never hard-code the
-  default hex. The watches keep the default palette.
+  default hex. The watches, the Wear tile and the Android live notification
+  receive the picks as `palette` hex in the sync payload (docs/watch-sync.md).
+- **Effort reads as one accent ramp.** Heart-rate zones and per-game effort bars
+  are `accentAlpha` at 0.2 / 0.36 / 0.55 / 0.78 / 1 (`zoneColor` in
+  `insight-parts.tsx`) — calm is faint, flat out is solid. No traffic-light
+  greens and reds: `danger` stays reserved for destructive actions.
 - **Danger (`#C43F3F`)** — destructive actions only (delete match, discard).
 
 **Opacity helpers, not new colors.** Muted text and hairlines are the anchors at
@@ -319,10 +324,12 @@ watches are visual mirrors, not new designs.
   `tokens.color` and the `$heading`/`$body` fonts in `tamagui.config.ts`. The
   UI atoms live in `apps/mobile/src/components/ui.tsx`.
 - **Apple Watch (SwiftUI)** — `apps/mobile/targets/watch/Theme.swift`, `enum
-  Court` carries just `ink`, `accent`, `white` as exact `/255` fractions
-  (watch surfaces are near-black only). System SwiftUI text stands in for Anton.
+  Court` carries `ink`, `accent`, `teamB`, `white` as exact `/255` fractions
+  (watch surfaces are near-black only); `accent` and `teamB` are replaced by the
+  phone's `palette` when it arrives (`Court.apply`). System SwiftUI text stands in for Anton.
 - **Wear OS (Compose)** — `apps/watch-wear/.../ui/Colors.kt`, `object
-  CourtColors` as ARGB longs (`Ink 0xFF0E1116`, `Accent 0xFFFF6B35`, plus
+  CourtColors` as ARGB longs (`Ink 0xFF0E1116`, `Accent 0xFFFF6B35` and
+  `TeamB 0xFF8B7CFF` — both snapshot state replaced by the phone's `palette` — plus
   `InkDeep`, `Greige`, and true `Black 0xFF000000` for OLED battery), with
   pre-baked white opacities (`White45`/`White40`/`White25`) standing in for the
   phone's `whiteAlpha` helper. `ui/Text.kt` reimplements Display/Label/Body +
