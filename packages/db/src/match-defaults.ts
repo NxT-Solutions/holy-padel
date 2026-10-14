@@ -144,12 +144,24 @@ export function saveMatchDefaults(driver: SqlDriver, defaults: NewMatchDefaults)
   setSetting(driver, DEFAULTS_KEY, JSON.stringify(defaults));
 }
 
-export function loadMatchDraft(driver: SqlDriver): MatchDraft | undefined {
+/**
+ * How long a half-set-up match survives. A setup abandoned days ago (with its
+ * opponents) must not quietly prefill tonight's match — past this it falls back
+ * to the saved defaults.
+ */
+export const DRAFT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function loadMatchDraft(driver: SqlDriver, now = Date.now()): MatchDraft | undefined {
   const value = readJson(driver, DRAFT_KEY);
   if (typeof value !== "object" || value === null) {
     return;
   }
   const row = value as Record<string, unknown>;
+  // Drafts written before the timestamp existed count as stale.
+  const savedAt = row["savedAt"];
+  if (typeof savedAt !== "number" || now - savedAt > DRAFT_TTL_MS) {
+    return;
+  }
   const defaults = parseDefaults(value);
   const teamA1 = row["teamA1"];
   const partner = row["partner"];
@@ -175,8 +187,8 @@ export function loadMatchDraft(driver: SqlDriver): MatchDraft | undefined {
   };
 }
 
-export function saveMatchDraft(driver: SqlDriver, draft: MatchDraft): void {
-  setSetting(driver, DRAFT_KEY, JSON.stringify(draft));
+export function saveMatchDraft(driver: SqlDriver, draft: MatchDraft, savedAt = Date.now()): void {
+  setSetting(driver, DRAFT_KEY, JSON.stringify({ ...draft, savedAt }));
 }
 
 export function clearMatchDraft(driver: SqlDriver): void {

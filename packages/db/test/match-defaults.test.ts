@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { MatchDraft, SqlDriver } from "../src/index.ts";
 import {
   clearMatchDraft,
+  DRAFT_TTL_MS,
   loadMatchDefaults,
   loadMatchDraft,
   migrate,
@@ -125,6 +126,21 @@ describe("stored match draft", () => {
     expect(loadMatchDraft(driver)).toBeUndefined();
   });
 
+  it("expires a draft left untouched past its lifetime", () => {
+    const driver = freshDriver();
+    const draft: MatchDraft = { ...pickDefaults(undefined), teamA1: "nico", teamB: ["javi"] };
+    saveMatchDraft(driver, draft, 1000);
+    expect(loadMatchDraft(driver, 1000 + DRAFT_TTL_MS)).toEqual(draft);
+    expect(loadMatchDraft(driver, 1001 + DRAFT_TTL_MS)).toBeUndefined();
+  });
+
+  it("treats a draft without a timestamp as stale", () => {
+    const driver = freshDriver();
+    const draft: MatchDraft = { ...pickDefaults(undefined), teamA1: "nico", teamB: [] };
+    setSetting(driver, "matchDraft", JSON.stringify(draft));
+    expect(loadMatchDraft(driver)).toBeUndefined();
+  });
+
   it("returns undefined for garbage or invalid drafts", () => {
     const driver = freshDriver();
     const draft: MatchDraft = { ...pickDefaults(undefined), teamA1: "nico", teamB: [] };
@@ -133,13 +149,21 @@ describe("stored match draft", () => {
     setSetting(driver, "matchDraft", "not json");
     expect(loadMatchDraft(driver)).toBeUndefined();
 
-    setSetting(driver, "matchDraft", JSON.stringify({ ...draft, sport: "tennis" }));
+    setSetting(
+      driver,
+      "matchDraft",
+      JSON.stringify({ ...draft, savedAt: Date.now(), sport: "tennis" }),
+    );
     expect(loadMatchDraft(driver)).toBeUndefined();
 
-    setSetting(driver, "matchDraft", JSON.stringify({ ...draft, teamA1: "" }));
+    setSetting(driver, "matchDraft", JSON.stringify({ ...draft, savedAt: Date.now(), teamA1: "" }));
     expect(loadMatchDraft(driver)).toBeUndefined();
 
-    setSetting(driver, "matchDraft", JSON.stringify({ ...draft, teamB: ["javi", "marta", "leo"] }));
+    setSetting(
+      driver,
+      "matchDraft",
+      JSON.stringify({ ...draft, savedAt: Date.now(), teamB: ["javi", "marta", "leo"] }),
+    );
     expect(loadMatchDraft(driver)).toBeUndefined();
   });
 });

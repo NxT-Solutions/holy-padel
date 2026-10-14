@@ -8,6 +8,7 @@ export { createMatch } from "./match-config.ts";
 export type { MatchDraft, NewMatchDefaults } from "./match-defaults.ts";
 export {
   clearMatchDraft,
+  DRAFT_TTL_MS,
   loadMatchDefaults,
   loadMatchDraft,
   pickDefaults,
