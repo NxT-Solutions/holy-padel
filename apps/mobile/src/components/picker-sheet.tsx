@@ -61,7 +61,7 @@ function RosterRow({
           alignItems="center"
           justifyContent="center"
         >
-          <Check size={12} color={colors.text} />
+          <Check size={12} color={colors.onAccent} />
         </View>
       ) : (
         <View
@@ -188,7 +188,7 @@ export function PickerSheet({
           role="button"
           onPress={onDone}
         >
-          <Display fontSize={18} letterSpacing={1.4} color={colors.text}>
+          <Display fontSize={18} letterSpacing={1.4} color={colors.onAccent}>
             DONE
           </Display>
         </XStack>

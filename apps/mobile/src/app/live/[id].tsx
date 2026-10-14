@@ -28,7 +28,7 @@ import {
 } from "@/components/live-parts.tsx";
 import { MatchWon } from "@/components/match-won.tsx";
 import { Display, Pill } from "@/components/ui.tsx";
-import { WatchSyncLine } from "@/components/watch-status.tsx";
+import { SavedIndicator, WatchSyncLine } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { durationLabel, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
 import { scoreHaptic, undoHaptic } from "@/lib/haptics.ts";
@@ -308,7 +308,7 @@ export default function LiveScreen(): ReactNode {
             paddingHorizontal={22}
             testID="hand-out-pill"
           >
-            <Display fontSize={15} letterSpacing={1.5} color={colors.text}>
+            <Display fontSize={15} letterSpacing={1.5} color={colors.onAccent}>
               HAND OUT
             </Display>
           </Pill>
@@ -335,6 +335,7 @@ export default function LiveScreen(): ReactNode {
           }}
         />
 
+        {events.length > 0 ? <SavedIndicator /> : null}
         <WatchSyncLine link={watch} paused={paused} />
       </YStack>
 

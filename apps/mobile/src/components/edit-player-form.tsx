@@ -88,7 +88,7 @@ export function EditPlayerForm({
                     fontSize={13}
                     fontWeight="800"
                     letterSpacing={1.4}
-                    color={selected ? colors.ink : textAlpha(0.55)}
+                    color={selected ? colors.onAccent : textAlpha(0.55)}
                   >
                     {option.toUpperCase()}
                   </Body>
@@ -118,7 +118,7 @@ export function EditPlayerForm({
         }}
         testID="save-profile"
       >
-        <Display fontSize={16} color={colors.text} letterSpacing={1}>
+        <Display fontSize={16} color={colors.onAccent} letterSpacing={1}>
           SAVE
         </Display>
       </XStack>

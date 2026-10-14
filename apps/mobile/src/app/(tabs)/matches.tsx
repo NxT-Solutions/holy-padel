@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { XStack, YStack } from "tamagui";
+import { SportStripe } from "@/components/court-art.tsx";
 import { Plus } from "@/components/icons.tsx";
 import { Body, Card, Display, Overline, Pill, ResultBadge } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
@@ -64,13 +65,15 @@ function MatchRow({
       flexDirection="row"
       alignItems="center"
       justifyContent="space-between"
+      gap={12}
       pressStyle={{ opacity: 0.9 }}
       role="button"
       onPress={() => {
         router.push(live ? `/live/${match.id}` : `/match/${match.id}`);
       }}
     >
-      <YStack gap={4}>
+      <SportStripe sport={match.config.sport} />
+      <YStack gap={4} flex={1}>
         <Overline letterSpacing={1.4}>{matchMetaLabel(match, now)}</Overline>
         <Body fontSize={16} fontWeight="800">
           {`vs ${pairLabel(opponentsOf(match, ownerTeam))}`}

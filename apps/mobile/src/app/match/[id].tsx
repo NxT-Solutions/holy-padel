@@ -355,7 +355,7 @@ export default function MatchOverviewScreen(): ReactNode {
                     paddingVertical={4}
                     paddingHorizontal={8}
                   >
-                    <Display fontSize={11} letterSpacing={0.5} color={colors.text}>
+                    <Display fontSize={11} letterSpacing={0.5} color={colors.onAccent}>
                       {initials[set.summary.winner]}
                     </Display>
                   </Pill>

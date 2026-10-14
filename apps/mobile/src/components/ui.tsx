@@ -128,7 +128,11 @@ export function ResultBadge({
       alignItems="center"
       justifyContent="center"
     >
-      <Display fontSize={size * 0.46} color={won ? colors.ink : textAlpha(0.55)} letterSpacing={0}>
+      <Display
+        fontSize={size * 0.46}
+        color={won ? colors.onAccent : textAlpha(0.55)}
+        letterSpacing={0}
+      >
         {won ? "W" : "L"}
       </Display>
     </View>

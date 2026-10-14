@@ -53,8 +53,8 @@ export function EndSheet({
           onPress={onStopSave}
           testID="end-stop-save"
         >
-          <Square size={17} color={colors.text} />
-          <Display fontSize={18} letterSpacing={1.2} color={colors.text}>
+          <Square size={17} color={colors.onAccent} />
+          <Display fontSize={18} letterSpacing={1.2} color={colors.onAccent}>
             STOP & SAVE
           </Display>
         </XStack>

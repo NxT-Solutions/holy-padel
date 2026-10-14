@@ -153,7 +153,7 @@ export function TeamCard({
       backgroundColor={colors.card}
       borderRadius={22}
       borderWidth={2}
-      borderColor={textAlpha(0.05)}
+      borderColor={serving ? colors.accent : "transparent"}
       paddingVertical={18}
       paddingHorizontal={22}
       alignItems="center"
@@ -163,7 +163,20 @@ export function TeamCard({
       role="button"
       aria-label={`Point ${name}`}
       onPress={onScore}
+      position="relative"
+      overflow="hidden"
     >
+      {serving ? (
+        <View
+          position="absolute"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          backgroundColor={accentAlpha(0.06)}
+          pointerEvents="none"
+        />
+      ) : null}
       <YStack gap={7}>
         <XStack alignItems="center" gap={8}>
           <XStack alignItems="center" gap={6} opacity={serving ? 1 : 0}>
@@ -178,7 +191,7 @@ export function TeamCard({
               testID={`${testID}-serve${serving ? "-on" : "-off"}`}
             >
               {Boolean(serving && servingSide) && (
-                <Body fontSize={11} fontWeight="900" color={colors.ink}>
+                <Body fontSize={11} fontWeight="900" color={colors.onAccent}>
                   {serveBadge(serverNumber, servingSide)}
                 </Body>
               )}
@@ -393,12 +406,16 @@ export function LiveActionBar({
         onPress={onTogglePause}
         testID="pause-toggle"
       >
-        {paused ? <Play size={17} color={colors.text} /> : <Pause size={17} color={colors.text} />}
+        {paused ? (
+          <Play size={17} color={colors.onAccent} />
+        ) : (
+          <Pause size={17} color={colors.text} />
+        )}
         <Body
           fontSize={14}
           fontWeight="800"
           letterSpacing={1.4}
-          color={paused ? colors.ink : colors.text}
+          color={paused ? colors.onAccent : colors.text}
         >
           {paused ? "RESUME" : "PAUSE"}
         </Body>

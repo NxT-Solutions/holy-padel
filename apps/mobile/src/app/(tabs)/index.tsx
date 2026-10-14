@@ -15,6 +15,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
+import { CourtLines, FloodlightGlow, SportStripe } from "@/components/court-art.tsx";
 import { HistoryGrid } from "@/components/history-grid.tsx";
 import { ArrowRight, Plus } from "@/components/icons.tsx";
 import { useLiveConflictGuard } from "@/components/live-conflict-sheet.tsx";
@@ -34,7 +35,7 @@ import { computeHistory } from "@/lib/history.ts";
 import { closeLiveMatch, rematchConfig } from "@/lib/match-actions.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { accentAlpha, colors, sportColor, textAlpha, whiteAlpha } from "@/theme/colors.ts";
 import { useWatchLink } from "@/watch/use-watch-connection.ts";
 
 function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
@@ -43,6 +44,26 @@ function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
     return "";
   }
   return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
+}
+
+/** The sport marker tag on the live card — small fill, ink text. */
+function SportTag({
+  sport,
+}: {
+  readonly sport: "padel" | "squash" | "pickleball" | undefined;
+}): ReactNode {
+  return (
+    <View
+      backgroundColor={sportColor(sport)}
+      borderRadius={6}
+      paddingVertical={3}
+      paddingHorizontal={7}
+    >
+      <Body fontSize={10} fontWeight="800" letterSpacing={1.4} color={colors.onAccent}>
+        {(sport ?? "padel").toUpperCase()}
+      </Body>
+    </View>
+  );
 }
 
 function LiveCard({
@@ -59,13 +80,23 @@ function LiveCard({
     .filter((part): part is string => part !== undefined)
     .join(" · ");
   return (
-    <View backgroundColor={colors.ink} borderRadius={22} padding={18} gap={12}>
+    <View
+      backgroundColor={colors.ink}
+      borderRadius={22}
+      padding={18}
+      gap={12}
+      overflow="hidden"
+      position="relative"
+    >
+      <FloodlightGlow color={sportColor(match.config.sport)} opacity={0.28} />
+      <CourtLines sport={match.config.sport} color={colors.white} opacity={0.07} />
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap={6}>
           <LiveDot size={7} />
           <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.accent}>
             LIVE NOW
           </Body>
+          <SportTag sport={match.config.sport} />
         </XStack>
         <Body fontSize={11} fontWeight="700" letterSpacing={1.4} color={whiteAlpha(0.5)}>
           {meta}
@@ -110,10 +141,10 @@ function LiveCard({
           router.push(`/live/${match.id}`);
         }}
       >
-        <Display fontSize={16} letterSpacing={1.4} color={colors.text}>
+        <Display fontSize={16} letterSpacing={1.4} color={colors.onAccent}>
           RESUME SCORING
         </Display>
-        <ArrowRight size={15} color={colors.text} />
+        <ArrowRight size={15} color={colors.onAccent} />
       </XStack>
     </View>
   );
@@ -138,13 +169,15 @@ function RecentRow({
       flexDirection="row"
       alignItems="center"
       justifyContent="space-between"
+      gap={12}
       pressStyle={{ opacity: 0.9 }}
       role="button"
       onPress={() => {
         router.push(`/match/${match.id}`);
       }}
     >
-      <Body fontSize={12.5} fontWeight="700">
+      <SportStripe sport={match.config.sport} />
+      <Body fontSize={12.5} fontWeight="700" flex={1}>
         {`${matchMetaLabel(match, now).split(" · ")[0] ?? ""} · vs ${pairLabel(opponentsOf(match, ownerTeam))}`}
       </Body>
       <XStack alignItems="center" gap={10}>
@@ -154,6 +187,34 @@ function RecentRow({
         <ResultBadge won={won} size={24} />
       </XStack>
     </Card>
+  );
+}
+
+/** The NEW MATCH action — the primary (orange) CTA only when no match is live. */
+function NewMatchButton({ live }: { readonly live: boolean }): ReactNode {
+  return (
+    <XStack
+      flex={1.5}
+      height={58}
+      backgroundColor={live ? colors.card : colors.accent}
+      borderWidth={live ? 2 : 0}
+      borderColor={colors.ink}
+      borderRadius={16}
+      alignItems="center"
+      justifyContent="center"
+      gap={9}
+      boxShadow={live ? "0 2px 10px rgba(14, 17, 22, 0.06)" : `0 6px 18px ${accentAlpha(0.45)}`}
+      pressStyle={{ opacity: 0.85 }}
+      role="button"
+      onPress={() => {
+        router.push("/new-match");
+      }}
+    >
+      <Plus size={14} color={live ? colors.text : colors.onAccent} />
+      <Display fontSize={16} letterSpacing={1.2} color={live ? colors.text : colors.onAccent}>
+        NEW MATCH
+      </Display>
+    </XStack>
   );
 }
 
@@ -237,28 +298,7 @@ export default function HomeScreen(): ReactNode {
       ) : null}
 
       <XStack gap={8}>
-        <XStack
-          flex={1.5}
-          height={58}
-          backgroundColor={colors.card}
-          borderWidth={2}
-          borderColor={colors.ink}
-          borderRadius={16}
-          alignItems="center"
-          justifyContent="center"
-          gap={9}
-          boxShadow="0 2px 10px rgba(14, 17, 22, 0.06)"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          onPress={() => {
-            router.push("/new-match");
-          }}
-        >
-          <Plus size={14} color={colors.text} />
-          <Display fontSize={16} letterSpacing={1.2}>
-            NEW MATCH
-          </Display>
-        </XStack>
+        <NewMatchButton live={live !== undefined} />
         <YStack
           flex={1}
           height={58}

@@ -31,6 +31,12 @@ const LIGHT = {
   accent: "#FF6B35",
   /** Orange legible as text on a light card (active set label). */
   accentOnCard: "#C2410C",
+  /** Ink for text/icons drawn on an accent fill — same in both palettes. */
+  onAccent: "#0E1116",
+  /** Sport markers (phone only): small dots, stripes and tags. */
+  sportPadel: "#2BB673",
+  sportSquash: "#8B7CFF",
+  sportPickleball: "#19B5C8",
   /** Screen background. */
   screen: "#F1F0EA",
   /** Card surface on the screen background. */
@@ -69,6 +75,10 @@ const DARK: typeof LIGHT = {
   tileWhite: "#1B2027",
   accent: "#FF6B35",
   accentOnCard: "#FF6B35",
+  onAccent: "#0E1116",
+  sportPadel: "#2BB673",
+  sportSquash: "#8B7CFF",
+  sportPickleball: "#19B5C8",
   screen: "#0B0D11",
   card: "#12161C",
   sheet: "#10141A",
@@ -100,6 +110,22 @@ export function whiteAlpha(alpha: number): string {
 /** rgba(255, 107, 53, alpha) — the orange glow behind serve dots and CTAs. */
 export function accentAlpha(alpha: number): string {
   return `rgba(255, 107, 53, ${String(alpha)})`;
+}
+
+/**
+ * The phone-only marker colour for a sport — small dots, stripes and tags
+ * only, never CTA fills or large areas (orange stays the one signal colour).
+ * Text drawn on a sport-colour fill is `colors.onAccent` (ink). Padel is the
+ * default when the config leaves `sport` unset.
+ */
+export function sportColor(sport: "padel" | "squash" | "pickleball" | undefined): string {
+  if (sport === "squash") {
+    return colors.sportSquash;
+  }
+  if (sport === "pickleball") {
+    return colors.sportPickleball;
+  }
+  return colors.sportPadel;
 }
 
 let mode: ThemeMode = "light";

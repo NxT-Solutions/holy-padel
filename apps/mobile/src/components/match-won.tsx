@@ -2,7 +2,8 @@ import type { MatchSummary } from "@holy-padel/db";
 import type { MatchSnapshot, MatchStats, TeamId } from "@holy-padel/scoring";
 import type { ReactNode } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { XStack, YStack } from "tamagui";
+import { View, XStack, YStack } from "tamagui";
+import { FloodlightGlow } from "@/components/court-art.tsx";
 import { Body, Display } from "@/components/ui.tsx";
 import { dayLabel, durationLabel, finalScoreLine, teamNames } from "@/lib/format.ts";
 import { colors, whiteAlpha } from "@/theme/colors.ts";
@@ -54,7 +55,12 @@ export function MatchWon({
       paddingTop={insets.top + 46}
       paddingBottom={insets.bottom + 16}
       paddingHorizontal={20}
+      position="relative"
+      overflow="hidden"
     >
+      <View position="absolute" top={0} left={0} right={0} height="55%" pointerEvents="none">
+        <FloodlightGlow color={colors.accent} opacity={0.22} />
+      </View>
       <Body fontSize={11} fontWeight="800" letterSpacing={2} color={whiteAlpha(0.45)}>
         {meta}
       </Body>
@@ -105,7 +111,7 @@ export function MatchWon({
           role="button"
           onPress={onDone}
         >
-          <Display fontSize={19} letterSpacing={1.4} color={colors.text}>
+          <Display fontSize={19} letterSpacing={1.4} color={colors.onAccent}>
             DONE
           </Display>
         </XStack>

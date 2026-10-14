@@ -24,6 +24,12 @@ colors:
   # Accent — signal orange. Shared anchor: accent.
   accent: "#FF6B35"       # live/serve, primary CTA, wins, active accents
   accent-ink: "#C2410C"   # accent that stays legible on white (active-set label)
+  on-accent: "#0E1116"    # ink for text/icons on an accent fill (both palettes)
+  # Sport markers — phone only. Small dots, stripes and tags; never a CTA fill
+  # or a large area. Text on a sport-colour fill is on-accent (ink).
+  sport-padel: "#2BB673"      # turf green
+  sport-squash: "#8B7CFF"     # violet
+  sport-pickleball: "#19B5C8" # cyan
   # Light surfaces (phone only).
   cream: "#F1F0EA"        # default light screen background
   sheet: "#F7F6F1"        # bottom-sheet / modal background
@@ -75,7 +81,7 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.accent}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.on-accent}"
     typography: "{typography.display-sm}"
     rounded: "{rounded.lg}"
     padding: 18px
@@ -115,7 +121,7 @@ components:
     rounded: "{rounded.full}"
   result-badge-won:
     backgroundColor: "{colors.accent}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.on-accent}"
     rounded: "{rounded.sm}"
   result-badge-lost:
     backgroundColor: "{colors.greige}"
@@ -161,7 +167,16 @@ all three platforms; everything else is platform-scoped.
 - **Accent (`#FF6B35`)** — the **signal** orange, reserved for
   live/serving indication, the single primary CTA per screen, wins (the W
   badge), and active accents. `accent-ink` (`#C2410C`) is the only accent that
-  stays legible as text on white (the active-set label).
+  stays legible as text on white (the active-set label). Text and icons drawn
+  *on* an accent fill use **`on-accent`** (`#0E1116`, ink) — never the
+  theme-aware `text` token, which is cream in dark mode and unreadable on
+  orange.
+- **Sport markers (phone only)** — `sport-padel` (`#2BB673`, turf green),
+  `sport-squash` (`#8B7CFF`, violet) and `sport-pickleball` (`#19B5C8`, cyan)
+  are **markers**: small dots, row stripes and tags that name the sport at a
+  glance. They are deliberately *not* CTA fills or large areas — orange stays
+  the one signal colour. Reach for them via `sportColor(sport)` in `colors.ts`;
+  text on a marker fill is `on-accent` (ink). Mirrored on the phone only.
 - **Cream (`#F1F0EA`)** — the default light background; warmer and more organic
   than pure white. Companion light surfaces: `sheet`, `input`, `row`, `toggle`.
 - **Greige (`#E4E2D9`)** — the muted neutral for losses, empty progress bars,
@@ -267,6 +282,12 @@ reimplement these atoms with the mirrored palette — see Platforms below.
 - **Do** reserve accent for signal only — live/serving, the single primary CTA,
   wins, and active accents. **Don't** use accent as a neutral surface or for body
   text on white (use `accent-ink` if you must).
+- **Do** draw text and icons on an accent fill with `on-accent` (ink) — **Don't**
+  use the theme-aware `text` token, which flips to cream in dark mode and
+  disappears on orange.
+- **Do** use the sport markers (`sportColor`) for small dots, stripes and tags.
+  **Don't** fill a CTA or a large area with a sport colour — orange stays the
+  one signal colour.
 - **Don't** ever set a tight `lineHeight` on Anton/Display text — it clips
   round glyphs. Leave it unset unless ≥ ~1.3× `fontSize`.
 - **Do** derive muted text and borders from `inkAlpha`/`whiteAlpha`/`accentAlpha`.

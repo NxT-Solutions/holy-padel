@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { XStack } from "tamagui";
 import { Body, LiveDot, Pill } from "@/components/ui.tsx";
-import { textAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha } from "@/theme/colors.ts";
 import type { WatchLink } from "@/watch/use-watch-connection.ts";
 
 /**
@@ -39,6 +39,20 @@ export function WatchSyncLine({
       {showDot ? <LiveDot size={6} /> : null}
       <Body fontSize={11} fontWeight="600" color={textAlpha(0.45)}>
         {syncText(link, paused)}
+      </Body>
+    </XStack>
+  );
+}
+
+/** A muted "✓ Saved" line, shown once the match has at least one point. */
+export function SavedIndicator(): ReactNode {
+  return (
+    <XStack alignItems="center" justifyContent="center" gap={5} testID="saved-indicator">
+      <Body fontSize={11} fontWeight="700" color={colors.accentOnCard}>
+        ✓
+      </Body>
+      <Body fontSize={11} fontWeight="700" color={textAlpha(0.45)}>
+        Saved
       </Body>
     </XStack>
   );

@@ -18,7 +18,7 @@ export function StatTile({
   // the white tile the lightest. Accent is the accent in both modes.
   const palette = {
     ink: { background: colors.tileInk, value: colors.white, label: whiteAlpha(0.5) },
-    accent: { background: colors.accent, value: colors.ink, label: colors.ink },
+    accent: { background: colors.accent, value: colors.onAccent, label: colors.onAccent },
     white: { background: colors.tileWhite, value: colors.text, label: textAlpha(0.45) },
   }[variant];
   const { background, value: valueColor, label: labelColor } = palette;
