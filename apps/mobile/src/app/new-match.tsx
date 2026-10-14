@@ -24,12 +24,11 @@ import { ModalHeader } from "@/components/modal-header.tsx";
 import {
   MatchPickerSheet,
   matchSubtitle,
-  PlayerRow,
   StartMatchButton,
-  TeamCard,
 } from "@/components/new-match-parts.tsx";
 import { RecentOpponents } from "@/components/recent-opponents.tsx";
 import { RulesSummaryCard } from "@/components/rules-summary.tsx";
+import { TeamFaceoff } from "@/components/team-faceoff.tsx";
 import { Body } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { sameSetup, setupTitle } from "@/lib/format.ts";
@@ -189,32 +188,20 @@ export default function NewMatchScreen(): ReactNode {
           onSave={openSaveSheet}
         />
 
-        <TeamCard
-          team="A"
-          onPress={() => {
+        <TeamFaceoff
+          format={setup.format}
+          teamANames={[
+            setup.format === "singles" ? nameOf(lineup.teamA1) : (owner?.name ?? "Nico"),
+            nameOf(lineup.partner),
+          ]}
+          teamBNames={[nameOf(lineup.teamB[0]), nameOf(lineup.teamB[1])]}
+          onPickTeamA={() => {
             lineup.setPicking("A");
           }}
-        >
-          <PlayerRow
-            name={setup.format === "singles" ? nameOf(lineup.teamA1) : (owner?.name ?? "Nico")}
-            teamColor="ink"
-          />
-          {setup.format === "doubles" && (
-            <PlayerRow name={nameOf(lineup.partner)} teamColor="ink" />
-          )}
-        </TeamCard>
-
-        <TeamCard
-          team="B"
-          onPress={() => {
+          onPickTeamB={() => {
             lineup.setPicking("B");
           }}
-        >
-          <PlayerRow name={nameOf(lineup.teamB[0])} teamColor="blue" />
-          {setup.format === "doubles" && (
-            <PlayerRow name={nameOf(lineup.teamB[1])} teamColor="blue" />
-          )}
-        </TeamCard>
+        />
 
         <RecentOpponents
           matches={matches}

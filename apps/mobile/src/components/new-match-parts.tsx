@@ -13,78 +13,8 @@ import { XStack, YStack } from "tamagui";
 import { ArrowRight } from "@/components/icons.tsx";
 import { PickerSheet } from "@/components/picker-sheet.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
-import { Avatar, Body, Card, Display, Pill } from "@/components/ui.tsx";
+import { Body, Card, Display } from "@/components/ui.tsx";
 import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
-
-export function PlayerRow({
-  name,
-  teamColor,
-}: {
-  readonly name: string;
-  readonly teamColor: "ink" | "blue";
-}): ReactNode {
-  const empty = name === "";
-  const displayName = empty ? "Pick a player" : name;
-  return (
-    <XStack
-      alignItems="center"
-      gap={11}
-      backgroundColor={colors.row}
-      borderRadius={13}
-      paddingVertical={10}
-      paddingHorizontal={13}
-    >
-      <Avatar
-        letter={empty ? "?" : name.charAt(0)}
-        size={34}
-        background={teamColor === "blue" ? colors.teamBlue : colors.ink}
-        color={teamColor === "blue" ? colors.white : colors.accent}
-      />
-      <Body fontSize={15.5} fontWeight="700" color={empty ? textAlpha(0.35) : colors.text}>
-        {displayName}
-      </Body>
-    </XStack>
-  );
-}
-
-export function TeamCard({
-  team,
-  children,
-  onPress,
-}: {
-  readonly team: TeamId;
-  readonly children: ReactNode;
-  readonly onPress: () => void;
-}): ReactNode {
-  const teamA = team === "A";
-  return (
-    <Card
-      borderRadius={20}
-      padding={16}
-      gap={10}
-      pressStyle={{ opacity: 0.92 }}
-      role="button"
-      onPress={onPress}
-    >
-      <Pill
-        alignSelf="flex-start"
-        backgroundColor={teamA ? colors.accent : colors.teamBlue}
-        paddingVertical={4}
-        paddingHorizontal={10}
-      >
-        <Body
-          fontSize={10}
-          fontWeight="800"
-          letterSpacing={1.5}
-          color={teamA ? colors.onAccent : colors.white}
-        >
-          {`TEAM ${team}`}
-        </Body>
-      </Pill>
-      {children}
-    </Card>
-  );
-}
 
 /** "Singles · FIP scoring" style subtitle under the header. */
 export function matchSubtitle(
