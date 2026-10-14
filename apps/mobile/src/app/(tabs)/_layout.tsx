@@ -40,7 +40,7 @@ function TabButton({
 
 const styles = StyleSheet.create({
   // The pressable stretches to the full height of the tab bar so the whole
-  // third of the pill is tappable — the label alone was a ~15pt target.
+  // quarter of the pill is tappable — the label alone was a ~15pt target.
   tab: {
     flex: 1,
     alignSelf: "stretch",
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   },
 });
 
-/** The design's floating dark pill: three labels, accent dot under the active one. */
+/** The design's floating dark pill: four labels, accent dot under the active one. */
 export default function TabsLayout(): ReactNode {
   const insets = useSafeAreaInsets();
   return (
@@ -73,6 +73,9 @@ export default function TabsLayout(): ReactNode {
           </TabTrigger>
           <TabTrigger name="matches" href="/matches" asChild={true}>
             <TabButton label="MATCHES" />
+          </TabTrigger>
+          <TabTrigger name="stats" href="/stats" asChild={true}>
+            <TabButton label="STATS" />
           </TabTrigger>
           <TabTrigger name="profile" href="/profile" asChild={true}>
             <TabButton label="PROFILE" />

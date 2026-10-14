@@ -20,8 +20,9 @@ test.describe("player profiles", () => {
     await expect(page.getByText("MATCHES WITH YOU", { exact: true })).toBeVisible();
   });
 
-  test("a partner row opens that player's profile", async ({ page }) => {
-    await gotoProfile(page);
+  test("a partner row on the Stats tab opens that player's profile", async ({ page }) => {
+    await page.goto("/stats");
+    await expect(page.getByText("PARTNERS & RIVALS")).toBeVisible({ timeout: 90_000 });
     await page.getByTestId("partner-javi").click();
     await expect(page.getByText("JAVI", { exact: true })).toBeVisible();
     // Javi partners the owner in the seed but never opposes him, so the
@@ -69,7 +70,10 @@ test.describe("player profiles", () => {
     await expect(page.getByTestId("player-javi")).toHaveCount(0);
     // …and the match history survived the deletion.
     await expect(page.getByText(/SQLite · 13 matches/u)).toBeVisible();
-    await expect(page.getByText("Former player", { exact: true })).toBeVisible();
+    await page.goto("/stats");
+    await expect(page.getByText("Former player", { exact: true }).first()).toBeVisible({
+      timeout: 90_000,
+    });
   });
 
   test("deleting a player with matches can remove the matches too", async ({ page }) => {

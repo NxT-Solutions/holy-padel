@@ -264,7 +264,7 @@ const MOTION_STEP_MS = 10_000;
  * curve and per-game steps/distance. Deterministic waves, not random noise,
  * so screenshots and e2e assertions stay stable.
  */
-function seedWatchData(driver: SqlDriver, matchId: string): void {
+function seedWatchData(driver: SqlDriver, matchId: string, baseBpm = 138): void {
   const match = getMatch(driver, matchId);
   if (match?.endedAt === undefined) {
     return;
@@ -273,7 +273,7 @@ function seedWatchData(driver: SqlDriver, matchId: string): void {
   const heartRate: HeartRateSample[] = [];
   for (let t = startedAt; t <= endedAt; t += HR_STEP_MS) {
     const minutes = (t - startedAt) / MINUTE_MS;
-    const bpm = 138 + 14 * Math.sin(minutes / 2.3) + 6 * Math.sin(minutes * 1.7);
+    const bpm = baseBpm + 14 * Math.sin(minutes / 2.3) + 6 * Math.sin(minutes * 1.7);
     heartRate.push({ t, bpm: Math.round(bpm) });
   }
   const motion: MotionSample[] = [];
@@ -348,6 +348,10 @@ export function seedIfEmpty(driver: SqlDriver): void {
     for (const plan of FINISHED) {
       seedFinishedMatch(driver, plan, now);
     }
+    // Four tracked matches give the Stats trend something to draw.
+    seedWatchData(driver, "seed-09", 133);
+    seedWatchData(driver, "seed-10", 144);
+    seedWatchData(driver, "seed-11", 129);
     seedWatchData(driver, "seed-12");
     seedLiveMatch(driver, now);
   });

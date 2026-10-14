@@ -21,21 +21,8 @@ test.describe("profile tab (design 3f)", () => {
     await expect(page.getByText("FORM · LAST 5")).toBeVisible();
     await expect(page.getByText("BEST RUN")).toBeVisible();
 
-    // Partner records (Javi also appears in the players card below).
-    await expect(page.getByText("RECORDS")).toBeVisible();
-    await expect(page.getByText("WITH PARTNER")).toBeVisible();
-    await expect(page.getByText("Javi", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("8–3", { exact: true })).toBeVisible();
-    await expect(page.getByText("Ana", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("0–1", { exact: true })).toBeVisible();
-
-    // Head-to-head, most played first.
-    await expect(page.getByText("HEAD-TO-HEAD")).toBeVisible();
-    await expect(page.getByText("vs Marta & Leo")).toBeVisible();
-    await expect(page.getByText("4–3", { exact: true })).toBeVisible();
-    await expect(page.getByText("vs Ana & Pablo")).toBeVisible();
-    await expect(page.getByText("3–1", { exact: true })).toBeVisible();
-    await expect(page.getByText("vs Carla & Hugo")).toBeVisible();
+    // Partner and rival records moved to the Stats tab.
+    await expect(page.getByText("WITH PARTNER")).toHaveCount(0);
 
     // Sport table pairs the record with lifetime rally points.
     await expect(page.getByText("BY SPORT")).toBeVisible();
@@ -63,9 +50,12 @@ test.describe("profile tab (design 3f)", () => {
     await expect(page.getByText("14", { exact: true })).toBeVisible();
     await expect(page.getByText("10–4", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("71%", { exact: true })).toBeVisible();
-    await expect(page.getByText("10–3", { exact: true })).toBeVisible(); // with Javi
-    await expect(page.getByText("6–3", { exact: true })).toBeVisible(); // vs Marta & Leo
     await expect(page.getByText(/SQLite · 14 matches/u)).toBeVisible();
+
+    // Partner and rival records live on the Stats tab now.
+    await page.getByTestId("tab-stats").click();
+    await expect(page.getByTestId("partner-javi")).toContainText("10–3");
+    await expect(page.getByTestId("rival-marta")).toContainText("6–3");
   });
 
   test("highlight and Team B colours can be chosen and persist", async ({ page }) => {

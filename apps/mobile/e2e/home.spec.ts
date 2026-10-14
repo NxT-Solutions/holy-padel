@@ -65,11 +65,11 @@ test.describe("home screen (design 3a)", () => {
   test("tab targets fill the tab bar (not just the label)", async ({ page }) => {
     await gotoHome(page);
     // Regression: the pressable used to hug the ~15pt label, so taps near the
-    // edges missed. Each third of the pill must be tappable full-height.
-    for (const name of ["HOME", "MATCHES", "PROFILE"]) {
+    // edges missed. Each quarter of the pill must be tappable full-height.
+    for (const name of ["HOME", "MATCHES", "STATS", "PROFILE"]) {
       const box = await page.getByRole("link", { name }).boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(56);
-      expect(box?.width ?? 0).toBeGreaterThanOrEqual(100);
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(80);
     }
   });
 

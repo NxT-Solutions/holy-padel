@@ -19,7 +19,6 @@ import { View, XStack, YStack } from "tamagui";
 import { ColorSettings } from "@/components/color-settings.tsx";
 import { ChevronRight, Heart } from "@/components/icons.tsx";
 import { NewPlayerRow } from "@/components/new-player-row.tsx";
-import { RecordBar } from "@/components/record-bar.tsx";
 import { SegmentedRow } from "@/components/segmented-row.tsx";
 import { StatTile } from "@/components/stat-tile.tsx";
 import { Avatar, Body, Card, Display, Overline, Pill, ResultBadge } from "@/components/ui.tsx";
@@ -302,67 +301,6 @@ export default function ProfileScreen(): ReactNode {
           <MiniStat value={String(stats.bestWinStreak)} label="BEST RUN" />
           <MiniStat value={durationLabel(stats.totalDurationMs)} label="TIME PLAYED" />
         </XStack>
-      </Card>
-
-      <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={13}>
-        <Overline>RECORDS</Overline>
-
-        <YStack gap={11}>
-          <Body fontSize={9.5} fontWeight="800" letterSpacing={1.4} color={textAlpha(0.4)}>
-            WITH PARTNER
-          </Body>
-          {stats.partners.length === 0 ? (
-            <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)}>
-              No finished matches yet.
-            </Body>
-          ) : (
-            stats.partners.map((partner) => (
-              <XStack
-                key={partner.playerId}
-                alignItems="center"
-                gap={12}
-                pressStyle={{ opacity: 0.75 }}
-                role="button"
-                onPress={() => {
-                  router.push(`/player/${partner.playerId}`);
-                }}
-                testID={`partner-${partner.playerId}`}
-              >
-                <Avatar letter={partner.name.charAt(0)} size={30} />
-                <Body flex={1} fontSize={14.5} fontWeight="700">
-                  {partner.name}
-                </Body>
-                <RecordBar won={partner.won} lost={partner.lost} />
-                <Display fontSize={15} width={36} textAlign="right">
-                  {`${String(partner.won)}–${String(partner.lost)}`}
-                </Display>
-                <ChevronRight size={13} color={textAlpha(0.3)} />
-              </XStack>
-            ))
-          )}
-        </YStack>
-
-        <Rule />
-
-        <YStack gap={11}>
-          <Body fontSize={9.5} fontWeight="800" letterSpacing={1.4} color={textAlpha(0.4)}>
-            HEAD-TO-HEAD
-          </Body>
-          {stats.headToHead.length === 0 ? (
-            <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)}>
-              No finished matches yet.
-            </Body>
-          ) : (
-            stats.headToHead.map((record) => (
-              <XStack key={record.label} alignItems="center" justifyContent="space-between">
-                <Body fontSize={14.5} fontWeight="700">
-                  {`vs ${record.label}`}
-                </Body>
-                <Display fontSize={15}>{`${String(record.won)}–${String(record.lost)}`}</Display>
-              </XStack>
-            ))
-          )}
-        </YStack>
       </Card>
 
       <Card borderRadius={20} paddingVertical={15} paddingHorizontal={17} gap={12}>
