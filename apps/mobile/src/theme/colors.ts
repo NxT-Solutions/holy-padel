@@ -34,7 +34,7 @@ const LIGHT = {
   /** Ink for text/icons drawn on an accent fill — same in both palettes. */
   onAccent: "#0E1116",
   /** Sport markers (phone only): small dots, stripes and tags. */
-  sportPadel: "#2BB673",
+  sportPadel: "#C8A464",
   sportSquash: "#8B7CFF",
   sportPickleball: "#19B5C8",
   /** Screen background. */
@@ -55,8 +55,8 @@ const LIGHT = {
   white: "#FFFFFF",
   /** Body text on cards. */
   text: "#0E1116",
-  /** Team B accent. */
-  teamBlue: "#2E5BFF",
+  /** Team B identity — slate. */
+  teamB: "#5B6B82",
   /** Destructive actions (delete match). */
   danger: "#C43F3F",
 };
@@ -76,7 +76,7 @@ const DARK: typeof LIGHT = {
   accent: "#FF6B35",
   accentOnCard: "#FF6B35",
   onAccent: "#0E1116",
-  sportPadel: "#2BB673",
+  sportPadel: "#C8A464",
   sportSquash: "#8B7CFF",
   sportPickleball: "#19B5C8",
   screen: "#0B0D11",
@@ -88,7 +88,7 @@ const DARK: typeof LIGHT = {
   greige: "#262C36",
   white: "#FFFFFF",
   text: "#F1F0EA",
-  teamBlue: "#2E5BFF",
+  teamB: "#5B6B82",
   danger: "#C43F3F",
 };
 

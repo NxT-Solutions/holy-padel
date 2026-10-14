@@ -36,8 +36,8 @@ count, and display heading across phone and both watches.
 - **Orange is reserved for signal only** — serve indicator, primary CTA, the live /
   active accent. It is not a decorative fill. Ink and cream carry the layout;
   orange marks the one thing that matters right now.
-- **Teams read by colour**: Team A is orange-on-ink; Team B is `teamBlue`
-  (`#2E5BFF`). Keep that pairing consistent wherever both teams appear.
+- **Teams read by colour**: Team A is orange-on-ink; Team B is `teamB`
+  (`#5B6B82` slate). Keep that pairing consistent wherever both teams appear.
 - Use `danger` for destructive actions only.
 
 ## Cross-surface

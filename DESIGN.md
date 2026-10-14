@@ -27,7 +27,7 @@ colors:
   on-accent: "#0E1116"    # ink for text/icons on an accent fill (both palettes)
   # Sport markers — phone only. Small dots, stripes and tags; never a CTA fill
   # or a large area. Text on a sport-colour fill is on-accent (ink).
-  sport-padel: "#2BB673"      # turf green
+  sport-padel: "#C8A464"      # warm sand
   sport-squash: "#8B7CFF"     # violet
   sport-pickleball: "#19B5C8" # cyan
   # Light surfaces (phone only).
@@ -39,7 +39,7 @@ colors:
   # Neutrals & semantics.
   greige: "#E4E2D9"       # muted chip: losses, empty bars, the L badge
   white: "#FFFFFF"        # white cards; light text on ink. Shared anchor.
-  team-blue: "#2E5BFF"    # Team B identity (avatar disc + letter)
+  team-b: "#5B6B82"       # Team B identity (avatar disc + letter)
   danger: "#C43F3F"       # destructive actions (delete, discard)
   # Text-opacity helpers are functions of alpha, not fixed tokens — see Colors
   # prose. Canonical rgba: inkAlpha=rgb(14,17,22), whiteAlpha=rgb(255,255,255),
@@ -116,7 +116,7 @@ components:
     textColor: "{colors.accent}"
     rounded: "{rounded.full}"
   avatar-team-b:
-    backgroundColor: "{colors.team-blue}"
+    backgroundColor: "{colors.team-b}"
     textColor: "{colors.white}"
     rounded: "{rounded.full}"
   result-badge-won:
@@ -171,7 +171,7 @@ all three platforms; everything else is platform-scoped.
   *on* an accent fill use **`on-accent`** (`#0E1116`, ink) — never the
   theme-aware `text` token, which is cream in dark mode and unreadable on
   orange.
-- **Sport markers (phone only)** — `sport-padel` (`#2BB673`, turf green),
+- **Sport markers (phone only)** — `sport-padel` (`#C8A464`, warm sand),
   `sport-squash` (`#8B7CFF`, violet) and `sport-pickleball` (`#19B5C8`, cyan)
   are **markers**: small dots, row stripes and tags that name the sport at a
   glance. They are deliberately *not* CTA fills or large areas — orange stays
@@ -181,7 +181,7 @@ all three platforms; everything else is platform-scoped.
   than pure white. Companion light surfaces: `sheet`, `input`, `row`, `toggle`.
 - **Greige (`#E4E2D9`)** — the muted neutral for losses, empty progress bars,
   and the L badge.
-- **Team blue (`#2E5BFF`)** — Team B's identity (avatar disc + letter). Team A
+- **Team B slate (`#5B6B82`)** — Team B's identity (avatar disc + letter). Team A
   is accent-on-ink.
 - **Danger (`#C43F3F`)** — destructive actions only (delete match, discard).
 
@@ -267,7 +267,7 @@ corners (`rounded.sheet`, 28px). Don't mix sharp and round corners in one view.
   dot + white caps label.
 - **Overline** — the tiny caps section eyebrow: `overline` type at ~40% ink.
 - **Avatar** — round monogram. Team A = ink disc + accent letter; Team B =
-  `team-blue` disc + white letter. Letter is Anton at 0.4× diameter.
+  `team-b` disc + white letter. Letter is Anton at 0.4× diameter.
 - **Result badge** — W = accent fill + ink glyph; L = greige fill + 55% ink glyph
   (`rounded.sm`).
 - **Live dot** — small accent circle marking live state and the serving pair.
@@ -293,7 +293,7 @@ reimplement these atoms with the mirrored palette — see Platforms below.
 - **Do** derive muted text and borders from `inkAlpha`/`whiteAlpha`/`accentAlpha`.
   **Don't** hard-code a new hex tint — add real tokens to `colors.ts` (and
   mirror them on the watches) instead.
-- **Do** keep Team A accent-on-ink and Team B `team-blue`; keep W/L badges
+- **Do** keep Team A accent-on-ink and Team B `team-b`; keep W/L badges
   consistent.
 - **Do** pair Overline labels as 800 weight + wide tracking (1.4–1.5) at ~10px.
 - **Don't** mix sharp and rounded corners in one view; prefer the rounding scale.

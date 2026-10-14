@@ -28,7 +28,7 @@ stop drift, hard-coded colors, and glyph-clipping bugs before they land.
      (`CourtColors`), backed by `app/src/main/res/values/colors.xml`.
 
 `ink` (`#0E1116`), `accent` (`#FF6B35`), and `white` (`#FFFFFF`) are the shared spine — the
-same on all three. `teamBlue` is `#2E5BFF`.
+same on all three. `teamB` is `#5B6B82` (slate).
 
 ## The rules you enforce
 
@@ -38,7 +38,7 @@ same on all three. `teamBlue` is `#2E5BFF`.
 - **Orange is a signal color, not a surface.** Reserve `#FF6B35` for meaning: live/serve
   state, the primary CTA, wins, and accents. It is never a neutral background or a
   large passive fill. If you see orange used as plain surface, push back.
-- **Team colors are fixed.** Team A = orange-on-ink; Team B = `teamBlue` `#2E5BFF`. Don't
+- **Team colors are fixed.** Team A = orange-on-ink; Team B = `teamB` `#5B6B82`. Don't
   let a screen invent its own team accent.
 - **Overline / eyebrow type** = weight `800` + letter-spacing ~`1.4`–`1.5` (roughly `10px`
   tracking). Keep it consistent wherever overlines appear.

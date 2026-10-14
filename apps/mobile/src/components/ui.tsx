@@ -83,7 +83,7 @@ export function Pill({ children, ...rest }: ViewProps): ReactNode {
   );
 }
 
-/** Round monogram avatar: ink disc, accent letter (blue for team B). */
+/** Round monogram avatar: ink disc, accent letter (slate for team B). */
 export function Avatar({
   letter,
   size = 36,

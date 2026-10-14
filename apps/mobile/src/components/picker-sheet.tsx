@@ -41,7 +41,7 @@ function RosterRow({
       <Avatar
         letter={entry.name.charAt(0)}
         size={36}
-        background={opponentPick ? colors.teamBlue : colors.ink}
+        background={opponentPick ? colors.teamB : colors.ink}
         color={opponentPick ? colors.white : colors.accent}
       />
       <YStack flex={1}>
