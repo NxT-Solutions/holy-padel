@@ -1,6 +1,7 @@
 package com.holypadel.wear
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -68,6 +69,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        handleTileAction(intent)
+
         setContent {
             val state by sync.state.collectAsState()
             val stats by tracker.stats.collectAsState()
@@ -84,6 +87,24 @@ class MainActivity : ComponentActivity() {
                 onEnd = { sync.end() },
             )
         }
+    }
+
+    /**
+     * START LAST on the tile opens the app with an extra: send the same
+     * start-last intent the idle screen's button does. Consumed so a rotation
+     * or recreation doesn't start a second rematch; the phone ignores it while
+     * a match is already live.
+     */
+    private fun handleTileAction(intent: Intent?) {
+        if (intent?.getStringExtra(TILE_ACTION_EXTRA) == TILE_ACTION_START_LAST) {
+            intent.removeExtra(TILE_ACTION_EXTRA)
+            sync.startLast()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleTileAction(intent)
     }
 
     private fun startTracking(startedAt: Long) {

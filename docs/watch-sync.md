@@ -199,9 +199,16 @@ physically paired devices.
 
 ## Other mirrors of the same state
 
-The Android live notification renders the live match without opening the app. Like the
-watches, it scores nothing itself.
+Two more surfaces render the live match without opening an app. Like the
+watches, neither scores anything itself.
 
+- **Wear OS tile** (`ScoreTileService.kt`): reads the latest `/holy-padel/state`
+  DataItem and shows the point score while `live` (and the winner while `won`).
+  While `idle` it shows the last result and a **START LAST** button. That button
+  opens the app with a `tileAction=start-last` extra, which sends the normal
+  `/holy-padel/start-last` intent. `StateListenerService` (a
+  `WearableListenerService` filtered to the state path) asks for a tile refresh
+  on every push, even when the app is closed.
 - **Android live notification** (`apps/mobile/src/live`, native module
   `modules/live-notification`): an ongoing notification built from the same
   gathered input as the watch payload (`buildLiveNotification`). It carries the
