@@ -164,6 +164,65 @@ private fun TimeOfDay() {
     )
 }
 
+/** "12:34", or "1:02:09" past the hour. */
+private fun elapsedLabel(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    val hours = total / 3600
+    val minutes = (total % 3600) / 60
+    val seconds = total % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%d:%02d".format(minutes, seconds)
+    }
+}
+
+/** A small stopwatch glyph so the match clock can't be mistaken for the time of day. */
+@Composable
+private fun StopwatchIcon(color: Color) {
+    Canvas(Modifier.size(10.dp)) {
+        val stroke = size.width * 0.13f
+        val radius = size.width * 0.38f
+        val center = Offset(size.width / 2, size.height * 0.58f)
+        drawCircle(color, radius = radius, center = center, style = Stroke(width = stroke))
+        drawLine(
+            color,
+            Offset(size.width * 0.38f, size.height * 0.06f),
+            Offset(size.width * 0.62f, size.height * 0.06f),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(color, center, Offset(center.x, center.y - radius * 0.6f), strokeWidth = stroke, cap = StrokeCap.Round)
+    }
+}
+
+/**
+ * Time played in the match, ticking every second on the watch itself from the
+ * phone's `clockBase` — the phone only pushes on points, so its `clock` string
+ * would sit still between them. Paused (no base): the frozen `clock`.
+ */
+@Composable
+private fun MatchClock(state: MatchState) {
+    val base = state.clockBase
+    val label = if (base > 0 && !state.paused) {
+        val now by produceState(System.currentTimeMillis(), base) {
+            while (true) {
+                value = System.currentTimeMillis()
+                delay(1_000L - value % 1_000L)
+            }
+        }
+        elapsedLabel(now - base)
+    } else {
+        state.clock
+    }
+    if (label.isEmpty()) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        StopwatchIcon(CourtColors.White45)
+        Spacer(Modifier.width(4.dp))
+        BodyText(label, color = CourtColors.White45, sizeSp = 12)
+    }
+}
+
 /**
  * The score face, laid out for a ROUND screen: time, heart rate and match
  * clock centred at the top (the corners of a round face are cut off), the two
@@ -188,7 +247,7 @@ private fun ScorePage(
                 BodyText("♥ $liveBpm", color = CourtColors.Accent, sizeSp = 12, weight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
             }
-            BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
+            MatchClock(state)
         }
 
         // During a squash "choice" tie-break the decision is mandatory: the
@@ -240,17 +299,11 @@ private fun ScorePage(
             )
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
-            Spacer(Modifier.width(7.dp))
-            Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Accent)
-            Spacer(Modifier.width(4.dp))
-            LabelText(
-                if (paused) "PAUSED" else "LIVE",
-                color = if (paused) CourtColors.White45 else CourtColors.Accent,
-                sizeSp = 10,
-            )
-        }
+        // Which set/game and the score around it — never the point score again,
+        // and only "PAUSED" as a status (a live match needs no label).
+        val context = listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  ")
+        val footer = if (paused) listOf("PAUSED", context).filter { it.isNotEmpty() }.joinToString("  ") else context
+        if (footer.isNotEmpty()) LabelText(footer)
     }
 }
 

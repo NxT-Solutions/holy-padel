@@ -1,11 +1,5 @@
 import { watchStatusLabel } from "@holy-padel/scoring";
-import {
-  liveScoreLine,
-  playedMs,
-  pointDisplay,
-  teamInitials,
-  watchSetLabel,
-} from "@/lib/format.ts";
+import { matchContext, playedMs, pointDisplay, teamInitials } from "@/lib/format.ts";
 import type { WatchIntent } from "@/watch/apply-intent.ts";
 import { INTENT_PATHS } from "@/watch/apply-intent.ts";
 import type { GatheredInput } from "@/watch/gather-input.ts";
@@ -51,7 +45,8 @@ export function buildLiveNotification(
   const pointB = pointDisplay(snapshot, "B");
   const status = watchStatusLabel(snapshot.moment, shorts, snapshot.config.sport);
   const choosing = snapshot.moment.kind === "setChoice" && match.pendingGameSet === undefined;
-  const line = [watchSetLabel(snapshot), liveScoreLine(snapshot)].filter((part) => part !== "");
+  const context = matchContext(snapshot);
+  const line = [context.label, context.score].filter((part) => part !== "");
   const lead = paused ? "PAUSED" : (status ?? undefined);
   let actions: LiveNotificationAction[] = [
     { id: "score:A", label: `+ ${shorts.A}` },

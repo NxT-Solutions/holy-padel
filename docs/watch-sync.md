@@ -22,12 +22,16 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "phase": "idle" | "live" | "won",
   "clock": "0:47",                // elapsed, mm or h:mm — empty when idle
   "court": "COURT 4",             // may be absent
-  "setLabel": "SET 2",            // current set, e.g. "SET 2" / "SUPER TB"
+  "setLabel": "SET 2",            // "SET 2" / "GAME 2" / "SUPER TB"; empty in a
+                                  // one-set (or one-game) match
   "teamA": { "short": "N&J", "serving": true, "servingSide": "right" },
   "teamB": { "short": "M&L", "serving": false },
   "pointA": "40",                 // display call: 0/15/30/40/AD or tie-break number
   "pointB": "30",
-  "games": "6-4 · 4-3",           // completed sets + current, the live score line
+  "games": "6-4 · 4-3",           // the score AROUND the point, never the point
+                                  // score itself: padel = set scores + games in
+                                  // this set; squash/pickleball = games won
+                                  // ("1-0"), empty in game 1; super TB = sets
   "status": "GAME PT",            // watchStatusLabel(), may be empty
   "choicePending": true,          // squash "choice" tie-break at target-1 all:
                                   // the watch shows its SHORT/LONG buttons while
@@ -35,6 +39,10 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "startedAt": 1783200000000,     // epoch ms the match started — the watch's
                                   // workout-session start time and cross-device
                                   // dedup key; absent when idle
+  "clockBase": 1783200300000,     // epoch ms the match clock counts up from
+                                  // (start + paused time): the watch ticks the
+                                  // clock itself between pushes. Absent while
+                                  // paused (show the frozen `clock`) and idle
   "won": {                        // present only when phase = "won"
     "winnerShort": "N&J",
     "scoreLine": "6-4 · 7-5",

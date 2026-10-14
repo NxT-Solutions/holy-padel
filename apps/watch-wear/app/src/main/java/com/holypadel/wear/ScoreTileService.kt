@@ -126,12 +126,11 @@ private fun liveLayout(context: Context, state: MatchState, accent: Int, teamB: 
     val line = listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  ")
     return LayoutElementBuilders.Column.Builder()
         .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
-        .addContent(text(if (state.paused) "PAUSED" else "● LIVE", 12f, if (state.paused) WHITE_55 else accent))
+        .addContent(text(if (state.paused) "PAUSED" else "HOLY PADEL", 12f, if (state.paused) WHITE_55 else accent))
         .addContent(gap(4f))
         .addContent(score)
-        .addContent(gap(2f))
-        .addContent(text(line, 13f, WHITE_55, bold = false))
-        .addContent(gap(10f))
+        .addContent(gap(if (line.isEmpty()) 8f else 2f))
+        .apply { if (line.isNotEmpty()) addContent(text(line, 13f, WHITE_55, bold = false)).addContent(gap(10f)) }
         .addContent(button("OPEN", accent, launch(context, null)))
         .build()
 }

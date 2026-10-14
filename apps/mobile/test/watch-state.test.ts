@@ -105,6 +105,8 @@ describe("buildWatchState", () => {
     expect(state.games).toBe("0-0");
     expect(state.setLabel).toBe("SET 1");
     expect(state.clock).toBe("0:47");
+    // The watch runs the clock itself from here between pushes.
+    expect(state.clockBase).toBe(STARTED);
     expect(state.court).toBe("COURT 4");
     expect(state.startedAt).toBe(STARTED);
     expect(state.status).toBe("GAME PT");
@@ -128,6 +130,7 @@ describe("buildWatchState", () => {
     expect(state.phase).toBe("live");
     expect(state.paused).toBe(true);
     expect(state.clock).toBe("0:42"); // 47m elapsed − 5m open pause
+    expect(state.clockBase).toBeUndefined();
   });
 
   it("labels the deciding super tie-break", () => {
@@ -143,6 +146,8 @@ describe("buildWatchState", () => {
 
     expect(state.phase).toBe("live");
     expect(state.setLabel).toBe("SUPER TB");
+    // Just the sets beside it — the tie-break points are already the big numbers.
+    expect(state.games).toBe("6-0 · 0-6");
     expect(state.pointA).toBe("1");
     expect(state.pointB).toBe("0");
   });

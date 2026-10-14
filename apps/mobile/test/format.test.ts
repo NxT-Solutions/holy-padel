@@ -1,3 +1,4 @@
+import type { MatchConfig, PointEvent } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
 import { describe, expect, it } from "vitest";
 import {
@@ -6,6 +7,7 @@ import {
   finalScoreLine,
   fullDayLabel,
   liveScoreLine,
+  matchContext,
   megabytesLabel,
   pairInitials,
   pairLabel,
@@ -84,5 +86,46 @@ describe("format helpers", () => {
   it("labels storage sizes", () => {
     expect(megabytesLabel(1_258_291)).toBe("1.2 MB");
     expect(megabytesLabel(0)).toBe("0.0 MB");
+  });
+});
+
+describe("matchContext", () => {
+  const winners = (pattern: string): PointEvent[] =>
+    [...pattern].map((winner, index) => ({ winner: winner === "A" ? "A" : "B", at: index }));
+  const squash = (bestOf: 1 | 3): MatchConfig => ({
+    sport: "squash",
+    bestOf,
+    deuceMode: "advantage",
+    thirdSet: "fullSet",
+    squashMode: "par",
+    squashTarget: 11,
+    squashTiebreak: "winByTwo",
+    firstServe: "A",
+  });
+
+  it("never repeats the rally score in squash", () => {
+    const snapshot = computeMatch(squash(3), winners("AAB"));
+    expect(matchContext(snapshot)).toEqual({ label: "GAME 1", score: "" });
+  });
+
+  it("shows games won once a game is done", () => {
+    const snapshot = computeMatch(squash(3), winners(`${"A".repeat(11)}B`));
+    expect(matchContext(snapshot)).toEqual({ label: "GAME 2", score: "1-0" });
+  });
+
+  it("drops the game number in a one-game match", () => {
+    const snapshot = computeMatch(squash(1), winners("AB"));
+    expect(matchContext(snapshot)).toEqual({ label: "", score: "" });
+  });
+
+  it("keeps padel's games in the set, without the set label in a one-set match", () => {
+    const config: MatchConfig = {
+      bestOf: 1,
+      deuceMode: "advantage",
+      thirdSet: "fullSet",
+      firstServe: "A",
+    };
+    const snapshot = computeMatch(config, winners("AAAAB"));
+    expect(matchContext(snapshot)).toEqual({ label: "", score: "1-0" });
   });
 });

@@ -196,6 +196,39 @@ export function pointDisplay(snapshot: MatchSnapshot, team: TeamId): string {
   return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
 }
 
+/**
+ * The match around the live point, without repeating it — the watches show
+ * the point score big already. Padel: "SET 2" and "6-4 · 3-2" (set scores and
+ * games in this set). Squash and pickleball: "GAME 2" and the games won,
+ * "1-0" (nothing in game 1). The label only appears when the match has more
+ * than one set or game; a super tie-break is always labelled, with just the
+ * set scores beside it.
+ */
+export function matchContext(snapshot: MatchSnapshot): {
+  readonly label: string;
+  readonly score: string;
+} {
+  const { config, completedSets, currentGame } = snapshot;
+  const sets = completedSets.map((set) => `${String(set.games.A)}-${String(set.games.B)}`);
+  if (currentGame?.kind === "tieBreak" && currentGame.tieBreakKind === "superTieBreak") {
+    return { label: "SUPER TB", score: sets.join(" · ") };
+  }
+  const several = config.bestOf > 1;
+  if (config.sport === "squash" || config.sport === "pickleball") {
+    const wonA = completedSets.filter((set) => set.winner === "A").length;
+    return {
+      label: several ? `GAME ${String(snapshot.setNumber)}` : "",
+      score:
+        completedSets.length === 0 ? "" : `${String(wonA)}-${String(completedSets.length - wonA)}`,
+    };
+  }
+  const games = `${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`;
+  return {
+    label: several ? `SET ${String(snapshot.setNumber)}` : "",
+    score: [...sets, games].join(" · "),
+  };
+}
+
 /** "SET 2" / "SUPER TB" / "GAME 1" — the set in play, in the watch header's compact style. */
 export function watchSetLabel(snapshot: MatchSnapshot): string {
   const game = snapshot.currentGame;

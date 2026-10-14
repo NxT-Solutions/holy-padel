@@ -38,6 +38,8 @@ data class MatchState(
     val status: String,
     /** Epoch ms the match started — workout session start + dedup key. 0 when idle. */
     val startedAt: Long,
+    /** Epoch ms the match clock counts up from, so the watch ticks it itself; 0 = use [clock]. */
+    val clockBase: Long = 0L,
     /** True while a live match is paused — dim scoring and pause the workout. */
     val paused: Boolean,
     /** Squash "choice" tie-break at target-1 all — show the SHORT/LONG buttons. */
@@ -104,6 +106,7 @@ data class MatchState(
                 games = root.optString("games"),
                 status = root.optString("status"),
                 startedAt = root.optLong("startedAt", 0L),
+                clockBase = root.optLong("clockBase", 0L),
                 paused = root.optBoolean("paused", false),
                 choicePending = root.optBoolean("choicePending", false),
                 won = won,

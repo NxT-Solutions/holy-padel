@@ -4,14 +4,13 @@ import { watchStatusLabel } from "@holy-padel/scoring";
 import {
   durationLabel,
   finalScoreLine,
-  liveScoreLine,
+  matchContext,
   opponentsOf,
   ownerTeamOf,
   pairInitials,
   playedMs,
   pointDisplay,
   teamInitials,
-  watchSetLabel,
 } from "@/lib/format.ts";
 import type { Palette } from "@/theme/color-setting.ts";
 
@@ -67,6 +66,12 @@ export interface WatchState {
    * session's start time and as the cross-device dedup key. Absent when idle.
    */
   readonly startedAt?: number;
+  /**
+   * Epoch ms the match clock counts up from (the start, pushed later by any
+   * paused time), so a watch can run the clock itself between pushes. Absent
+   * while paused (show `clock`, frozen) and when not live. Additive since v1.
+   */
+  readonly clockBase?: number;
   readonly won?: WatchWon;
   readonly last?: WatchLast;
   /**
@@ -125,12 +130,14 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
   // the score face returns with the staged call as the status line.
   const choicePending = snapshot.moment.kind === "setChoice" && match.pendingGameSet === undefined;
   const stagedStatus = stagedChoiceStatus(match.pendingGameSet);
+  const context = matchContext(snapshot);
+  const paused = match.pausedAt !== undefined;
   return {
     v: SCHEMA_VERSION,
     phase: "live",
     clock: durationLabel(playedMs(match, now)),
     ...courtField(match),
-    setLabel: watchSetLabel(snapshot),
+    setLabel: context.label,
     teamA: {
       short: shorts.A,
       serving: snapshot.servingTeam === "A",
@@ -143,11 +150,12 @@ function liveState(match: MatchSummary, snapshot: MatchSnapshot, now: number): W
     },
     pointA: pointDisplay(snapshot, "A"),
     pointB: pointDisplay(snapshot, "B"),
-    games: liveScoreLine(snapshot),
+    games: context.score,
     status: stagedStatus ?? watchStatusLabel(snapshot.moment, shorts, snapshot.config.sport) ?? "",
-    paused: match.pausedAt !== undefined,
+    paused,
     choicePending: choicePending || undefined,
     startedAt: match.startedAt,
+    ...(paused ? {} : { clockBase: now - playedMs(match, now) }),
   };
 }
 

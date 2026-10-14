@@ -131,30 +131,39 @@ private struct ScoreTab: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Court.accent)
             } else {
-                Text(state.clock)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Court.white.opacity(0.5))
+                matchClock
             }
             Spacer(minLength: 4)
+            // Which set/game and the score around it — never the point score again.
             Text([state.setLabel, state.games].filter { !$0.isEmpty }.joined(separator: "  "))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Court.white.opacity(0.75))
                 .lineLimit(1)
             Spacer(minLength: 4)
+            // Only PAUSED is a status worth showing; a live match needs no label.
             if state.paused {
-                HStack(spacing: 3) {
-                    Circle().fill(Court.white.opacity(0.5)).frame(width: 6, height: 6)
-                    Text("PAUSED")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Court.white.opacity(0.5))
-                }
-            } else {
-                HStack(spacing: 3) {
-                    Circle().fill(Court.accent).frame(width: 6, height: 6)
-                    Text("LIVE").font(.system(size: 10, weight: .bold)).foregroundStyle(Court.accent)
-                }
+                Text("PAUSED")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Court.white.opacity(0.5))
             }
         }
+    }
+
+    /// Time played, ticking on the watch from the phone's `clockBase` (the phone
+    /// only pushes on points); the frozen `clock` string while paused.
+    @ViewBuilder
+    private var matchClock: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "stopwatch")
+                .font(.system(size: 10, weight: .semibold))
+            if let base = state.clockBase, !state.paused {
+                Text(Date(timeIntervalSince1970: base / 1000), style: .timer)
+            } else {
+                Text(state.clock)
+            }
+        }
+        .font(.system(size: 12, weight: .medium).monospacedDigit())
+        .foregroundStyle(Court.white.opacity(0.5))
     }
 }
 
