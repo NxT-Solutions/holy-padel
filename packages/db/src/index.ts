@@ -52,6 +52,8 @@ export {
   setPendingGameSet,
   updateFirstServe,
 } from "./matches.ts";
+export type { MotionSample } from "./motion.ts";
+export { loadMatchMotion, parseMotionSamples, saveMatchMotion } from "./motion.ts";
 export type { MatchTogether, PlayerStats } from "./player-stats.ts";
 export { computePlayerStats } from "./player-stats.ts";
 export type { CourtSide, NewPlayer, Player, PlayerDeleteMode, RosterEntry } from "./players.ts";

@@ -4,6 +4,9 @@
  * defensively: a malformed summary is dropped rather than half-written.
  */
 
+import type { MotionSample } from "@holy-padel/db";
+import { parseMotionSamples } from "@holy-padel/db";
+
 export const WORKOUT_PATH = "/holy-padel/workout";
 
 export interface WatchWorkoutSummary {
@@ -13,6 +16,11 @@ export interface WatchWorkoutSummary {
   readonly avgBpm: number;
   readonly maxBpm: number;
   readonly samples: readonly { readonly t: number; readonly bpm: number }[];
+  /**
+   * Steps and metres per tracked interval (newer watch builds only — older
+   * summaries carry none). Summed over a game's window for per-game totals.
+   */
+  readonly motion: readonly MotionSample[];
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -55,6 +63,7 @@ export function parseWorkoutSummary(body: string): WatchWorkoutSummary | undefin
     readonly avgBpm?: unknown;
     readonly maxBpm?: unknown;
     readonly samples?: unknown;
+    readonly motion?: unknown;
   };
   const { startedAt, endedAt } = record;
   if (!(isFiniteNumber(startedAt) && isFiniteNumber(endedAt)) || endedAt <= startedAt) {
@@ -62,7 +71,8 @@ export function parseWorkoutSummary(body: string): WatchWorkoutSummary | undefin
   }
   const kcal = numberOr(record.kcal, 0);
   const samples = parseSamples(record.samples);
-  if (kcal <= 0 && samples.length === 0) {
+  const motion = parseMotionSamples(record.motion);
+  if (kcal <= 0 && samples.length === 0 && motion.length === 0) {
     // Nothing measurable — not worth a health entry.
     return;
   }
@@ -73,5 +83,6 @@ export function parseWorkoutSummary(body: string): WatchWorkoutSummary | undefin
     avgBpm: numberOr(record.avgBpm, 0),
     maxBpm: numberOr(record.maxBpm, 0),
     samples,
+    motion,
   };
 }

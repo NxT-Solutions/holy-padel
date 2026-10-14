@@ -87,7 +87,8 @@ straight to idle.
 ### Watch → phone: workout summary
 
 Wear OS has no Health Connect, so the watch tracks the match with **Health
-Services** (heart rate + calories, `RACQUETBALL` calorie model) and ships the
+Services** (heart rate, calories, and — where the device supports them for the
+exercise — steps and distance; `RACQUETBALL` calorie model) and ships the
 result to the phone, which is the **single Health Connect writer**. Sent once,
 when the live phase ends:
 
@@ -98,9 +99,21 @@ when the live phase ends:
   "kcal": 412.5,
   "avgBpm": 132,
   "maxBpm": 171,
-  "samples": [ { "t": 1783200015000, "bpm": 120 } ]  // one per ~15s
+  // Every reading at its own sensor timestamp, downsampled to one per ~5s.
+  // (Readings arrive batched while the screen is off; older builds kept only
+  // the newest per batch, stamped on arrival, which left long gaps.)
+  "samples": [ { "t": 1783200015000, "bpm": 120 } ],
+  // Steps and metres per 10s bucket, keyed by the bucket's end — deltas, so
+  // the phone sums the buckets inside each game for per-game totals. Absent
+  // from older builds; empty when the device can't measure them.
+  "motion": [ { "t": 1783200020000, "steps": 18, "meters": 12.5 } ]
 }
 ```
+
+The phone stores `samples` under `hr:<matchId>` and `motion` under
+`motion:<matchId>` (settings table). Each game's window runs from the previous
+game's last rally to its own, so the per-game heart rate, steps and distance on
+the score-race card tile the match without gaps.
 
 The phone writes `ExerciseSessionRecord` + `HeartRateRecord` + `TotalCaloriesBurnedRecord`
 with `Device.TYPE_WATCH` provenance and the same deterministic

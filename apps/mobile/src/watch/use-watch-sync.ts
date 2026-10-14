@@ -1,5 +1,5 @@
 import type { SqlDriver } from "@holy-padel/db";
-import { listMatches, saveMatchHeartRate } from "@holy-padel/db";
+import { listMatches, saveMatchHeartRate, saveMatchMotion } from "@holy-padel/db";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
@@ -80,6 +80,7 @@ export function useWatchSync(): void {
                   matchId,
                   summary.samples.map((sample) => ({ t: sample.t, bpm: sample.bpm })),
                 );
+                saveMatchMotion(driver, matchId, summary.motion);
               }
             });
             void logWatchWorkout(JSON.stringify(summary));
