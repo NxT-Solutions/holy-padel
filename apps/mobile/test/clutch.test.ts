@@ -17,11 +17,12 @@ function rallies(winners: string): PointEvent[] {
 }
 
 describe("matchClutch", () => {
-  it("counts a held love game as one pressure point and no break points", () => {
+  it("counts a held love game as one game point closed out and no break points", () => {
     const clutch = matchClutch(golden, rallies("AAAA"), "A");
 
     expect(clutch.points).toEqual({ won: 4, of: 4 });
-    expect(clutch.pressure).toEqual({ won: 1, of: 1 });
+    expect(clutch.closing).toEqual({ won: 1, of: 1 });
+    expect(clutch.saving).toEqual({ won: 0, of: 0 });
     expect(clutch.breakPoints).toEqual({ won: 0, of: 0 });
     expect(clutch.serveSaves).toEqual({ won: 0, of: 0 });
   });
@@ -33,7 +34,11 @@ describe("matchClutch", () => {
 
     expect(receiver.deciding).toEqual({ won: 1, of: 1 });
     expect(receiver.breakPoints).toEqual({ won: 1, of: 1 });
-    expect(receiver.pressure).toEqual({ won: 4, of: 4 });
+    // Saved 40-0, 40-15 and 40-30, then took the golden point (both a save and a close).
+    expect(receiver.saving).toEqual({ won: 4, of: 4 });
+    expect(receiver.closing).toEqual({ won: 1, of: 1 });
+    expect(server.closing).toEqual({ won: 0, of: 4 });
+    expect(server.saving).toEqual({ won: 0, of: 1 });
     expect(server.deciding).toEqual({ won: 0, of: 1 });
     expect(server.serveSaves).toEqual({ won: 0, of: 1 });
     expect(server.breakPoints).toEqual({ won: 0, of: 0 });

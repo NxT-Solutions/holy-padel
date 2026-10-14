@@ -22,7 +22,9 @@ test.describe("stats tab", () => {
       tops.push(box?.y ?? -1);
     }
     expect(tops).toEqual([...tops].sort((left, right) => left - right));
-    await expect(page.getByTestId("pressure-share")).toHaveText(/^\d+%$/u);
+    await expect(page.getByTestId("clutch-closing")).toContainText(/\d+%/u);
+    await expect(page.getByTestId("clutch-saving")).toContainText("When they're a point away");
+    await expect(page.getByTestId("clutch-card")).toContainText("of all points");
   });
 
   test("lists partners and rivals with their records", async ({ page }) => {

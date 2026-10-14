@@ -32,7 +32,8 @@ describe("computeInsights over the seed", () => {
     );
     expect(all.matches).toBe(data.length);
     expect(all.clutch.points.of).toBe(rallies);
-    expect(all.clutch.pressure.of).toBeLessThan(rallies);
+    expect(all.clutch.closing.of).toBeLessThan(rallies);
+    expect(all.clutch.saving.of).toBeLessThan(rallies);
   });
 
   it("records each match once per opponent", () => {

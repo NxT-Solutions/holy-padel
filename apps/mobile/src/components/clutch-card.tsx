@@ -1,46 +1,113 @@
 import type { ReactNode } from "react";
 import { XStack, YStack } from "tamagui";
-import { CardHeader, Figure, ShareRow } from "@/components/insight-parts.tsx";
+import { CardHeader, ShareRow } from "@/components/insight-parts.tsx";
 import { Body, Card, Display } from "@/components/ui.tsx";
 import type { Clutch, Tally } from "@/lib/clutch.ts";
 import { percentOf } from "@/lib/clutch.ts";
+import type { Sport } from "@/lib/insights.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
-
-/** How far pressure points have to differ from all points before it's worth saying. */
-const VERDICT_GAP = 3;
-
-function verdict(pressure: number, overall: number): string {
-  if (pressure - overall >= VERDICT_GAP) {
-    return "You raise your game when it matters";
-  }
-  if (overall - pressure >= VERDICT_GAP) {
-    return "The big points are getting away from you";
-  }
-  return "Steady — big points go like any other";
-}
 
 function detail(tally: Tally): string {
   return `${String(tally.won)} of ${String(tally.of)}`;
 }
 
+/** What a comeback counts in each sport — sets in padel, games elsewhere. */
+function turnaroundWords(sport: Sport | undefined): { won: string; lost: string } {
+  if (sport === "padel") {
+    return { won: "sets won from 2+ games down", lost: "sets lost from 2+ games up" };
+  }
+  if (sport === undefined) {
+    return { won: "sets or games won from behind", lost: "sets or games lost from ahead" };
+  }
+  return { won: "games won from 4+ points down", lost: "games lost from 4+ points up" };
+}
+
+/** One of the two headline shares: a big percentage, what it is, and the raw count. */
+function Share({
+  tally,
+  label,
+  explain,
+  testID,
+}: {
+  readonly tally: Tally;
+  readonly label: string;
+  readonly explain: string;
+  readonly testID: string;
+}): ReactNode {
+  const share = percentOf(tally);
+  return (
+    <YStack
+      flex={1}
+      backgroundColor={colors.row}
+      borderRadius={14}
+      paddingVertical={12}
+      paddingHorizontal={12}
+      gap={2}
+      testID={testID}
+    >
+      <Display fontSize={34} color={share === undefined ? textAlpha(0.3) : colors.accentOnCard}>
+        {share === undefined ? "—" : `${String(share)}%`}
+      </Display>
+      <Body fontSize={10} fontWeight="800" letterSpacing={1.2}>
+        {label}
+      </Body>
+      <Body fontSize={11} fontWeight="600" color={textAlpha(0.5)}>
+        {explain}
+      </Body>
+      <Body fontSize={11} fontWeight="700" color={textAlpha(0.4)}>
+        {tally.of === 0 ? "none yet" : detail(tally)}
+      </Body>
+    </YStack>
+  );
+}
+
+/** A count with a plain sentence of what it counts. */
+function Turnarounds({
+  count,
+  words,
+  muted,
+}: {
+  readonly count: number;
+  readonly words: string;
+  readonly muted: boolean;
+}): ReactNode {
+  return (
+    <XStack alignItems="center" gap={10}>
+      <Display
+        fontSize={20}
+        width={28}
+        textAlign="center"
+        {...(muted ? { color: textAlpha(0.5) } : {})}
+      >
+        {String(count)}
+      </Display>
+      <Body flex={1} fontSize={13} fontWeight="700">
+        {words}
+      </Body>
+    </XStack>
+  );
+}
+
 /**
- * The "under pressure" card: the share of game, set and match points won,
- * held against all points, then the padel-specific detail (break points,
- * golden points, tie-breaks) and the sets turned around. Rows with nothing
- * played are left out.
+ * The "under pressure" card, in two plain numbers: how often you close out a
+ * game when you're a point away, and how often you save one when they are —
+ * anchored by your share of all points. Padel adds break points, golden points
+ * and tie-breaks; every sport gets the sets (or games) turned around.
  */
 export function ClutchCard({
   clutch,
   comebacks,
   slips,
+  sport,
 }: {
   readonly clutch: Clutch;
   readonly comebacks: number;
   readonly slips: number;
+  /** The one sport the figures cover; undefined when they mix sports. */
+  readonly sport: Sport | undefined;
 }): ReactNode {
-  const pressure = percentOf(clutch.pressure);
   const overall = percentOf(clutch.points);
-  if (pressure === undefined || overall === undefined) {
+  if (overall === undefined) {
     return null;
   }
   const rows = [
@@ -49,6 +116,7 @@ export function ClutchCard({
     { label: "Golden points", tally: clutch.deciding, id: "deciding" },
     { label: "Tie-breaks", tally: clutch.tieBreaks, id: "tie-breaks" },
   ].filter((row) => row.tally.of > 0);
+  const words = turnaroundWords(sport);
   return (
     <Card
       borderRadius={20}
@@ -57,20 +125,24 @@ export function ClutchCard({
       gap={14}
       testID="clutch-card"
     >
-      <CardHeader title="UNDER PRESSURE" aside={`${String(clutch.pressure.of)} BIG POINTS`} />
-      <XStack alignItems="center" gap={14}>
-        <Display fontSize={46} color={colors.accentOnCard} testID="pressure-share">
-          {`${String(pressure)}%`}
-        </Display>
-        <YStack flex={1} gap={3}>
-          <Body fontSize={14} fontWeight="800">
-            {verdict(pressure, overall)}
-          </Body>
-          <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.5)}>
-            {`of game, set and match points won — ${String(overall)}% of all points`}
-          </Body>
-        </YStack>
+      <CardHeader title="UNDER PRESSURE" />
+      <XStack gap={8}>
+        <Share
+          tally={clutch.closing}
+          label="CLOSING OUT"
+          explain="When you're a point away"
+          testID="clutch-closing"
+        />
+        <Share
+          tally={clutch.saving}
+          label="SAVING"
+          explain="When they're a point away"
+          testID="clutch-saving"
+        />
       </XStack>
+      <Body fontSize={11.5} fontWeight="600" color={textAlpha(0.5)}>
+        {`For comparison, you win ${String(overall)}% of all points.`}
+      </Body>
       {rows.length === 0 ? null : (
         <YStack gap={12}>
           {rows.map((row) => (
@@ -86,10 +158,10 @@ export function ClutchCard({
         </YStack>
       )}
       {comebacks + slips === 0 ? null : (
-        <XStack backgroundColor={colors.row} borderRadius={14} paddingVertical={10}>
-          <Figure value={String(comebacks)} label="WON FROM BEHIND" />
-          <Figure value={String(slips)} label="LEADS LOST" color={textAlpha(0.55)} />
-        </XStack>
+        <YStack gap={8} paddingTop={2}>
+          <Turnarounds count={comebacks} words={words.won} muted={false} />
+          <Turnarounds count={slips} words={words.lost} muted={true} />
+        </YStack>
       )}
     </Card>
   );

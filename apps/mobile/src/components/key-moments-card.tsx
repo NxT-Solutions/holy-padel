@@ -7,7 +7,7 @@ import { CardHeader } from "@/components/insight-parts.tsx";
 import { Body, Card } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
 import type { Clutch, Turnaround } from "@/lib/clutch.ts";
-import { matchClutch, matchTurnarounds, percentOf } from "@/lib/clutch.ts";
+import { matchClutch, matchTurnarounds } from "@/lib/clutch.ts";
 import { ownerTeamOf } from "@/lib/format.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
@@ -33,7 +33,7 @@ function times(count: number): string {
 /** The clutch lines worth reading for one match — only what actually came up. */
 function clutchMoments(clutch: Clutch, decidingName: string): Moment[] {
   const moments: Moment[] = [];
-  const { breakPoints, serveSaves, deciding, pressure, points } = clutch;
+  const { breakPoints, serveSaves, deciding, closing, saving } = clutch;
   if (breakPoints.of > 0) {
     moments.push({
       key: "break",
@@ -55,13 +55,18 @@ function clutchMoments(clutch: Clutch, decidingName: string): Moment[] {
       good: deciding.won * 2 >= deciding.of,
     });
   }
-  const pressureShare = percentOf(pressure);
-  const overall = percentOf(points);
-  if (pressureShare !== undefined && overall !== undefined) {
+  if (closing.of > 0) {
     moments.push({
-      key: "pressure",
-      text: `Won ${String(pressureShare)}% of big points (${String(overall)}% of all points)`,
-      good: pressureShare >= overall,
+      key: "closing",
+      text: `Closed out ${String(closing.won)} of ${String(closing.of)} games when a point away`,
+      good: closing.won * 2 >= closing.of,
+    });
+  }
+  if (saving.of > 0) {
+    moments.push({
+      key: "saving",
+      text: `Saved ${String(saving.won)} of ${String(saving.of)} points that would have lost a game`,
+      good: saving.won * 2 >= saving.of,
     });
   }
   return moments;

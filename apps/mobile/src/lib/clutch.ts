@@ -11,8 +11,10 @@ export interface Tally {
 export interface Clutch {
   /** Every rally. */
   readonly points: Tally;
-  /** Rallies with a game, set or match on the line for either side. */
-  readonly pressure: Tally;
+  /** Rallies where this side was one point from the game (or set, or match): won = closed out. */
+  readonly closing: Tally;
+  /** Rallies where the other side was one point from the game: won = saved. */
+  readonly saving: Tally;
   /** Golden / star points — one rally decides the game. Padel only. */
   readonly deciding: Tally;
   /** Break points while receiving: won = converted. Padel only. */
@@ -27,7 +29,8 @@ const NONE: Tally = { won: 0, of: 0 };
 
 export const EMPTY_CLUTCH: Clutch = {
   points: NONE,
-  pressure: NONE,
+  closing: NONE,
+  saving: NONE,
   deciding: NONE,
   breakPoints: NONE,
   serveSaves: NONE,
@@ -45,7 +48,8 @@ function sum(left: Tally, right: Tally): Tally {
 export function addClutch(left: Clutch, right: Clutch): Clutch {
   return {
     points: sum(left.points, right.points),
-    pressure: sum(left.pressure, right.pressure),
+    closing: sum(left.closing, right.closing),
+    saving: sum(left.saving, right.saving),
     deciding: sum(left.deciding, right.deciding),
     breakPoints: sum(left.breakPoints, right.breakPoints),
     serveSaves: sum(left.serveSaves, right.serveSaves),
@@ -87,7 +91,13 @@ function tallyRally(clutch: Clutch, before: MatchSnapshot, winner: TeamId, team:
   if (onPoint === undefined) {
     return next;
   }
-  next = { ...next, pressure: count(next.pressure, won) };
+  // A golden / star point is both: one rally to win the game, one to save it.
+  if (onPoint === "both" || onPoint === team) {
+    next = { ...next, closing: count(next.closing, won) };
+  }
+  if (onPoint === "both" || onPoint !== team) {
+    next = { ...next, saving: count(next.saving, won) };
+  }
   if (!isPadel(before.config) || before.currentGame?.kind !== "standard") {
     return next;
   }

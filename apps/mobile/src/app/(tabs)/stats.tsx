@@ -111,7 +111,12 @@ function StatsBody(): ReactNode {
       {sports.length > 1 ? (
         <SportFilter sports={sports} value={sport} onChange={setChosen} />
       ) : null}
-      <ClutchCard clutch={insights.clutch} comebacks={insights.comebacks} slips={insights.slips} />
+      <ClutchCard
+        clutch={insights.clutch}
+        comebacks={insights.comebacks}
+        slips={insights.slips}
+        sport={sport === "all" ? (sports.length === 1 ? sports[0] : undefined) : sport}
+      />
       <PeopleCard partners={insights.partners} rivals={insights.rivals} />
       <EffortCard bands={insights.effort} trackedGames={insights.trackedGames} />
       <TrendCard points={insights.trend} />
