@@ -8,13 +8,16 @@ import { colors, textAlpha } from "@/theme/colors.ts";
 
 const SIDES: readonly CourtSide[] = ["left", "right"];
 
-const inputStyle = {
-  fontSize: 17,
-  fontFamily: "Archivo_700Bold",
-  color: colors.text,
-  paddingVertical: 12,
-  paddingHorizontal: 14,
-} as const;
+/** Built per render: a module-level object would freeze the light palette. */
+function inputStyle() {
+  return {
+    fontSize: 17,
+    fontFamily: "Archivo_700Bold",
+    color: colors.text,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  } as const;
+}
 
 /**
  * The name/club/side form shared by the owner's edit-profile screen and the
@@ -40,7 +43,7 @@ export function EditPlayerForm({
       <YStack gap={14}>
         <Field label="NAME">
           <TextInput
-            style={inputStyle}
+            style={inputStyle()}
             value={name}
             onChangeText={setName}
             placeholder="Player name"
@@ -51,7 +54,7 @@ export function EditPlayerForm({
         </Field>
         <Field label="CLUB">
           <TextInput
-            style={inputStyle}
+            style={inputStyle()}
             value={club}
             onChangeText={setClub}
             placeholder="Club (optional)"
