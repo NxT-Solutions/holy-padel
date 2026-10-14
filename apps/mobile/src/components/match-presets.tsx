@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { MatchSetupOptions } from "@/components/new-match-parts.tsx";
 import { Body, Display } from "@/components/ui.tsx";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset.ts";
 import type { MatchSetupState } from "@/lib/use-match-setup.ts";
 import { colors, sportColor, textAlpha } from "@/theme/colors.ts";
 
@@ -18,6 +19,9 @@ function SheetShell({
   readonly children: ReactNode;
 }): ReactNode {
   const insets = useSafeAreaInsets();
+  // Edge-to-edge Android doesn't shrink the window for the keyboard: lift the
+  // sheet by its height or the preset name field and SAVE sit hidden under it.
+  const keyboard = useKeyboardInset();
   return (
     <View position="absolute" top={0} left={0} right={0} bottom={0}>
       <View
@@ -34,7 +38,7 @@ function SheetShell({
         borderTopRightRadius={28}
         paddingTop={14}
         paddingHorizontal={16}
-        paddingBottom={insets.bottom + 16}
+        paddingBottom={(keyboard > 0 ? keyboard : insets.bottom) + 16}
         gap={14}
         maxHeight="90%"
         boxShadow="0 -12px 40px rgba(14, 17, 22, 0.25)"
@@ -43,6 +47,11 @@ function SheetShell({
       </YStack>
     </View>
   );
+}
+
+/** Press feedback for a Pressable that wraps plain (non-pressable) content. */
+function pressedOpacity(opacity: number) {
+  return ({ pressed }: { readonly pressed: boolean }) => ({ opacity: pressed ? opacity : 1 });
 }
 
 /** The accent primary button used across the sheet footers. */
@@ -128,6 +137,10 @@ function PresetChip({
       onLongPress={onLongPress}
       role="button"
       aria-label={preset.name}
+      // The Pressable owns the touch and the press feedback. A pressStyle on
+      // the inner XStack would make it a second responder that swallows the
+      // tap on native (web bubbles it, so the bug only shows on device).
+      style={pressedOpacity(0.85)}
     >
       <XStack
         alignItems="center"
@@ -138,7 +151,6 @@ function PresetChip({
         borderRadius={999}
         paddingVertical={9}
         paddingHorizontal={13}
-        pressStyle={{ opacity: 0.85 }}
       >
         <View
           width={8}
@@ -191,7 +203,12 @@ export function PresetChips({
           }}
         />
       ))}
-      <Pressable onPress={onSave} role="button" aria-label="Save setup as preset">
+      <Pressable
+        onPress={onSave}
+        role="button"
+        aria-label="Save setup as preset"
+        style={pressedOpacity(0.7)}
+      >
         <XStack
           alignItems="center"
           gap={6}
@@ -201,7 +218,6 @@ export function PresetChips({
           borderColor={textAlpha(0.2)}
           paddingVertical={9}
           paddingHorizontal={13}
-          pressStyle={{ opacity: 0.7 }}
         >
           <Body fontSize={12.5} fontWeight="800" letterSpacing={0.8} color={textAlpha(0.5)}>
             + SAVE SETUP

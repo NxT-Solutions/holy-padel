@@ -8,6 +8,7 @@ import { View, XStack, YStack } from "tamagui";
 import { Check, Search } from "@/components/icons.tsx";
 import { NewPlayerRow } from "@/components/new-player-row.tsx";
 import { Avatar, Body, Display } from "@/components/ui.tsx";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 function RosterRow({
@@ -98,6 +99,8 @@ export function PickerSheet({
 }): ReactNode {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
+  // Lift the sheet above the keyboard so search / "New player" stay visible.
+  const keyboard = useKeyboardInset();
   const visible = roster.filter(
     (entry) =>
       !taken.includes(entry.id) &&
@@ -120,7 +123,7 @@ export function PickerSheet({
         borderTopRightRadius={28}
         paddingTop={14}
         paddingHorizontal={16}
-        paddingBottom={insets.bottom + 16}
+        paddingBottom={(keyboard > 0 ? keyboard : insets.bottom) + 16}
         gap={12}
         maxHeight="88%"
         boxShadow="0 -12px 40px rgba(14, 17, 22, 0.25)"
