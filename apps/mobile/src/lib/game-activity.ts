@@ -132,3 +132,30 @@ export function heartRateRuns(
   }
   return runs.filter((run) => run.length >= 2);
 }
+
+/** A heart-rate axis: the plotted bpm range and the round-number ticks on it. */
+export interface BpmScale {
+  readonly min: number;
+  readonly max: number;
+  readonly ticks: readonly number[];
+}
+
+/**
+ * Round-number ticks spanning the readings, e.g. 118–154 → 110…160 every 10.
+ * Wide ranges step by 20 so the axis never shows more than a handful of labels.
+ */
+export function bpmScale(bpms: readonly number[]): BpmScale | undefined {
+  if (bpms.length === 0) {
+    return;
+  }
+  const low = Math.min(...bpms);
+  const high = Math.max(...bpms);
+  const step = high - low > 40 ? 20 : 10;
+  const min = Math.floor((low - 2) / step) * step;
+  const max = Math.max(min + step, Math.ceil((high + 2) / step) * step);
+  const ticks: number[] = [];
+  for (let tick = min; tick <= max; tick += step) {
+    ticks.push(tick);
+  }
+  return { min, max, ticks };
+}

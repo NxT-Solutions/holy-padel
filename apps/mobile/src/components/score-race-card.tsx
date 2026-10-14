@@ -28,15 +28,16 @@ function ActivityStat({
   );
 }
 
-/** Heart rate, steps and distance for the selected game — whatever was measured. */
+/**
+ * Average heart rate, steps and distance for the selected game — whatever was
+ * measured. No peak here: the chart's bpm axis already shows the game's range,
+ * and the match card below carries the match peak.
+ */
 function ActivityRow({ activity }: { readonly activity: WindowActivity }): ReactNode {
   const stats: { readonly value: string; readonly label: string }[] = [
     ...(activity.avgBpm === undefined
       ? []
       : [{ value: String(activity.avgBpm), label: "AVG BPM" }]),
-    ...(activity.maxBpm === undefined
-      ? []
-      : [{ value: String(activity.maxBpm), label: "PEAK BPM" }]),
     ...(activity.steps === undefined
       ? []
       : [{ value: activity.steps.toLocaleString(), label: "STEPS" }]),

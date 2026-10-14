@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   activityIn,
+  bpmScale,
   distanceLabel,
   gameWindows,
   HR_GAP_MS,
@@ -121,5 +122,27 @@ describe("distanceLabel", () => {
   it("uses metres under a kilometre and km above", () => {
     expect(distanceLabel(86.4)).toBe("86 m");
     expect(distanceLabel(1240)).toBe("1.24 km");
+  });
+});
+
+describe("bpmScale", () => {
+  it("spans the readings with round-number ticks every 10", () => {
+    expect(bpmScale([118, 154])).toEqual({
+      min: 110,
+      max: 160,
+      ticks: [110, 120, 130, 140, 150, 160],
+    });
+  });
+
+  it("steps by 20 for a wide range", () => {
+    expect(bpmScale([95, 178])?.ticks).toEqual([80, 100, 120, 140, 160, 180]);
+  });
+
+  it("never collapses to a single tick", () => {
+    expect(bpmScale([140, 140])?.ticks).toEqual([130, 140, 150]);
+  });
+
+  it("is undefined without readings", () => {
+    expect(bpmScale([])).toBeUndefined();
   });
 });

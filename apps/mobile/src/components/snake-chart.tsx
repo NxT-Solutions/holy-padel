@@ -15,12 +15,15 @@ import Svg, {
 } from "react-native-svg";
 import { View, XStack } from "tamagui";
 import { Body } from "@/components/ui.tsx";
-import { heartRateRuns } from "@/lib/game-activity.ts";
+import type { BpmScale } from "@/lib/game-activity.ts";
+import { bpmScale, heartRateRuns } from "@/lib/game-activity.ts";
 import type { GameSeriesStep } from "@/lib/game-series.ts";
 import { colors, textAlpha } from "@/theme/colors.ts";
 
 const CHART_HEIGHT = 176;
 const PAD_X = 12;
+/** Right gutter for the bpm axis labels when the game has a heart-rate trace. */
+const HR_AXIS = 34;
 const PAD_TOP = 16;
 /** Room under the plot for the time axis. */
 const PAD_BOTTOM = 22;
@@ -113,10 +116,10 @@ function smoothPath(points: readonly Point[]): string {
 /** Dashed guides at the deepest lead each way, labelled with the margin. */
 function LeadGuides({
   geometry,
-  width,
+  plotRight,
 }: {
   readonly geometry: Geometry;
-  readonly width: number;
+  readonly plotRight: number;
 }): ReactNode {
   const { yOf, maxLead } = geometry;
   return (
@@ -126,7 +129,7 @@ function LeadGuides({
           key={`g${String(lead)}`}
           x1={PAD_X}
           y1={yOf(lead)}
-          x2={width - PAD_X}
+          x2={plotRight}
           y2={yOf(lead)}
           stroke={textAlpha(0.1)}
           strokeWidth={1}
@@ -143,32 +146,86 @@ function LeadGuides({
   );
 }
 
-/** The heart-rate curve with a soft fill, on its own bpm scale. */
+/** The bpm axis down the right gutter: round-number ticks, dotted guides, unit. */
+function BpmAxis({
+  scale,
+  yOf,
+  plotRight,
+  width,
+}: {
+  readonly scale: BpmScale;
+  readonly yOf: (bpm: number) => number;
+  readonly plotRight: number;
+  readonly width: number;
+}): ReactNode {
+  return (
+    <>
+      {scale.ticks.map((tick) => (
+        <G key={`b${String(tick)}`}>
+          <Line
+            x1={PAD_X}
+            y1={yOf(tick)}
+            x2={plotRight}
+            y2={yOf(tick)}
+            stroke={colors.danger}
+            strokeOpacity={0.12}
+            strokeWidth={1}
+            strokeDasharray="1 4"
+          />
+          <Text
+            x={width - 4}
+            y={yOf(tick) + 3}
+            fontSize={9}
+            fontWeight="700"
+            fill={colors.danger}
+            fillOpacity={0.8}
+            textAnchor="end"
+          >
+            {String(tick)}
+          </Text>
+        </G>
+      ))}
+      <Text
+        x={width - 4}
+        y={PAD_TOP - 6}
+        fontSize={8}
+        fontWeight="800"
+        fill={colors.danger}
+        fillOpacity={0.8}
+        textAnchor="end"
+      >
+        BPM
+      </Text>
+    </>
+  );
+}
+
+/** The heart-rate curve with a soft fill, plotted on its own bpm axis. */
 function HeartRateLayer({
   samples,
   from,
   to,
   xOf,
+  scale,
+  plotRight,
+  width,
 }: {
   readonly samples: readonly HeartRateSample[];
   readonly from: number;
   readonly to: number;
   readonly xOf: (t: number) => number;
+  readonly scale: BpmScale;
+  readonly plotRight: number;
+  readonly width: number;
 }): ReactNode {
   const gradientId = `hr-${useId().replaceAll(/[^a-zA-Z0-9]/gu, "")}`;
   const runs = heartRateRuns(samples, { from, to });
-  if (runs.length === 0) {
-    return null;
-  }
-  const bpms = runs.flat().map((sample) => sample.bpm);
-  const low = Math.min(...bpms);
-  const high = Math.max(...bpms);
-  const min = low - 6;
-  const max = high + 6;
   const yOf = (bpm: number): number =>
-    PAD_TOP + (1 - (bpm - min) / Math.max(1, max - min)) * (PLOT_BOTTOM - PAD_TOP);
+    PAD_TOP +
+    (1 - (bpm - scale.min) / Math.max(1, scale.max - scale.min)) * (PLOT_BOTTOM - PAD_TOP);
   return (
     <>
+      <BpmAxis scale={scale} yOf={yOf} plotRight={plotRight} width={width} />
       <Defs>
         <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={colors.danger} stopOpacity={0.16} />
@@ -333,21 +390,21 @@ export function SnakeChart({
   const [measured, setMeasured] = useState(0);
   const width = fixedWidth ?? measured;
   const span = Math.max(1, endedAt - startedAt);
-  const plotWidth = Math.max(0, width - PAD_X * 2);
+  const scale = bpmScale(
+    heartRateRuns(heartRate ?? [], { from: startedAt, to: endedAt })
+      .flat()
+      .map((sample) => sample.bpm),
+  );
+  // With a heart-rate trace the plot leaves a right gutter for the bpm axis.
+  const plotRight = width - (scale === undefined ? PAD_X : HR_AXIS);
+  const plotWidth = Math.max(0, plotRight - PAD_X);
   const maxLead = Math.max(3, ...steps.map((step) => Math.abs(step.lead)));
   const geometry: Geometry = {
     xOf: (t) => PAD_X + Math.min(1, Math.max(0, (t - startedAt) / span)) * plotWidth,
     yOf: (lead) => ZERO_Y - (lead / maxLead) * HALF,
     maxLead,
   };
-  const endX = width - PAD_X;
-  const hrBpms = heartRateRuns(heartRate ?? [], { from: startedAt, to: endedAt })
-    .flat()
-    .map((sample) => sample.bpm);
-  const hrLabel =
-    hrBpms.length === 0
-      ? undefined
-      : `HEART RATE ${String(Math.round(Math.min(...hrBpms)))}–${String(Math.round(Math.max(...hrBpms)))}`;
+  const endX = plotRight;
 
   return (
     <View
@@ -360,9 +417,17 @@ export function SnakeChart({
     >
       {width > 0 && (
         <Svg width={width} height={CHART_HEIGHT}>
-          <LeadGuides geometry={geometry} width={width} />
-          {heartRate === undefined ? null : (
-            <HeartRateLayer samples={heartRate} from={startedAt} to={endedAt} xOf={geometry.xOf} />
+          <LeadGuides geometry={geometry} plotRight={plotRight} />
+          {heartRate === undefined || scale === undefined ? null : (
+            <HeartRateLayer
+              samples={heartRate}
+              from={startedAt}
+              to={endedAt}
+              xOf={geometry.xOf}
+              scale={scale}
+              plotRight={plotRight}
+              width={width}
+            />
           )}
           <LeadLayer steps={steps} geometry={geometry} endX={endX} />
           <Text x={PAD_X} y={CHART_HEIGHT - 6} fontSize={9} fontWeight="700" fill={textAlpha(0.35)}>
@@ -386,7 +451,7 @@ export function SnakeChart({
         {steps.some((step, index) => step.handOut && index > 0) ? (
           <LegendDot color={colors.text} label="SERVE CHANGE" square={true} />
         ) : null}
-        {hrLabel === undefined ? null : <LegendDot color={colors.danger} label={hrLabel} />}
+        {scale === undefined ? null : <LegendDot color={colors.danger} label="HEART RATE" />}
       </XStack>
     </View>
   );
