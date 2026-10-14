@@ -1,10 +1,4 @@
-import {
-  deleteMatch,
-  getMatch,
-  loadEvents,
-  loadMatchHeartRate,
-  setMatchNote,
-} from "@holy-padel/db";
+import { deleteMatch, getMatch, loadEvents, setMatchNote } from "@holy-padel/db";
 import type { SetStats, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats } from "@holy-padel/scoring";
 import { Redirect, useLocalSearchParams } from "expo-router";
@@ -15,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { ConfirmSheet } from "@/components/confirm-sheet.tsx";
 import { ChevronLeft } from "@/components/icons.tsx";
-import { ScoreRaceCard } from "@/components/score-race-card.tsx";
+import { MatchWorkoutSection } from "@/components/match-workout-section.tsx";
 import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { isHealthLogAvailable, logMatchWorkout } from "@/health/health-log.ts";
@@ -191,7 +185,6 @@ export default function MatchOverviewScreen(): ReactNode {
 
   const match = useDbQuery((driver) => getMatch(driver, id));
   const events = useDbQuery((driver) => loadEvents(driver, id));
-  const heartRate = useDbQuery((driver) => loadMatchHeartRate(driver, id));
 
   if (match === undefined) {
     // Deleted or unknown match (stale link, back after delete): recover home.
@@ -365,10 +358,11 @@ export default function MatchOverviewScreen(): ReactNode {
           })}
         </YStack>
 
-        <ScoreRaceCard
+        <MatchWorkoutSection
+          matchId={id}
+          matchStartedAt={match.startedAt}
           series={series}
           sport={match.config.sport}
-          {...(heartRate === undefined ? {} : { heartRate })}
         />
 
         <Card borderRadius={20} paddingVertical={16} paddingHorizontal={17} gap={13}>

@@ -1,12 +1,21 @@
-import type { CourtSide, SqlDriver, TeamPlayers } from "@holy-padel/db";
+import type {
+  CourtSide,
+  HeartRateSample,
+  MotionSample,
+  SqlDriver,
+  TeamPlayers,
+} from "@holy-padel/db";
 import {
   appendEvents,
   countMatches,
   createMatch,
   createPlayer,
   finishMatch,
+  getMatch,
   inTransaction,
   listPlayers,
+  saveMatchHeartRate,
+  saveMatchMotion,
 } from "@holy-padel/db";
 import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
@@ -247,6 +256,35 @@ function seedFinishedMatch(driver: SqlDriver, plan: MatchPlan, now: number): voi
   });
 }
 
+const HR_STEP_MS = 5000;
+const MOTION_STEP_MS = 10_000;
+
+/**
+ * Watch data for the latest finished match, so the demo shows the heart-rate
+ * curve and per-game steps/distance. Deterministic waves, not random noise,
+ * so screenshots and e2e assertions stay stable.
+ */
+function seedWatchData(driver: SqlDriver, matchId: string): void {
+  const match = getMatch(driver, matchId);
+  if (match?.endedAt === undefined) {
+    return;
+  }
+  const { startedAt, endedAt } = match;
+  const heartRate: HeartRateSample[] = [];
+  for (let t = startedAt; t <= endedAt; t += HR_STEP_MS) {
+    const minutes = (t - startedAt) / MINUTE_MS;
+    const bpm = 138 + 14 * Math.sin(minutes / 2.3) + 6 * Math.sin(minutes * 1.7);
+    heartRate.push({ t, bpm: Math.round(bpm) });
+  }
+  const motion: MotionSample[] = [];
+  for (let t = startedAt + MOTION_STEP_MS; t <= endedAt; t += MOTION_STEP_MS) {
+    const steps = Math.round(13 + 6 * Math.sin((t - startedAt) / 47_000));
+    motion.push({ t, steps, meters: Math.round(steps * 6.8) / 10 });
+  }
+  saveMatchHeartRate(driver, matchId, heartRate);
+  saveMatchMotion(driver, matchId, motion);
+}
+
 function seedLiveMatch(driver: SqlDriver, now: number): void {
   const startedAt = now - 47 * MINUTE_MS;
   createMatch(driver, {
@@ -310,6 +348,7 @@ export function seedIfEmpty(driver: SqlDriver): void {
     for (const plan of FINISHED) {
       seedFinishedMatch(driver, plan, now);
     }
+    seedWatchData(driver, "seed-12");
     seedLiveMatch(driver, now);
   });
 }
