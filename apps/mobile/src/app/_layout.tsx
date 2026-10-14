@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { Text, View } from "react-native";
 import { TamaguiProvider } from "tamagui";
 import { DbProvider } from "@/db/provider.tsx";
+import { LiveNotificationSync } from "@/live/use-live-notification.ts";
 import { tamaguiConfig } from "@/tamagui.config.ts";
 import { colors } from "@/theme/colors.ts";
 import { ThemeController, useThemeMode } from "@/theme/theme.tsx";
@@ -72,6 +73,7 @@ export default function RootLayout(): ReactNode {
       <DbProvider>
         <ThemeController />
         <WatchSync />
+        <LiveNotificationSync />
         <Stack
           screenOptions={{
             headerShown: false,

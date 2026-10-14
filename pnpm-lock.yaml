@@ -83,6 +83,9 @@ importers:
       health-log:
         specifier: link:./modules/health-log
         version: link:modules/health-log
+      live-notification:
+        specifier: link:./modules/live-notification
+        version: link:modules/live-notification
       lucide-react-native:
         specifier: 1.23.0
         version: 1.23.0(react-native-svg@15.15.4(react-native@0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.86.0(@babel/core@7.29.7)(@react-native/metro-config@0.86.0(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)

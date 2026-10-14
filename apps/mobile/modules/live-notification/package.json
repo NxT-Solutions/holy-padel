@@ -1,0 +1,6 @@
+{
+  "name": "live-notification",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ongoing Android notification with the live score and quick scoring buttons"
+}

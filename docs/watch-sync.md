@@ -197,6 +197,21 @@ Both platforms are compiled on every change by the
 Swift via `xcodebuild`). End-to-end Bluetooth pairing is only exercisable on
 physically paired devices.
 
+## Other mirrors of the same state
+
+The Android live notification renders the live match without opening the app. Like the
+watches, it scores nothing itself.
+
+- **Android live notification** (`apps/mobile/src/live`, native module
+  `modules/live-notification`): an ongoing notification built from the same
+  gathered input as the watch payload (`buildLiveNotification`). It carries the
+  point score, the match line, a running match clock, and **+ team** / **UNDO**
+  buttons (**RESUME** while paused). A button tap comes back as an `onAction`
+  event and is applied through `applyWatchIntent`, exactly like a watch intent.
+  On Android 16 the notification asks to be promoted to a Live Update, which shows
+  the point score as a status-bar chip. The notification permission is requested
+  once, the first time a match is live.
+
 ## Notes
 
 - The watch UI derives entirely from `phase`: `idle` → quick-start card,

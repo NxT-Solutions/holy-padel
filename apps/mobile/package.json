@@ -36,6 +36,7 @@
     "expo-status-bar": "~57.0.0",
     "expo-system-ui": "~57.0.0",
     "health-log": "link:./modules/health-log",
+    "live-notification": "link:./modules/live-notification",
     "lucide-react-native": "1.23.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
