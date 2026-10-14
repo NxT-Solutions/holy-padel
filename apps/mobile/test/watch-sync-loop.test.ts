@@ -1,5 +1,5 @@
 import type { SqlDriver, TeamPlayers } from "@holy-padel/db";
-import { createMatch, createPlayer, getMatch, migrate } from "@holy-padel/db";
+import { createMatch, createPlayer, getMatch, migrate, setSetting } from "@holy-padel/db";
 import type { MatchConfig } from "@holy-padel/scoring";
 import { describe, expect, it } from "vitest";
 import { applyWatchIntent, INTENT_PATHS } from "../src/watch/apply-intent.ts";
@@ -108,5 +108,16 @@ describe("watch sync loop", () => {
     applyWatchIntent(driver, { path: INTENT_PATHS.stop, body: "" }, ctx);
 
     expect(currentState(driver).phase).toBe("idle");
+  });
+
+  it("carries the user's colours, defaulting to orange and violet", () => {
+    const driver = freshDb();
+    expect(currentState(driver).palette).toEqual({ accent: "#FF6B35", teamB: "#8B7CFF" });
+
+    setSetting(driver, "accentColor", "mint");
+    setSetting(driver, "teamBColor", "teal");
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    expect(currentState(driver).palette).toEqual({ accent: "#2EE6A0", teamB: "#12A594" });
   });
 });

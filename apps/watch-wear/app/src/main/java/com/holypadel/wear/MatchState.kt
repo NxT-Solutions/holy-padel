@@ -11,6 +11,16 @@ data class WonState(val winnerShort: String, val scoreLine: String, val duration
 
 data class LastState(val line: String, val won: Boolean)
 
+/** The user's highlight and Team B colours as ARGB — mirrored from the phone's Settings. */
+data class Palette(val accent: Long, val teamB: Long)
+
+/** `#RRGGBB` → opaque ARGB, or null when it isn't a 6-digit hex colour. */
+internal fun parseHexColor(hex: String): Long? {
+    val digits = hex.removePrefix("#")
+    if (digits.length != 6) return null
+    return digits.toLongOrNull(16)?.let { it or 0xFF000000L }
+}
+
 /**
  * The mirrored match state pushed by the phone. See docs/watch-sync.md — the
  * watch renders this and never computes score itself.
@@ -34,6 +44,8 @@ data class MatchState(
     val choicePending: Boolean,
     val won: WonState?,
     val last: LastState?,
+    /** Null from older phone builds — the watch keeps its built-in colours. */
+    val palette: Palette? = null,
 ) {
     companion object {
         val IDLE = MatchState(
@@ -75,6 +87,11 @@ data class MatchState(
             val last = root.optJSONObject("last")?.let {
                 LastState(it.optString("line"), it.optBoolean("won", false))
             }
+            val palette = root.optJSONObject("palette")?.let {
+                val accent = parseHexColor(it.optString("accent"))
+                val teamB = parseHexColor(it.optString("teamB"))
+                if (accent != null && teamB != null) Palette(accent, teamB) else null
+            }
             return MatchState(
                 phase = phase,
                 clock = root.optString("clock"),
@@ -91,6 +108,7 @@ data class MatchState(
                 choicePending = root.optBoolean("choicePending", false),
                 won = won,
                 last = last,
+                palette = palette,
             )
         }
     }

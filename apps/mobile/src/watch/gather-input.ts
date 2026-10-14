@@ -8,6 +8,7 @@ import {
   setSetting,
 } from "@holy-padel/db";
 import { computeMatch } from "@holy-padel/scoring";
+import { loadColorSetting, paletteFor } from "@/theme/color-setting.ts";
 import type { WatchStateInput } from "./build-state.ts";
 
 /** The finished match whose MATCH WON screen the watch has dismissed. */
@@ -19,7 +20,7 @@ const WON_ACK_KEY = "watchWonAck";
  */
 export const WON_HOLD_MS = 30 * 60 * 1000;
 
-export type GatheredInput = Pick<WatchStateInput, "ownerId" | "live" | "last">;
+export type GatheredInput = Pick<WatchStateInput, "ownerId" | "live" | "last" | "palette">;
 
 /**
  * Dismiss the watch's MATCH WON screen for the latest finished match — the
@@ -44,21 +45,22 @@ export function acknowledgeWon(driver: SqlDriver): void {
 export function gatherWatchInput(driver: SqlDriver, now: number): GatheredInput {
   const owner = getOwner(driver);
   const ownerId = owner === undefined ? "nico" : owner.id;
+  const palette = paletteFor(loadColorSetting(driver));
   const live = getLiveMatch(driver);
   if (live !== undefined) {
     const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
-    return { ownerId, live: { match: live, snapshot } };
+    return { ownerId, palette, live: { match: live, snapshot } };
   }
   const last = listMatches(driver).find((match) => match.status === "finished");
   if (last === undefined) {
-    return { ownerId };
+    return { ownerId, palette };
   }
   const fresh = now - (last.endedAt ?? 0) <= WON_HOLD_MS;
   if (fresh && getSetting(driver, WON_ACK_KEY) !== last.id) {
     const snapshot = computeMatch(last.config, loadEvents(driver, last.id));
     if (snapshot.finished) {
-      return { ownerId, live: { match: last, snapshot } };
+      return { ownerId, palette, live: { match: last, snapshot } };
     }
   }
-  return { ownerId, last };
+  return { ownerId, palette, last };
 }

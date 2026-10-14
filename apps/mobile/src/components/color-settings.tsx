@@ -3,8 +3,9 @@ import { Pressable } from "react-native";
 import { View, XStack, YStack } from "tamagui";
 import { Body } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
+import { loadColorSetting } from "@/theme/color-setting.ts";
 import { ACCENT_CHOICES, colors, TEAM_B_CHOICES, textAlpha } from "@/theme/colors.ts";
-import { loadColorSetting, useSetColorSetting } from "@/theme/theme.tsx";
+import { useSetColorSetting } from "@/theme/theme.tsx";
 
 /** One round swatch; the picked one gets a ring in the text colour. */
 function Swatch({

@@ -27,6 +27,12 @@ struct LastState: Decodable {
     var won: Bool = false
 }
 
+/// The user's highlight and Team B colours as `#RRGGBB` (see Court.apply).
+struct PaletteState: Decodable {
+    var accent: String = ""
+    var teamB: String = ""
+}
+
 struct MatchState: Decodable {
     var v: Int = 1
     var phase: Phase = .idle
@@ -49,6 +55,8 @@ struct MatchState: Decodable {
     var startedAt: Double?
     var won: WonState?
     var last: LastState?
+    /// Nil from older phone builds — the watch keeps its built-in colours.
+    var palette: PaletteState?
 
     /// The blank state shown before the phone has pushed anything.
     static let idle = MatchState()
@@ -57,7 +65,7 @@ struct MatchState: Decodable {
 extension MatchState {
     private enum CodingKeys: String, CodingKey {
         case v, phase, clock, court, setLabel, teamA, teamB, pointA, pointB, games, status,
-            paused, choicePending, startedAt, won, last
+            paused, choicePending, startedAt, won, last, palette
     }
 
     /// Decode defensively: a missing or malformed field falls back to its default
@@ -81,5 +89,6 @@ extension MatchState {
         startedAt = try c.decodeIfPresent(Double.self, forKey: .startedAt)
         won = try c.decodeIfPresent(WonState.self, forKey: .won)
         last = try c.decodeIfPresent(LastState.self, forKey: .last)
+        palette = try? c.decodeIfPresent(PaletteState.self, forKey: .palette)
     }
 }

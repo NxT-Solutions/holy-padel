@@ -43,7 +43,12 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "last": {                       // present when phase = "idle" (quick-start hint)
     "line": "6-3 7-6 vs M&L",
     "won": true
-  }
+  },
+  "palette": {                    // the user's colours from Settings, always sent;
+    "accent": "#FF6B35",          // the bright (on-ink) highlight variant
+    "teamB": "#8B7CFF"            // Team B's colour
+  }                               // additive: a watch that ignores it keeps its
+                                  // built-in orange / violet
 }
 ```
 

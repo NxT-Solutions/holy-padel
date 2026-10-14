@@ -26,7 +26,10 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
               let data = json.data(using: .utf8),
               let decoded = try? JSONDecoder().decode(MatchState.self, from: data)
         else { return }
-        DispatchQueue.main.async { self.state = decoded }
+        DispatchQueue.main.async {
+            Court.apply(decoded.palette)
+            self.state = decoded
+        }
     }
 
     /// Every outgoing intent flows through here: instant local haptic, then the

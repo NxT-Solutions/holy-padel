@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { Appearance, useColorScheme } from "react-native";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { ACCENT_KEY, loadColorSetting, TEAM_B_KEY } from "@/theme/color-setting.ts";
 import {
   appliedColors,
   applyColors,
@@ -25,20 +26,6 @@ function resolveTheme(setting: ThemeSetting | undefined, systemDark: boolean): T
 }
 
 const SETTING_KEY = "theme";
-const ACCENT_KEY = "accentColor";
-const TEAM_B_KEY = "teamBColor";
-
-/** The user's colour picks (ids); undefined = the default (orange / violet). */
-export interface ColorSetting {
-  readonly accent: string | undefined;
-  readonly teamB: string | undefined;
-}
-
-/** Read the persisted accent and Team B colour choices. */
-export function loadColorSetting(driver: SqlDriver): ColorSetting {
-  return { accent: getSetting(driver, ACCENT_KEY), teamB: getSetting(driver, TEAM_B_KEY) };
-}
-
 /** Read the persisted theme setting (undefined = follow the system). */
 export function loadThemeSetting(driver: SqlDriver): ThemeSetting | undefined {
   const value = getSetting(driver, SETTING_KEY);

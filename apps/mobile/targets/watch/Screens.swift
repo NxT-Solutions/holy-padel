@@ -103,6 +103,7 @@ private struct ScoreTab: View {
                     point: state.pointA,
                     serving: state.teamA.serving,
                     servingSide: state.teamA.servingSide,
+                    color: Court.accent,
                     paused: state.paused,
                     onTap: { onScore("A") }
                 )
@@ -112,6 +113,7 @@ private struct ScoreTab: View {
                     point: state.pointB,
                     serving: state.teamB.serving,
                     servingSide: state.teamB.servingSide,
+                    color: Court.teamB,
                     paused: state.paused,
                     onTap: { onScore("B") }
                 )
@@ -260,6 +262,8 @@ private struct TeamScoreRow: View {
     let point: String
     let serving: Bool
     let servingSide: String?
+    /// The team's colour — accent for A, Team B's for B, as on the phone.
+    let color: Color
     let paused: Bool
     let onTap: () -> Void
 
@@ -270,7 +274,7 @@ private struct TeamScoreRow: View {
                     ServingDot(active: serving && !paused, side: servingSide)
                     Text(short)
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Court.white)
+                        .foregroundStyle(color)
                         .lineLimit(1)
                 }
                 Spacer()

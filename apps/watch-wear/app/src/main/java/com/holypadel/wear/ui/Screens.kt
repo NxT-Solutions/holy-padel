@@ -218,6 +218,7 @@ private fun ScorePage(
                 point = state.pointA,
                 serving = state.teamA.serving,
                 servingSide = state.teamA.servingSide,
+                teamColor = CourtColors.Accent,
             )
             Box(
                 modifier = Modifier
@@ -235,6 +236,7 @@ private fun ScorePage(
                 point = state.pointB,
                 serving = state.teamB.serving,
                 servingSide = state.teamB.servingSide,
+                teamColor = CourtColors.TeamB,
             )
         }
 
@@ -474,7 +476,14 @@ private fun DrawScope.drawControlIcon(icon: ControlIcon, color: Color) {
 
 /** One team's half of the side-by-side score face: serve dot + name over the big point. */
 @Composable
-private fun TeamHalf(modifier: Modifier, short: String, point: String, serving: Boolean, servingSide: String?) {
+private fun TeamHalf(
+    modifier: Modifier,
+    short: String,
+    point: String,
+    serving: Boolean,
+    servingSide: String?,
+    teamColor: Color,
+) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -489,7 +498,7 @@ private fun TeamHalf(modifier: Modifier, short: String, point: String, serving: 
                 )
             }
             Spacer(Modifier.width(5.dp))
-            DisplayText(short, sizeSp = 16, color = CourtColors.White)
+            DisplayText(short, sizeSp = 16, color = teamColor)
         }
         DisplayText(point, sizeSp = 52, color = CourtColors.White)
     }

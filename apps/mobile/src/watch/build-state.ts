@@ -13,6 +13,7 @@ import {
   teamInitials,
   watchSetLabel,
 } from "@/lib/format.ts";
+import type { Palette } from "@/theme/color-setting.ts";
 
 /**
  * Builds the `/holy-padel/state` payload the phone pushes to the watches
@@ -68,6 +69,11 @@ export interface WatchState {
   readonly startedAt?: number;
   readonly won?: WatchWon;
   readonly last?: WatchLast;
+  /**
+   * The user's highlight and Team B colours as `#RRGGBB` — additive since
+   * payload v1; a watch that ignores it keeps its built-in orange / violet.
+   */
+  readonly palette?: Palette;
 }
 
 export interface WatchStateInput {
@@ -79,18 +85,24 @@ export interface WatchStateInput {
   readonly live?: { readonly match: MatchSummary; readonly snapshot: MatchSnapshot };
   /** Most recent finished match, shown as the idle quick-start hint. */
   readonly last?: MatchSummary;
+  /** The user's colours, mirrored onto the watch faces. */
+  readonly palette?: Palette;
 }
 
 const EMPTY_TEAM: WatchTeam = { short: "", serving: false };
 
 export function buildWatchState(input: WatchStateInput): WatchState {
-  const { live, last, now, ownerId } = input;
+  const { live, last, now, ownerId, palette } = input;
+  const paletteField = palette === undefined ? {} : { palette };
   if (live !== undefined) {
-    return live.snapshot.finished
-      ? wonState(live.match, live.snapshot, now)
-      : liveState(live.match, live.snapshot, now);
+    return {
+      ...(live.snapshot.finished
+        ? wonState(live.match, live.snapshot, now)
+        : liveState(live.match, live.snapshot, now)),
+      ...paletteField,
+    };
   }
-  return idleState(last, ownerId);
+  return { ...idleState(last, ownerId), ...paletteField };
 }
 
 function courtField(match: MatchSummary): { court?: string } {
