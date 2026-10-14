@@ -83,10 +83,31 @@ function isPadel(config: MatchConfig): boolean {
   return config.sport === undefined || config.sport === "padel";
 }
 
+/** Hand-in/hand-out squash and side-out pickleball: only the serving side can score. */
+function onlyServerScores(config: MatchConfig): boolean {
+  return (
+    config.sport === "pickleball" || (config.sport === "squash" && config.squashMode === "hiho")
+  );
+}
+
+/**
+ * Who can actually take the game on this rally. Where only the server scores,
+ * a receiver on game ball can only win the serve back — not a chance to close,
+ * and nothing for the server to save — so only the server's game ball counts.
+ */
+function gameOnTheLine(before: MatchSnapshot): TeamId | "both" | undefined {
+  const onPoint = onGamePoint(before.moment);
+  if (onPoint === undefined || !onlyServerScores(before.config)) {
+    return onPoint;
+  }
+  const server = before.servingTeam;
+  return onPoint === "both" || onPoint === server ? server : undefined;
+}
+
 /** Tally one rally into the running clutch record. */
 function tallyRally(clutch: Clutch, before: MatchSnapshot, winner: TeamId, team: TeamId): Clutch {
   const won = winner === team;
-  const onPoint = onGamePoint(before.moment);
+  const onPoint = gameOnTheLine(before);
   let next: Clutch = { ...clutch, points: count(clutch.points, won) };
   if (onPoint === undefined) {
     return next;

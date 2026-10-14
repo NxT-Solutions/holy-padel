@@ -85,3 +85,30 @@ describe("matchTurnarounds", () => {
     expect(matchTurnarounds(golden, rallies("A".repeat(24)), "A")).toEqual([]);
   });
 });
+
+describe("matchClutch in hand-in/hand-out squash", () => {
+  const hiho: MatchConfig = {
+    sport: "squash",
+    bestOf: 1,
+    deuceMode: "advantage",
+    thirdSet: "fullSet",
+    squashMode: "hiho",
+    squashTarget: 9,
+    squashTiebreak: "winByTwo",
+    firstServe: "A",
+  };
+
+  it("only counts game ball when the side on it is serving", () => {
+    // A serves to 8-0 (game ball), loses the serve, B serves and wins 1 point
+    // (A still on game ball but receiving), then A wins the serve back and the game.
+    const events = rallies(`${"A".repeat(8)}BBAA`);
+    const a = matchClutch(hiho, events, "A");
+    const b = matchClutch(hiho, events, "B");
+
+    // A's real chances: 8-0 on serve (lost the rally), then 8-1 on serve (won it).
+    expect(a.closing).toEqual({ won: 1, of: 2 });
+    // While B served at 0-8 / 1-8, A wasn't one rally from the game.
+    expect(b.saving).toEqual({ won: 1, of: 2 });
+    expect(b.closing).toEqual({ won: 0, of: 0 });
+  });
+});
