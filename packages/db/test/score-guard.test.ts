@@ -1,6 +1,13 @@
 import type { MatchConfig } from "@holy-padel/scoring";
 import { describe, expect, it } from "vitest";
-import { createMatch, loadEvents, pauseMatch, scorePoint } from "../src/index.ts";
+import {
+  createMatch,
+  getMatch,
+  loadEvents,
+  pauseMatch,
+  removeLastEvent,
+  scorePoint,
+} from "../src/index.ts";
 import { newMatch, seededDriver } from "./fixtures.ts";
 
 // Single set, love games — 24 points and A wins 6-0.
@@ -38,6 +45,38 @@ describe("scorePoint guard", () => {
     createMatch(driver, newMatch("m1", { config: SINGLE_SET }));
     pauseMatch(driver, "m1", 500);
     scorePoint(driver, "m1", "A", 600);
+    expect(loadEvents(driver, "m1")).toHaveLength(0);
+  });
+});
+
+describe("undecided serve flows through scorePoint", () => {
+  const Undecided: MatchConfig = {
+    ...SINGLE_SET,
+    firstServePending: true,
+    firstServeOriginallyUndecided: true,
+  };
+
+  it("a tap with an undecided first serve chooses the server, scoring no rally", () => {
+    const driver = seededDriver();
+    createMatch(driver, newMatch("m1", { config: Undecided }));
+    scorePoint(driver, "m1", "B", 1);
+    expect(loadEvents(driver, "m1")).toHaveLength(0);
+    // The pending flag cleared and the serve went to B — the next tap scores.
+    scorePoint(driver, "m1", "A", 2);
+    expect(loadEvents(driver, "m1").map((event) => event.winner)).toEqual(["A"]);
+  });
+
+  it("undoing back to an empty ledger restores an originally-undecided first serve", () => {
+    const driver = seededDriver();
+    createMatch(driver, newMatch("m1", { config: Undecided }));
+    scorePoint(driver, "m1", "A", 1); // chooses the server
+    scorePoint(driver, "m1", "A", 2); // first rally
+    removeLastEvent(driver, "m1");
+    removeLastEvent(driver, "m1");
+    const restored = getMatch(driver, "m1");
+    expect(restored?.config.firstServePending).toBe(true);
+    // The tap-to-decide flow works again after the undo.
+    scorePoint(driver, "m1", "B", 3);
     expect(loadEvents(driver, "m1")).toHaveLength(0);
   });
 });

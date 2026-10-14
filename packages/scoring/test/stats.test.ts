@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeStats } from "../src/index.ts";
+import type { MatchConfig } from "../src/index.ts";
+import { computeMatch, computeStats } from "../src/index.ts";
 import { ADVANTAGE_MATCH, gamesToSixAll, loveGame, points } from "./helpers.ts";
 
 describe("match statistics", () => {
@@ -60,5 +61,34 @@ describe("match statistics", () => {
       expect(stats.durationMs).toBe(last.at - first.at);
     }
     expect(stats.sets[0]?.durationMs).toBe(stats.durationMs);
+  });
+
+  it("tracks the longest run of consecutive rallies", () => {
+    // A 3, B 4, A 2 — the squash headline run is B's four straight rallies.
+    const stats = computeStats(ADVANTAGE_MATCH, points("AAABBBBAA"));
+    expect(stats.longestRun).toEqual({ team: "B", count: 4 });
+  });
+
+  it("counts HI-HO hand-outs toward a run without scoring them", () => {
+    const config: MatchConfig = {
+      sport: "squash",
+      bestOf: 1,
+      deuceMode: "advantage",
+      thirdSet: "fullSet",
+      squashMode: "hiho",
+      squashTarget: 11,
+      squashTiebreak: "winByTwo",
+      firstServe: "A",
+    };
+    // A serves and loses the opener (hand-out), B then wins four more, A one.
+    const events = points("BBBBBA");
+    const stats = computeStats(config, events);
+    expect(stats.longestRun).toEqual({ team: "B", count: 5 });
+    // HI-HO: only the server scores, so the game stands at 4-0 to B even
+    // though every rally counts toward the run.
+    expect(computeMatch(config, events).currentGame).toMatchObject({
+      kind: "squash",
+      points: { A: 0, B: 4 },
+    });
   });
 });

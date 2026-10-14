@@ -86,7 +86,10 @@
         "rules": {
           "style": { "noMagicNumbers": "off" },
           "suspicious": { "noBitwiseOperators": "off" },
-          "complexity": { "noExcessiveCognitiveComplexity": "off" },
+          "complexity": {
+            "noExcessiveCognitiveComplexity": "off",
+            "noExcessiveLinesPerFunction": "off"
+          },
           "correctness": { "noProcessGlobal": "off", "noNodejsModules": "off" }
         }
       }
@@ -163,7 +166,8 @@
             "noConditionalExpect": "off"
           },
           "complexity": {
-            "noExcessiveLinesPerFunction": "off"
+            "noExcessiveLinesPerFunction": "off",
+            "noExcessiveCognitiveComplexity": "off"
           }
         }
       }

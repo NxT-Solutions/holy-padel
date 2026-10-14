@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
-  armConfirm,
+  confirmSheet,
   expectPoints,
   gotoHome,
   gotoLive,
@@ -11,8 +11,8 @@ import {
 
 test.describe("multi-match journeys", () => {
   test("a rematch chain persists every result", async ({ page }) => {
-    // Regression guard: usePersistFinish must re-arm when REMATCH replaces
-    // the route param without remounting the screen.
+    // Regression guard: every match in a REMATCH chain is saved, even though
+    // the route param changes without remounting the screen.
     await gotoHome(page);
     await startNewMatch(page, { bestOf: 1 });
     await winLoveGames(page, "A", 6);
@@ -21,40 +21,69 @@ test.describe("multi-match journeys", () => {
     await page.getByRole("button", { name: "REMATCH", exact: true }).click();
     await expectPoints(page, "0", "0");
     await winLoveGames(page, "B", 6);
-    await expect(page.getByText("MATCH WON")).toBeVisible();
-    await page.getByRole("button", { name: "SAVE & CLOSE" }).click();
+    await expect(page.getByText("MATCH LOST")).toBeVisible();
+    await page.getByRole("button", { name: "DONE", exact: true }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
-    // Both new matches are finished; only the seeded live match remains live.
+    // Both new matches are finished, and the seeded live match was saved
+    // (Nico & Javi ahead) when the first one started — nothing is left live.
     await page.goto("/matches");
     await expect(page.getByText("15 stored locally")).toBeVisible({ timeout: 90_000 });
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(0);
 
-    // Profile counted one win and one loss.
+    // Profile counted the saved seed match and the chain's win, plus one loss.
     await page.goto("/profile");
-    await expect(page.getByText("9–5", { exact: true })).toBeVisible();
+    await expect(page.getByText("10–5", { exact: true }).first()).toBeVisible();
   });
 
-  test("two live matches keep separate scores end to end", async ({ page }) => {
+  test("starting a match while one is live saves the old one first", async ({ page }) => {
     await gotoHome(page);
-    await startNewMatch(page); // fresh live match alongside seed-live
+    await startNewMatch(page); // confirms "SAVE & START NEW" for seed-live
     await score(page, "B", 2);
     await expectPoints(page, "0", "30");
 
-    // The older live match is untouched.
-    await gotoLive(page, "seed-live");
-    await expectPoints(page, "40", "30");
-    await score(page, "A", 1); // game -> 5-3
-    await expect(page.getByTestId("set-chip-set-2")).toHaveText("5–3");
+    // Only the new match is live — the seeded one wasn't left orphaned.
+    await page.goto("/matches");
+    await expect(page.getByText("stored locally")).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
 
-    // The newer one still holds its own score, and home tracks the newer one.
+    // Home tracks the new match.
     await page.goto("/");
     await expect(page.getByTestId("home-point-A")).toHaveText("0", { timeout: 90_000 });
     await expect(page.getByTestId("home-point-B")).toHaveText("30");
     await expect(page.getByTestId("home-score-line")).toHaveText("0-0");
   });
 
-  test("the result is saved even without pressing SAVE & CLOSE", async ({ page }) => {
+  test("a match started and left straight away shows on home at once", async ({ page }) => {
+    // Regression: home's live-card snapshot query was cached for the new DB
+    // version with the previous render's (old) live match, so leaving a just-
+    // started match showed the old score — or no card — until another write.
+    await gotoHome(page);
+    await startNewMatch(page); // saves the seeded live match, starts a fresh one
+    await page.goBack();
+    await expect(page.getByText("HOLA, NICO")).toBeVisible();
+    await expect(page.getByTestId("home-point-A")).toHaveText("0");
+    await expect(page.getByTestId("home-point-B")).toHaveText("0");
+    await expect(page.getByTestId("home-score-line")).toHaveText("0-0");
+  });
+
+  test("a mis-tapped match point can be undone from the result screen", async ({ page }) => {
+    await gotoLive(page, "seed-live");
+    await score(page, "A", 1); // game -> 5-3
+    await winLoveGames(page, "A", 1); // 6-3: match
+    await expect(page.getByText("MATCH WON")).toBeVisible();
+
+    await page.getByRole("button", { name: "Undo last point" }).click();
+    await expectPoints(page, "40", "0");
+    await expect(page.getByTestId("set-chip-set-2")).toHaveText("5–3");
+
+    // Back in play: the match is live again, not saved as a win.
+    await page.goto("/matches");
+    await expect(page.getByText("stored locally")).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
+  });
+
+  test("the result is saved even without pressing DONE", async ({ page }) => {
     await gotoLive(page, "seed-live");
     await score(page, "A", 1);
     await winLoveGames(page, "A", 1);
@@ -76,8 +105,8 @@ test.describe("multi-match journeys", () => {
   }) => {
     await page.goto("/match/seed-12");
     await expect(page.getByText("DEF. MARTA & LEO")).toBeVisible({ timeout: 90_000 });
-    armConfirm(page, true);
-    await page.getByText("DELETE MATCH").click();
+    await page.getByTestId("delete-match").click();
+    await confirmSheet(page);
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
     // Returning to the deleted id must not leave a blank screen.

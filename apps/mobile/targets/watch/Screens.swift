@@ -36,7 +36,7 @@ struct IdleView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .foregroundStyle(Court.ink)
-                .background(Court.lime, in: Capsule())
+                .background(Court.accent, in: Capsule())
             }
             .buttonStyle(.plain)
 
@@ -60,6 +60,7 @@ struct LiveView: View {
     let liveBpm: Int
     let onScore: (String) -> Void
     let onUndo: () -> Void
+    let onSetChoice: (String) -> Void
     let onPause: () -> Void
     let onStop: () -> Void
     let onCancel: () -> Void
@@ -76,37 +77,45 @@ struct LiveView: View {
         TabView(selection: $tab) {
             ControlsTab(state: state, onUndo: onUndo, onPause: onPause, onStop: onStop, onCancel: onCancel)
                 .tag(Tab.controls)
-            ScoreTab(state: state, liveBpm: liveBpm, onScore: onScore)
+            ScoreTab(state: state, liveBpm: liveBpm, onScore: onScore, onSetChoice: onSetChoice)
                 .tag(Tab.score)
         }
         .tabViewStyle(.page)
     }
 }
 
-/// The score face — the only thing on screen is the two tappable team rows.
+/// The score face — the only thing on screen is the two tappable team rows,
+/// or, during a squash "choice" tie-break, the mandatory SHORT/LONG decision.
 private struct ScoreTab: View {
     let state: MatchState
     let liveBpm: Int
     let onScore: (String) -> Void
+    let onSetChoice: (String) -> Void
 
     var body: some View {
         VStack(spacing: 4) {
             header
-            TeamScoreRow(
-                short: state.teamA.short,
-                point: state.pointA,
-                serving: state.teamA.serving,
-                paused: state.paused,
-                onTap: { onScore("A") }
-            )
-            Rectangle().fill(Court.white.opacity(0.12)).frame(height: 1)
-            TeamScoreRow(
-                short: state.teamB.short,
-                point: state.pointB,
-                serving: state.teamB.serving,
-                paused: state.paused,
-                onTap: { onScore("B") }
-            )
+            if state.choicePending {
+                ChoiceButtons(onChoose: onSetChoice)
+            } else {
+                TeamScoreRow(
+                    short: state.teamA.short,
+                    point: state.pointA,
+                    serving: state.teamA.serving,
+                    servingSide: state.teamA.servingSide,
+                    paused: state.paused,
+                    onTap: { onScore("A") }
+                )
+                Rectangle().fill(Court.white.opacity(0.12)).frame(height: 1)
+                TeamScoreRow(
+                    short: state.teamB.short,
+                    point: state.pointB,
+                    serving: state.teamB.serving,
+                    servingSide: state.teamB.servingSide,
+                    paused: state.paused,
+                    onTap: { onScore("B") }
+                )
+            }
         }
         .padding(.horizontal, 14)
         .padding(.top, 2)
@@ -118,7 +127,7 @@ private struct ScoreTab: View {
             if liveBpm > 0 {
                 Text("\(liveBpm)♥")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Court.lime)
+                    .foregroundStyle(Court.accent)
             } else {
                 Text(state.clock)
                     .font(.system(size: 12, weight: .medium))
@@ -139,8 +148,8 @@ private struct ScoreTab: View {
                 }
             } else {
                 HStack(spacing: 3) {
-                    Circle().fill(Court.lime).frame(width: 6, height: 6)
-                    Text("LIVE").font(.system(size: 10, weight: .bold)).foregroundStyle(Court.lime)
+                    Circle().fill(Court.accent).frame(width: 6, height: 6)
+                    Text("LIVE").font(.system(size: 10, weight: .bold)).foregroundStyle(Court.accent)
                 }
             }
         }
@@ -163,7 +172,7 @@ private struct ControlsTab: View {
             Text(state.paused ? "PAUSED" : "CONTROLS")
                 .font(.system(size: 11, weight: .bold))
                 .tracking(1.5)
-                .foregroundStyle(state.paused ? Court.white.opacity(0.5) : Court.lime)
+                .foregroundStyle(state.paused ? Court.white.opacity(0.5) : Court.accent)
 
             HStack(spacing: 18) {
                 labeled("UNDO") {
@@ -175,7 +184,7 @@ private struct ControlsTab: View {
                     CircleIcon(
                         system: state.paused ? "play.fill" : "pause.fill",
                         tint: Court.ink,
-                        fill: Court.lime,
+                        fill: Court.accent,
                         diameter: 44,
                         action: onPause
                     )
@@ -191,7 +200,7 @@ private struct ControlsTab: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
                 .foregroundStyle(Court.ink)
-                .background(Court.lime, in: RoundedRectangle(cornerRadius: 12))
+                .background(Court.accent, in: RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)
 
@@ -250,6 +259,7 @@ private struct TeamScoreRow: View {
     let short: String
     let point: String
     let serving: Bool
+    let servingSide: String?
     let paused: Bool
     let onTap: () -> Void
 
@@ -257,7 +267,7 @@ private struct TeamScoreRow: View {
         Button(action: onTap) {
             HStack {
                 HStack(spacing: 6) {
-                    ServingDot(active: serving && !paused)
+                    ServingDot(active: serving && !paused, side: servingSide)
                     Text(short)
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Court.white)
@@ -277,6 +287,43 @@ private struct TeamScoreRow: View {
     }
 }
 
+/// The squash "choice" tie-break decision — short (play to the target) or
+/// long (one extra point). Mandatory: scoring is refused until a choice is
+/// staged, so these buttons replace the score rows while pending.
+private struct ChoiceButtons: View {
+    let onChoose: (String) -> Void
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("SET 1 OR 2?")
+                .font(.system(size: 15, weight: .heavy))
+                .foregroundStyle(Court.accent)
+            Button(action: { onChoose("one") }) {
+                choiceLabel("SHORT · SET 1", "next point wins")
+            }
+            .buttonStyle(.plain)
+            Button(action: { onChoose("two") }) {
+                choiceLabel("LONG · SET 2", "two more points")
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func choiceLabel(_ title: String, _ detail: String) -> some View {
+        VStack(spacing: 1) {
+            Text(title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Court.ink)
+            Text(detail)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Court.ink.opacity(0.55))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Court.accent))
+    }
+}
+
 // MARK: - Match won
 
 struct WonView: View {
@@ -287,7 +334,7 @@ struct WonView: View {
         VStack(spacing: 5) {
             Text("MATCH WON")
                 .font(.system(size: 20, weight: .heavy))
-                .foregroundStyle(Court.lime)
+                .foregroundStyle(Court.accent)
             Text(state.won?.winnerShort ?? state.teamA.short)
                 .font(.system(size: 26, weight: .black))
                 .foregroundStyle(Court.white)
@@ -306,7 +353,7 @@ struct WonView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .foregroundStyle(Court.ink)
-                    .background(Court.lime, in: Capsule())
+                    .background(Court.accent, in: Capsule())
             }
             .buttonStyle(.plain)
             .padding(.top, 4)
@@ -320,11 +367,20 @@ struct WonView: View {
 
 private struct ServingDot: View {
     let active: Bool
+    var side: String? = nil
 
     var body: some View {
-        Circle()
-            .fill(active ? Court.lime : Color.clear)
-            .frame(width: 8, height: 8)
+        ZStack {
+            Circle()
+                .fill(active ? Court.accent : Color.clear)
+                .frame(width: side != nil ? 14 : 8, height: side != nil ? 14 : 8)
+            
+            if active, let side = side {
+                Text(side == "right" ? "R" : "L")
+                    .font(.system(size: 8, weight: .black))
+                    .foregroundColor(Court.ink)
+            }
+        }
     }
 }
 
@@ -337,7 +393,7 @@ private struct ResultBadge: View {
             .foregroundStyle(won ? Court.ink : Court.white)
             .frame(width: 20, height: 20)
             .background(
-                won ? Court.lime : Court.white.opacity(0.15),
+                won ? Court.accent : Court.white.opacity(0.15),
                 in: RoundedRectangle(cornerRadius: 5)
             )
     }

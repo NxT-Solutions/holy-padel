@@ -77,6 +77,31 @@ describe("applyWatchIntent", () => {
     expect(live?.court).toBe("COURT 4");
   });
 
+  it("leaves the rematch's first serve undecided when the original was", () => {
+    const driver = freshDb();
+    createMatch(driver, {
+      id: "m1",
+      config: { ...config, firstServePending: true, firstServeOriginallyUndecided: true },
+      players,
+      startedAt: 0,
+    });
+    finishMatch(driver, "m1", { winner: "A", endedAt: 10, scoreLine: "6-0 · 6-0" });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
+
+    expect(getLiveMatch(driver)?.config.firstServePending).toBe(true);
+  });
+
+  it("resolves a decided first serve in the rematch", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    finishMatch(driver, "m1", { winner: "A", endedAt: 10, scoreLine: "6-0 · 6-0" });
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.startLast, body: "" }, ctx);
+
+    expect(getLiveMatch(driver)?.config.firstServePending).toBe(false);
+  });
+
   it("does not rematch while a match is already live", () => {
     const driver = freshDb();
     createMatch(driver, { id: "m1", config, players, startedAt: 0 });
@@ -164,5 +189,65 @@ describe("applyWatchIntent", () => {
     expect(getLiveMatch(driver)).toBeUndefined();
     expect(getMatch(driver, "m1")?.status).toBe("finished");
     expect(getMatch(driver, "m1")?.winner).toBe("B");
+  });
+});
+
+describe("undecided serves and the squash set choice", () => {
+  it("translates a score intent into taking the serve during pickleball game 2+", () => {
+    const driver = freshDb();
+    const pbConfig: MatchConfig = {
+      sport: "pickleball",
+      bestOf: 3,
+      deuceMode: "advantage",
+      thirdSet: "superTieBreak",
+      pbType: "doubles",
+      pbTarget: 11,
+      pbTiebreak: "winByTwo",
+      firstServe: "A",
+    };
+    createMatch(driver, { id: "m1", config: pbConfig, players, startedAt: 0 });
+
+    // A wins game 1 (11 straight rallies), then the watch taps B.
+    for (let i = 0; i < 11; i += 1) {
+      applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+    }
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "B" }, ctx);
+
+    const events = loadEvents(driver, "m1");
+    // 11 rallies for game 1, then a serve event — no rally scored for B.
+    expect(events).toHaveLength(12);
+    expect(events[11]?.kind).toBe("serve");
+    expect(events[11]?.winner).toBe("B");
+  });
+
+  it("stages the squash long/short decision via the set-choice intent", () => {
+    const driver = freshDb();
+    const squashConfig: MatchConfig = {
+      sport: "squash",
+      bestOf: 3,
+      deuceMode: "advantage",
+      thirdSet: "fullSet",
+      squashMode: "par",
+      squashTarget: 9,
+      squashTiebreak: "choice",
+      firstServe: "A",
+    };
+    createMatch(driver, { id: "m1", config: squashConfig, players, startedAt: 0 });
+
+    // 8-8 in PAR scoring.
+    const winners = "AAAAAAAABBBBBBBB";
+    for (const winner of winners) {
+      applyWatchIntent(driver, { path: INTENT_PATHS.score, body: winner }, ctx);
+    }
+    // A score before the decision is refused.
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+    expect(loadEvents(driver, "m1")).toHaveLength(16);
+
+    // The watch chooses long, then the rally carries it to 9-8, 10-8.
+    applyWatchIntent(driver, { path: INTENT_PATHS.setChoice, body: "two" }, ctx);
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+    expect(loadEvents(driver, "m1")).toHaveLength(18);
+    expect(loadEvents(driver, "m1")[16]?.gameSet).toBe("two");
   });
 });

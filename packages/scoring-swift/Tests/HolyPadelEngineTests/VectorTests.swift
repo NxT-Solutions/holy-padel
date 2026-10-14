@@ -17,6 +17,8 @@ private struct SerializedGame: Codable, Equatable {
     // tieBreak
     let tieBreakKind: String?
     let target: Int?
+    // pickleball
+    let serverNumber: Int?
 }
 
 private struct SerializedCalls: Codable, Equatable {
@@ -46,7 +48,9 @@ private struct SerializedSnapshot: Codable, Equatable {
     let setNumber: Int
     let currentSetGames: IntPair
     let currentGame: SerializedGame?
-    let servingTeam: String
+    let servingTeam: String?
+    let servingSide: String?
+
     let moment: SerializedMoment
     let totalGames: IntPair
     let totalPoints: IntPair
@@ -54,15 +58,28 @@ private struct SerializedSnapshot: Codable, Equatable {
 }
 
 private struct SerializedConfig: Codable, Equatable {
+    let sport: String?
     let bestOf: Int
-    let deuceMode: String
-    let thirdSet: String
+    let deuceMode: String?
+    let thirdSet: String?
     let firstServe: String
+    let squashMode: String?
+    let squashTarget: Int?
+    let squashTiebreak: String?
+    let squashServeBoxes: String?
+    let squashServeBoxA: String?
+    let squashServeBoxB: String?
+    let pbType: String?
+    let pbTarget: Int?
+    let pbTiebreak: String?
 }
 
 private struct GoldenVector: Codable {
     let config: SerializedConfig
     let winners: String
+    /// Squash "choice" tie-breaks only: one char per rally — "." none, "1" set
+    /// one, "2" set two. Null/missing for every other suite.
+    let gameSets: String?
     let snapshot: SerializedSnapshot
 }
 
@@ -81,7 +98,8 @@ private func serialize(_ game: CurrentGame?) -> SerializedGame? {
             calls: SerializedCalls(A: calls.A.rawValue, B: calls.B.rawValue),
             points: serialize(points),
             tieBreakKind: nil,
-            target: nil
+            target: nil,
+            serverNumber: nil
         )
     case let .tieBreak(tieBreakKind, target, points):
         return SerializedGame(
@@ -89,7 +107,26 @@ private func serialize(_ game: CurrentGame?) -> SerializedGame? {
             calls: nil,
             points: serialize(points),
             tieBreakKind: tieBreakKind.rawValue,
-            target: target
+            target: target,
+            serverNumber: nil
+        )
+    case let .squash(points):
+        return SerializedGame(
+            kind: "squash",
+            calls: nil,
+            points: serialize(points),
+            tieBreakKind: nil,
+            target: nil,
+            serverNumber: nil
+        )
+    case let .pickleball(points, serverNumber):
+        return SerializedGame(
+            kind: "pickleball",
+            calls: nil,
+            points: serialize(points),
+            tieBreakKind: nil,
+            target: nil,
+            serverNumber: serverNumber
         )
     }
 }
@@ -112,6 +149,8 @@ private func serialize(_ moment: Moment) -> SerializedMoment {
         return SerializedMoment(kind: "goldenPoint", team: nil, winner: nil, setNumber: nil)
     case .starPoint:
         return SerializedMoment(kind: "starPoint", team: nil, winner: nil, setNumber: nil)
+    case .setChoice:
+        return SerializedMoment(kind: "setChoice", team: nil, winner: nil, setNumber: nil)
     case let .tieBreak(setNumber):
         return SerializedMoment(kind: "tieBreak", team: nil, winner: nil, setNumber: setNumber)
     case .superTieBreak:
@@ -137,7 +176,9 @@ private func serialize(_ snap: MatchSnapshot) -> SerializedSnapshot {
         setNumber: snap.setNumber,
         currentSetGames: serialize(snap.currentSetGames),
         currentGame: serialize(snap.currentGame),
-        servingTeam: snap.servingTeam.rawValue,
+        servingTeam: snap.servingTeam?.rawValue,
+        servingSide: snap.servingSide,
+
         moment: serialize(snap.moment),
         totalGames: serialize(snap.totalGames),
         totalPoints: serialize(snap.totalPoints),
@@ -148,17 +189,46 @@ private func serialize(_ snap: MatchSnapshot) -> SerializedSnapshot {
 // MARK: - Config / events from the vector
 
 private func decodeConfig(_ c: SerializedConfig) -> MatchConfig {
-    MatchConfig(
-        bestOf: c.bestOf == 1 ? .one : .three,
-        deuceMode: DeuceMode(rawValue: c.deuceMode)!,
-        thirdSet: ThirdSetMode(rawValue: c.thirdSet)!,
-        firstServe: TeamId(rawValue: c.firstServe)!
+    let bestOf: BestOf = c.bestOf == 1 ? .one : (c.bestOf == 5 ? .five : .three)
+    let firstServe = TeamId(rawValue: c.firstServe)!
+    if c.sport == "squash" {
+        return .squash(
+            bestOf: bestOf,
+            squashMode: SquashMode(rawValue: c.squashMode!)!,
+            squashTarget: c.squashTarget!,
+            squashTiebreak: SquashTiebreak(rawValue: c.squashTiebreak!)!,
+            firstServe: firstServe,
+            squashServeBoxes: c.squashServeBoxes.flatMap { SquashServeBoxes(rawValue: $0) },
+            squashServeBoxA: c.squashServeBoxA,
+            squashServeBoxB: c.squashServeBoxB
+        )
+    }
+    if c.sport == "pickleball" {
+        return .pickleball(
+            bestOf: bestOf,
+            pbType: PbType(rawValue: c.pbType!)!,
+            pbTarget: c.pbTarget!,
+            pbTiebreak: PbTiebreak(rawValue: c.pbTiebreak!)!,
+            firstServe: firstServe
+        )
+    }
+    return .padel(
+        bestOf: bestOf,
+        deuceMode: DeuceMode(rawValue: c.deuceMode!)!,
+        thirdSet: ThirdSetMode(rawValue: c.thirdSet!)!,
+        firstServe: firstServe
     )
 }
 
-private func eventsFromWinners(_ winners: String) -> [PointEvent] {
-    winners.enumerated().map { index, ch in
-        PointEvent(winner: ch == "A" ? .A : .B, at: index)
+private func eventsFromWinners(_ winners: String, _ gameSets: String?) -> [PointEvent] {
+    let decisions = gameSets.map(Array.init) ?? []
+    return winners.enumerated().map { index, ch in
+        let decision = index < decisions.count ? String(decisions[index]) : "."
+        return PointEvent(
+            winner: ch == "A" ? .A : .B,
+            at: index,
+            gameSet: decision == "1" ? "one" : (decision == "2" ? "two" : nil)
+        )
     }
 }
 
@@ -185,14 +255,14 @@ final class VectorTests: XCTestCase {
         let data = try Data(contentsOf: url)
         let vectors = try JSONDecoder().decode([GoldenVector].self, from: data)
 
-        XCTAssertEqual(vectors.count, 972, "expected 972 golden vectors")
+        XCTAssertEqual(vectors.count, 7032, "expected 7032 golden vectors")
 
         var passed = 0
         var failures: [String] = []
 
         for (index, vector) in vectors.enumerated() {
             let config = decodeConfig(vector.config)
-            let events = eventsFromWinners(vector.winners)
+            let events = eventsFromWinners(vector.winners, vector.gameSets)
             let snapshot = computeMatch(config: config, events: events)
             let actual = serialize(snapshot)
             let expected = vector.snapshot

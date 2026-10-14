@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SqlDriver } from "../src/index.ts";
-import { computeProfileStats, createMatch, finishMatch } from "../src/index.ts";
+import { computeProfileStats, createMatch, createPlayer, finishMatch } from "../src/index.ts";
 import { newMatch, nextTimestamp, seededDriver } from "./fixtures.ts";
 
 interface Fixture {
@@ -55,6 +55,25 @@ describe("profile stats", () => {
       { label: "Marta & Leo", won: 2, lost: 2 },
       { label: "Ana & Pablo", won: 2, lost: 0 },
     ]);
+  });
+
+  it("handles singles rows: no self-partner and a single opponent name", () => {
+    const driver = seededDriver();
+    createPlayer(driver, { id: "cameron", name: "Cameron", createdAt: nextTimestamp() });
+    createMatch(
+      driver,
+      newMatch("s1", { players: { A: ["nico", "nico"], B: ["cameron", "cameron"] } }),
+    );
+    finishMatch(driver, "s1", {
+      winner: "A",
+      endedAt: nextTimestamp(),
+      scoreLine: "11-5",
+    });
+
+    const stats = computeProfileStats(driver, "nico");
+    expect(stats.played).toBe(1);
+    expect(stats.partners).toEqual([]);
+    expect(stats.headToHead).toEqual([{ label: "Cameron", won: 1, lost: 0 }]);
   });
 
   it("ignores live matches and handles an empty database", () => {

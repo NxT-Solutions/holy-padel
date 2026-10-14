@@ -47,6 +47,9 @@ final class WatchConnectivityManager: NSObject, ObservableObject {
 
     func score(_ team: String) { send(path: "/holy-padel/score", body: team) }
     func undo() { send(path: "/holy-padel/undo", body: "") }
+    /// Squash "choice" tie-break: stages the receiver's long/short decision on
+    /// the phone; the next scored rally carries it ("one" = short, "two" = long).
+    func setChoice(_ choice: String) { send(path: "/holy-padel/set-choice", body: choice) }
     func startLast() { send(path: "/holy-padel/start-last", body: "") }
     /// Toggles pause<->resume on the phone.
     func pause() { send(path: "/holy-padel/pause", body: "") }

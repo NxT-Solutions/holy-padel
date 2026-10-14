@@ -1,6 +1,18 @@
 import type { ReactNode } from "react";
-import { styled, Text, View } from "tamagui";
-import { colors, inkAlpha } from "@/theme/colors.ts";
+import type { TextProps, ViewProps } from "tamagui";
+import { Text, View } from "tamagui";
+import { colors, textAlpha } from "@/theme/colors.ts";
+
+/**
+ * Text and surface primitives. These are function components (not Tamagui
+ * `styled` exports) on purpose: `styled` snapshots color values at module
+ * load, which would freeze the app in whichever theme loaded first — reading
+ * `colors` at render time keeps every screen in step with the live theme.
+ */
+
+type TextStyleProps = TextProps & {
+  readonly color?: string;
+};
 
 /**
  * Anton display text — numerals, headings, team names.
@@ -10,50 +22,73 @@ import { colors, inkAlpha } from "@/theme/colors.ts";
  * font's natural descent room the bottom gets clipped — "0" reads as "U". Leave
  * `lineHeight` unset (natural metrics) unless it's clearly ≥ ~1.3× `fontSize`.
  */
-export const Display = styled(Text, {
-  fontFamily: "$heading",
-  fontWeight: "400",
-  letterSpacing: 0.5,
-  color: colors.ink,
-});
+export function Display({ color, ...rest }: TextStyleProps): ReactNode {
+  return (
+    <Text
+      fontFamily="$heading"
+      fontWeight="400"
+      letterSpacing={0.5}
+      color={color ?? colors.text}
+      {...rest}
+    />
+  );
+}
 
 /** Archivo body text. */
-export const Body = styled(Text, {
-  fontFamily: "$body",
-  color: colors.ink,
-});
+export function Body({ color, ...rest }: TextStyleProps): ReactNode {
+  return <Text fontFamily="$body" color={color ?? colors.text} {...rest} />;
+}
 
 /** Tiny 800-weight uppercase label with wide tracking. */
-export const Overline = styled(Text, {
-  fontFamily: "$body",
-  fontWeight: "800",
-  fontSize: 10,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-  color: inkAlpha(0.4),
-});
+export function Overline({ color, ...rest }: TextStyleProps): ReactNode {
+  return (
+    <Text
+      fontFamily="$body"
+      fontWeight="800"
+      fontSize={10}
+      letterSpacing={1.5}
+      textTransform="uppercase"
+      color={color ?? textAlpha(0.4)}
+      {...rest}
+    />
+  );
+}
 
-/** White rounded card with the design's soft shadow. */
-export const Card = styled(View, {
-  backgroundColor: colors.white,
-  borderRadius: 18,
-  boxShadow: "0 2px 10px rgba(14, 17, 22, 0.05)",
-});
+/** Card surface with the design's soft shadow. */
+export function Card({ children, ...rest }: ViewProps): ReactNode {
+  return (
+    <View
+      backgroundColor={colors.card}
+      borderRadius={18}
+      boxShadow="0 2px 10px rgba(14, 17, 22, 0.05)"
+      {...rest}
+    >
+      {children}
+    </View>
+  );
+}
 
 /** Fully rounded container (chips, tab bar, status pills). */
-export const Pill = styled(View, {
-  borderRadius: 999,
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-});
+export function Pill({ children, ...rest }: ViewProps): ReactNode {
+  return (
+    <View
+      borderRadius={999}
+      flexDirection="row"
+      alignItems="center"
+      justifyContent="center"
+      {...rest}
+    >
+      {children}
+    </View>
+  );
+}
 
-/** Round monogram avatar: ink disc, lime letter (blue for team B). */
+/** Round monogram avatar: ink disc, accent letter (slate for team B). */
 export function Avatar({
   letter,
   size = 36,
   background = colors.ink,
-  color = colors.lime,
+  color = colors.accent,
 }: {
   readonly letter: string;
   readonly size?: number;
@@ -89,18 +124,24 @@ export function ResultBadge({
       width={size}
       height={size}
       borderRadius={size * 0.3}
-      backgroundColor={won ? colors.lime : colors.greige}
+      backgroundColor={won ? colors.accent : colors.greige}
       alignItems="center"
       justifyContent="center"
     >
-      <Display fontSize={size * 0.46} color={won ? colors.ink : inkAlpha(0.55)} letterSpacing={0}>
+      <Display
+        fontSize={size * 0.46}
+        color={won ? colors.onAccent : textAlpha(0.55)}
+        letterSpacing={0}
+      >
         {won ? "W" : "L"}
       </Display>
     </View>
   );
 }
 
-/** The lime pulse dot marking live state and the serving pair. */
+/** The accent pulse dot marking live state and the serving pair. */
 export function LiveDot({ size = 7 }: { readonly size?: number }): ReactNode {
-  return <View width={size} height={size} borderRadius={size / 2} backgroundColor={colors.lime} />;
+  return (
+    <View width={size} height={size} borderRadius={size / 2} backgroundColor={colors.accent} />
+  );
 }

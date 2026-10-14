@@ -19,7 +19,7 @@ stop drift, hard-coded colors, and glyph-clipping bugs before they land.
 ## Source of truth (in this order)
 
 1. **`DESIGN.md`** (repo root) — the human-readable token spec. Court Bold = **Anton**
-   display + **Archivo** body; ball-lime `#C6F135` on ink `#0E1116` over cream `#F1F0EA`.
+   display + **Archivo** body; signal orange `#FF6B35` on ink `#0E1116` over cream `#F1F0EA`.
 2. **`apps/mobile/src/theme/colors.ts`** — the *canonical* palette. Every color the app
    uses lives here as a named token; screens and `ui.tsx` reference tokens, never hex.
 3. The two watch mirrors, which must match `colors.ts` value-for-value:
@@ -27,18 +27,18 @@ stop drift, hard-coded colors, and glyph-clipping bugs before they land.
    - Wear OS: **`apps/watch-wear/app/src/main/java/com/holypadel/wear/ui/Colors.kt`**
      (`CourtColors`), backed by `app/src/main/res/values/colors.xml`.
 
-`ink` (`#0E1116`), `lime` (`#C6F135`), and `white` (`#FFFFFF`) are the shared spine — the
-same on all three. `teamBlue` is `#2E5BFF`.
+`ink` (`#0E1116`), `accent` (`#FF6B35`), and `white` (`#FFFFFF`) are the shared spine — the
+same on all three. `teamB` is `#5B6B82` (slate).
 
 ## The rules you enforce
 
 - **Anton / Display text: never set a tight `lineHeight`.** Round Anton glyphs clip when
   the line box is short — a `0` reads as a `U`. Leave `lineHeight` unset, or only set it
   at `>= ~1.3×` the `fontSize`. Flag any Display/numeral style that violates this.
-- **Lime is a signal color, not a surface.** Reserve `#C6F135` for meaning: live/serve
+- **Orange is a signal color, not a surface.** Reserve `#FF6B35` for meaning: live/serve
   state, the primary CTA, wins, and accents. It is never a neutral background or a
-  large passive fill. If you see lime used as plain surface, push back.
-- **Team colors are fixed.** Team A = lime-on-ink; Team B = `teamBlue` `#2E5BFF`. Don't
+  large passive fill. If you see orange used as plain surface, push back.
+- **Team colors are fixed.** Team A = orange-on-ink; Team B = `teamB` `#5B6B82`. Don't
   let a screen invent its own team accent.
 - **Overline / eyebrow type** = weight `800` + letter-spacing ~`1.4`–`1.5` (roughly `10px`
   tracking). Keep it consistent wherever overlines appear.

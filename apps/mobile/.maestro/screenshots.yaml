@@ -35,7 +35,7 @@ name: Capture screenshots
     timeout: 30000
 - waitForAnimationToEnd
 - takeScreenshot: screenshots/shot-03-match-won
-- tapOn: "SAVE & CLOSE"
+- tapOn: "DONE"
 - extendedWaitUntil:
     visible: "HOLA, NICO"
     timeout: 30000

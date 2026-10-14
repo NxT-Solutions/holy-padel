@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
                 liveBpm = if (stats.tracking) stats.bpm else 0,
                 onScore = { team -> sync.score(team) },
                 onUndo = { sync.undo() },
+                onSetChoice = { choice -> sync.setChoice(choice) },
                 onStartLast = { sync.startLast() },
                 onPause = { sync.pause() },
                 onStop = { sync.stopMatch() },

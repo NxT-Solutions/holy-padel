@@ -5,7 +5,7 @@ import org.json.JSONObject
 /** Which screen the watch shows — driven entirely by the phone's payload. */
 enum class Phase { IDLE, LIVE, WON }
 
-data class TeamState(val short: String, val serving: Boolean)
+data class TeamState(val short: String, val serving: Boolean, val servingSide: String?)
 
 data class WonState(val winnerShort: String, val scoreLine: String, val duration: String)
 
@@ -30,6 +30,8 @@ data class MatchState(
     val startedAt: Long,
     /** True while a live match is paused — dim scoring and pause the workout. */
     val paused: Boolean,
+    /** Squash "choice" tie-break at target-1 all — show the SHORT/LONG buttons. */
+    val choicePending: Boolean,
     val won: WonState?,
     val last: LastState?,
 ) {
@@ -39,14 +41,15 @@ data class MatchState(
             clock = "",
             court = "",
             setLabel = "",
-            teamA = TeamState("N&J", serving = false),
-            teamB = TeamState("M&L", serving = false),
+            teamA = TeamState("N&J", serving = false, servingSide = null),
+            teamB = TeamState("M&L", serving = false, servingSide = null),
             pointA = "",
             pointB = "",
             games = "",
             status = "",
             startedAt = 0L,
             paused = false,
+            choicePending = false,
             won = null,
             last = null,
         )
@@ -60,7 +63,11 @@ data class MatchState(
             }
             val team = { key: String ->
                 val obj = root.optJSONObject(key) ?: JSONObject()
-                TeamState(obj.optString("short"), obj.optBoolean("serving", false))
+                TeamState(
+                    short = obj.optString("short"),
+                    serving = obj.optBoolean("serving", false),
+                    servingSide = if (obj.has("servingSide") && !obj.isNull("servingSide")) obj.getString("servingSide") else null
+                )
             }
             val won = root.optJSONObject("won")?.let {
                 WonState(it.optString("winnerShort"), it.optString("scoreLine"), it.optString("duration"))
@@ -81,6 +88,7 @@ data class MatchState(
                 status = root.optString("status"),
                 startedAt = root.optLong("startedAt", 0L),
                 paused = root.optBoolean("paused", false),
+                choicePending = root.optBoolean("choicePending", false),
                 won = won,
                 last = last,
             )

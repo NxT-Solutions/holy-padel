@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { XStack } from "tamagui";
 import { ChevronLeft, X } from "@/components/icons.tsx";
 import { Display } from "@/components/ui.tsx";
-import { colors, inkAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha } from "@/theme/colors.ts";
 
 /**
  * A round, comfortably-sized tap target for a header glyph. The circular chip
@@ -25,8 +25,8 @@ function IconButton({
       borderRadius={20}
       alignItems="center"
       justifyContent="center"
-      backgroundColor={inkAlpha(0.06)}
-      pressStyle={{ opacity: 0.6, backgroundColor: inkAlpha(0.12) }}
+      backgroundColor={textAlpha(0.06)}
+      pressStyle={{ opacity: 0.6, backgroundColor: textAlpha(0.12) }}
       role="button"
       aria-label={label}
       onPress={onPress}
@@ -64,9 +64,9 @@ export function ModalHeader({
     <XStack alignItems="center" gap={12}>
       <IconButton onPress={onClose} label={label}>
         {variant === "back" ? (
-          <ChevronLeft size={22} color={colors.ink} />
+          <ChevronLeft size={22} color={colors.text} />
         ) : (
-          <X size={20} color={colors.ink} />
+          <X size={20} color={colors.text} />
         )}
       </IconButton>
       <Display fontSize={titleSize} flex={1}>

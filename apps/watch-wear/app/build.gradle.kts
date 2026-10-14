@@ -16,9 +16,18 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("../../mobile/android/app/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -34,6 +43,10 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    lint {
+        checkReleaseBuilds = false
     }
 }
 

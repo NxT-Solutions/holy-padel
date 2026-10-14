@@ -2,13 +2,14 @@ import type { MatchSummary } from "@holy-padel/db";
 import {
   createMatch,
   deleteMatch,
-  finishMatch,
+  getLiveMatch,
   getMatch,
+  getOwner,
   loadEvents,
   pauseMatch,
   removeLastEvent,
   resumeMatch,
-  scorePoint as scorePointDb,
+  setPendingGameSet,
 } from "@holy-padel/db";
 import type { MatchSnapshot, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch, computeStats, statusLabel } from "@holy-padel/scoring";
@@ -16,211 +17,108 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, XStack, YStack } from "tamagui";
+import { View, YStack } from "tamagui";
 import { EndSheet } from "@/components/end-sheet.tsx";
-import { Pause, Play, Square, Undo } from "@/components/icons.tsx";
+import {
+  LiveActionBar,
+  LiveHeader,
+  SetChips,
+  SetChoiceSheet,
+  TeamCard,
+} from "@/components/live-parts.tsx";
 import { MatchWon } from "@/components/match-won.tsx";
-import { Body, Display, LiveDot, Pill } from "@/components/ui.tsx";
+import { Display, Pill } from "@/components/ui.tsx";
+import { SavedIndicator, WatchSyncLine } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
-import { durationLabel, finalScoreLine, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
-import { stopAndSaveMatch } from "@/lib/match-actions.ts";
+import { durationLabel, playedMs, pointDisplay, teamNames } from "@/lib/format.ts";
+import { scoreHaptic, undoHaptic } from "@/lib/haptics.ts";
+import {
+  closeLiveMatch,
+  recordPoint,
+  rematchConfig,
+  stopAndSaveMatch,
+  undoMatchPoint,
+} from "@/lib/match-actions.ts";
 import { goHome, newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, inkAlpha, limeAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { colors } from "@/theme/colors.ts";
+import { acknowledgeWon } from "@/watch/gather-input.ts";
+import { useWatchLink } from "@/watch/use-watch-connection.ts";
 
-function SetChip({
-  label,
-  score,
-  state,
-}: {
-  readonly label: string;
-  readonly score: string;
-  readonly state: "done" | "current" | "future";
-}): ReactNode {
-  const testId = `set-chip-${label.toLowerCase().replaceAll(" ", "-")}`;
-  if (state === "done") {
-    return (
-      <YStack
-        flex={1}
-        backgroundColor={colors.ink}
-        borderRadius={14}
-        paddingVertical={9}
-        alignItems="center"
-      >
-        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={whiteAlpha(0.5)}>
-          {label}
-        </Body>
-        <Display fontSize={20} color={colors.white} marginTop={2} testID={testId}>
-          {score}
-        </Display>
-      </YStack>
-    );
-  }
-  if (state === "current") {
-    return (
-      <YStack
-        flex={1}
-        backgroundColor={colors.white}
-        borderWidth={2}
-        borderColor={colors.lime}
-        borderRadius={14}
-        paddingVertical={7}
-        alignItems="center"
-        boxShadow="0 2px 10px rgba(14, 17, 22, 0.06)"
-      >
-        <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={colors.limeInk}>
-          {label}
-        </Body>
-        <Display fontSize={20} marginTop={2} testID={testId}>
-          {score}
-        </Display>
-      </YStack>
-    );
-  }
-  return (
-    <YStack
-      flex={1}
-      borderWidth={1}
-      borderColor={inkAlpha(0.14)}
-      borderRadius={14}
-      paddingVertical={8}
-      alignItems="center"
-    >
-      <Body fontSize={9} fontWeight="800" letterSpacing={1.5} color={inkAlpha(0.35)}>
-        {label}
-      </Body>
-      <Display fontSize={20} color={inkAlpha(0.25)} marginTop={2} testID={testId}>
-        –
-      </Display>
-    </YStack>
-  );
+function squashTargetOf(snapshot: MatchSnapshot): number {
+  return snapshot.config.sport === "squash" ? snapshot.config.squashTarget : 11;
 }
 
-function TeamCard({
-  name,
-  point,
-  serving,
-  onScore,
-  testID,
-}: {
-  readonly name: string;
-  readonly point: string;
-  readonly serving: boolean;
-  readonly onScore: () => void;
-  readonly testID: string;
-}): ReactNode {
-  return (
-    <XStack
-      flex={1}
-      backgroundColor={colors.white}
-      borderRadius={22}
-      borderWidth={2}
-      borderColor={inkAlpha(0.05)}
-      paddingVertical={18}
-      paddingHorizontal={22}
-      alignItems="center"
-      justifyContent="space-between"
-      boxShadow="0 2px 14px rgba(14, 17, 22, 0.07)"
-      pressStyle={{ opacity: 0.9, scale: 0.99 }}
-      role="button"
-      aria-label={`Point ${name}`}
-      onPress={onScore}
-    >
-      <YStack gap={7}>
-        <XStack alignItems="center" gap={8}>
-          <View
-            width={12}
-            height={12}
-            borderRadius={6}
-            backgroundColor={colors.lime}
-            opacity={serving ? 1 : 0}
-            boxShadow={serving ? `0 0 0 3px ${limeAlpha(0.3)}` : "unset"}
-            testID={`${testID}-serve${serving ? "-on" : "-off"}`}
-          />
-          <Display fontSize={23}>{name.toUpperCase()}</Display>
-        </XStack>
-        <Body fontSize={10} fontWeight="800" letterSpacing={1.6} color={inkAlpha(0.35)}>
-          TAP TO SCORE +1
-        </Body>
-      </YStack>
-      <Display fontSize={112} testID={testID}>
-        {point}
-      </Display>
-    </XStack>
-  );
+/** The status-pill call while a long/short decision is staged for the next rally. */
+function stagedChoiceLabel(staged: "one" | "two", target: number): string {
+  return staged === "one" ? `SHORT · TO ${String(target)}` : `LONG · TO ${String(target + 1)}`;
 }
 
-/** Persist the finished result once the engine says the match is over. */
-function usePersistFinish(
-  id: string,
-  match: MatchSummary | undefined,
-  snapshot: MatchSnapshot | undefined,
-  events: readonly PointEvent[],
-): void {
-  const mutate = useDbMutation();
-  // Keyed by match id: a rematch replaces the route param without remounting.
-  const persistedFinish = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    const pending =
-      match?.status === "live" &&
-      snapshot?.finished === true &&
-      snapshot.winner !== undefined &&
-      persistedFinish.current !== id;
-    if (!pending) {
-      return;
-    }
-    persistedFinish.current = id;
-    const winner = snapshot.winner ?? "A";
-    const lastEvent = events.at(-1);
-    mutate((driver) => {
-      finishMatch(driver, id, {
-        winner,
-        endedAt: lastEvent?.at ?? Date.now(),
-        scoreLine: finalScoreLine(snapshot),
-      });
-    });
-  }, [match, snapshot, events, id, mutate]);
-}
-
-function SetChips({
+/**
+ * The result screen for a decided match. The deciding rally already saved it
+ * (`recordPoint`); this only offers rematch and undo.
+ */
+function FinishedMatch({
   match,
   snapshot,
+  events,
+  now,
+  ownerId,
 }: {
   readonly match: MatchSummary;
   readonly snapshot: MatchSnapshot;
+  readonly events: readonly PointEvent[];
+  readonly now: number;
+  readonly ownerId: string;
 }): ReactNode {
-  const chips: ReactNode[] = [];
-  for (let setIndex = 0; setIndex < match.config.bestOf; setIndex += 1) {
-    const completed = snapshot.completedSets[setIndex];
-    const setLabel = `SET ${String(setIndex + 1)}`;
-    if (completed !== undefined) {
-      chips.push(
-        <SetChip
-          key={setLabel}
-          label={setLabel}
-          score={`${String(completed.games.A)}–${String(completed.games.B)}`}
-          state="done"
-        />,
-      );
-    } else if (setIndex + 1 === snapshot.setNumber) {
-      const game = snapshot.currentGame;
-      const isSuperTieBreak = game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak";
-      const score = isSuperTieBreak
-        ? `${String(game.points.A)}–${String(game.points.B)}`
-        : `${String(snapshot.currentSetGames.A)}–${String(snapshot.currentSetGames.B)}`;
-      chips.push(
-        <SetChip
-          key={setLabel}
-          label={isSuperTieBreak ? "SUPER TB" : setLabel}
-          score={score}
-          state="current"
-        />,
-      );
-    } else {
-      chips.push(<SetChip key={setLabel} label={setLabel} score="–" state="future" />);
-    }
-  }
-  return <XStack gap={8}>{chips}</XStack>;
+  const { id } = match;
+  const mutate = useDbMutation();
+  // Undoing a finished match point is only offered while no other match is live.
+  const liveId = useDbQuery((driver) => getLiveMatch(driver)?.id);
+  const rematchStarted = useRef(false);
+  return (
+    <MatchWon
+      match={match}
+      snapshot={snapshot}
+      stats={computeStats(match.config, events)}
+      now={now}
+      ownerId={ownerId}
+      onDone={() => {
+        mutate(acknowledgeWon);
+        goHome();
+      }}
+      onRematch={() => {
+        if (rematchStarted.current) {
+          return;
+        }
+        rematchStarted.current = true;
+        const rematchId = newMatchId();
+        mutate((driver) => {
+          // A match the watch started meanwhile is saved, not orphaned.
+          closeLiveMatch(driver, Date.now());
+          createMatch(driver, {
+            id: rematchId,
+            config: rematchConfig(match.config),
+            players: match.players,
+            ...(match.court === undefined ? {} : { court: match.court }),
+            ...(match.location === undefined ? {} : { location: match.location }),
+            startedAt: Date.now(),
+          });
+        });
+        router.replace(`/live/${rematchId}`);
+      }}
+      {...(liveId === undefined || liveId === id
+        ? {
+            onUndo: () => {
+              undoHaptic();
+              mutate((driver) => {
+                undoMatchPoint(driver, id);
+              });
+            },
+          }
+        : {})}
+    />
+  );
 }
 
 export default function LiveScreen(): ReactNode {
@@ -229,20 +127,27 @@ export default function LiveScreen(): ReactNode {
   const now = useNow(10_000);
   const mutate = useDbMutation();
   const [ending, setEnding] = useState(false);
+  // Transient "HAND OUT" flash for HI-HO: a receiver's rally changes the serve
+  // without moving the score, and without feedback it looks like a dead tap.
+  const [handOut, setHandOut] = useState(false);
+  const handOutTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(
+    () => () => {
+      if (handOutTimer.current !== undefined) {
+        clearTimeout(handOutTimer.current);
+      }
+    },
+    [],
+  );
 
   const match = useDbQuery((driver) => getMatch(driver, id));
+  const owner = useDbQuery(getOwner);
+  const ownerId = owner?.id ?? "nico";
+  // Connection status is polled app-wide; called before any early return so
+  // finishing the match (which renders MatchWon) doesn't change the hook count.
+  const watch = useWatchLink();
   const events = useDbQuery((driver) => loadEvents(driver, id));
-  const rematchStarted = useRef(false);
-  useEffect(() => {
-    rematchStarted.current = false;
-  }, []);
   const snapshot = match === undefined ? undefined : computeMatch(match.config, events);
-  const finishedStats =
-    match !== undefined && snapshot?.finished === true
-      ? computeStats(match.config, events)
-      : undefined;
-
-  usePersistFinish(id, match, snapshot, events);
 
   if (match === undefined || snapshot === undefined) {
     // Deleted or unknown match (stale link, back after discard): recover home.
@@ -251,31 +156,14 @@ export default function LiveScreen(): ReactNode {
 
   const names = teamNames(match);
 
-  if (snapshot.finished && finishedStats !== undefined) {
+  if (snapshot.finished) {
     return (
-      <MatchWon
+      <FinishedMatch
         match={match}
         snapshot={snapshot}
-        stats={finishedStats}
+        events={events}
         now={now}
-        onRematch={() => {
-          if (rematchStarted.current) {
-            return;
-          }
-          rematchStarted.current = true;
-          const rematchId = newMatchId();
-          mutate((driver) => {
-            createMatch(driver, {
-              id: rematchId,
-              config: match.config,
-              players: match.players,
-              ...(match.court === undefined ? {} : { court: match.court }),
-              ...(match.location === undefined ? {} : { location: match.location }),
-              startedAt: Date.now(),
-            });
-          });
-          router.replace(`/live/${rematchId}`);
-        }}
+        ownerId={ownerId}
       />
     );
   }
@@ -283,10 +171,39 @@ export default function LiveScreen(): ReactNode {
   const paused = match.pausedAt !== undefined;
 
   const scorePoint = (team: TeamId): void => {
-    // scorePointDb re-reads committed state and refuses once the match is
-    // paused or decided, so rapid double-taps can't race past the final point.
+    scoreHaptic();
+    // HI-HO only: the receiver winning a rally is a hand-out — the serve
+    // changes hands and no point is scored. (An unstaged choice point refuses
+    // the tap entirely, so it must not flash.)
+    const isHandOut =
+      match.config.sport === "squash" &&
+      match.config.squashMode === "hiho" &&
+      match.pausedAt === undefined &&
+      snapshot.servingTeam !== undefined &&
+      snapshot.servingTeam !== team &&
+      !(snapshot.moment.kind === "setChoice" && match.pendingGameSet === undefined);
+    // recordPoint re-reads committed state and refuses once the match is
+    // paused or decided. It also resolves undecided first serves (game 1 and
+    // pickleball games 2+), attaches a staged squash long/short decision, and
+    // saves the result on the deciding rally — so the phone, the watch, and
+    // replays all share one code path.
     mutate((driver) => {
-      scorePointDb(driver, id, team, Date.now());
+      recordPoint(driver, id, team, Date.now());
+    });
+    if (isHandOut) {
+      setHandOut(true);
+      if (handOutTimer.current !== undefined) {
+        clearTimeout(handOutTimer.current);
+      }
+      handOutTimer.current = setTimeout(() => {
+        setHandOut(false);
+      }, 1400);
+    }
+  };
+
+  const chooseGameSet = (choice: "one" | "two"): void => {
+    mutate((driver) => {
+      setPendingGameSet(driver, id, choice);
     });
   };
 
@@ -294,6 +211,7 @@ export default function LiveScreen(): ReactNode {
     if (events.length === 0) {
       return;
     }
+    undoHaptic();
     mutate((driver) => {
       removeLastEvent(driver, id);
     });
@@ -323,10 +241,17 @@ export default function LiveScreen(): ReactNode {
     goHome();
   };
 
-  const label = statusLabel(snapshot.moment, names);
-
+  const squashTarget = squashTargetOf(snapshot);
+  // The staged long/short decision lives in the ledger row, so a choice made
+  // on the watch closes the phone's popup too (and vice versa).
+  const choicePending = snapshot.moment.kind === "setChoice";
+  const staged = match.pendingGameSet;
+  const label =
+    choicePending && staged !== undefined
+      ? stagedChoiceLabel(staged, squashTarget)
+      : statusLabel(snapshot.moment, names, snapshot.config.sport);
   return (
-    <View flex={1} backgroundColor={colors.cream}>
+    <View flex={1} backgroundColor={colors.screen}>
       <YStack
         flex={1}
         paddingTop={insets.top + 10}
@@ -334,29 +259,13 @@ export default function LiveScreen(): ReactNode {
         paddingHorizontal={16}
         gap={12}
       >
-        <XStack alignItems="center" justifyContent="space-between">
-          <Pill
-            backgroundColor={paused ? inkAlpha(0.4) : colors.ink}
-            paddingVertical={6}
-            paddingLeft={9}
-            paddingRight={12}
-            gap={6}
-            testID="live-pill"
-          >
-            {paused ? <Pause size={9} color={colors.white} /> : <LiveDot size={7} />}
-            <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.white}>
-              {paused ? "PAUSED" : "LIVE"}
-            </Body>
-          </Pill>
-          <Body fontSize={11} fontWeight="700" letterSpacing={1.8} color={inkAlpha(0.55)}>
-            {[match.court?.toUpperCase(), `SET ${String(snapshot.setNumber)}`]
-              .filter((part): part is string => part !== undefined)
-              .join(" · ")}
-          </Body>
-          <Display fontSize={16} testID="match-clock">
-            {durationLabel(playedMs(match, now))}
-          </Display>
-        </XStack>
+        <LiveHeader
+          paused={paused}
+          court={match.court}
+          sport={match.config.sport}
+          setNumber={snapshot.setNumber}
+          clock={durationLabel(playedMs(match, now))}
+        />
 
         <SetChips match={match} snapshot={snapshot} />
 
@@ -366,6 +275,11 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "A")}
             testID="point-A"
             serving={snapshot.servingTeam === "A"}
+            servingSide={snapshot.servingSide}
+            serverNumber={
+              snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
+            }
+            hint={snapshot.servingTeam === undefined ? "TAP TO TAKE SERVE" : undefined}
             onScore={() => {
               scorePoint("A");
             }}
@@ -375,13 +289,30 @@ export default function LiveScreen(): ReactNode {
             point={pointDisplay(snapshot, "B")}
             testID="point-B"
             serving={snapshot.servingTeam === "B"}
+            servingSide={snapshot.servingSide}
+            serverNumber={
+              snapshot.currentGame?.kind === "pickleball" ? snapshot.currentGame.serverNumber : null
+            }
+            hint={snapshot.servingTeam === undefined ? "TAP TO TAKE SERVE" : undefined}
             onScore={() => {
               scorePoint("B");
             }}
           />
         </YStack>
 
-        {label === undefined ? null : (
+        {handOut ? (
+          <Pill
+            alignSelf="center"
+            backgroundColor={colors.accent}
+            paddingVertical={10}
+            paddingHorizontal={22}
+            testID="hand-out-pill"
+          >
+            <Display fontSize={15} letterSpacing={1.5} color={colors.onAccent}>
+              HAND OUT
+            </Display>
+          </Pill>
+        ) : label === undefined ? null : (
           <Pill
             alignSelf="center"
             backgroundColor={colors.ink}
@@ -389,88 +320,23 @@ export default function LiveScreen(): ReactNode {
             paddingHorizontal={22}
             testID="status-pill"
           >
-            <Display fontSize={15} letterSpacing={1.5} color={colors.lime}>
+            <Display fontSize={15} letterSpacing={1.5} color={colors.accent}>
               {label}
             </Display>
           </Pill>
         )}
 
-        <XStack gap={10}>
-          <XStack
-            flex={1}
-            height={58}
-            backgroundColor={colors.white}
-            borderWidth={1}
-            borderColor={inkAlpha(0.08)}
-            borderRadius={16}
-            alignItems="center"
-            justifyContent="center"
-            gap={9}
-            boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-            pressStyle={{ opacity: 0.85 }}
-            role="button"
-            onPress={undoPoint}
-          >
-            <Undo size={17} color={colors.ink} />
-            <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
-              UNDO
-            </Body>
-          </XStack>
-          <XStack
-            flex={1.3}
-            height={58}
-            backgroundColor={paused ? colors.lime : colors.white}
-            borderWidth={1}
-            borderColor={paused ? colors.lime : inkAlpha(0.08)}
-            borderRadius={16}
-            alignItems="center"
-            justifyContent="center"
-            gap={9}
-            boxShadow="0 2px 8px rgba(14, 17, 22, 0.05)"
-            pressStyle={{ opacity: 0.85 }}
-            role="button"
-            onPress={togglePause}
-            testID="pause-toggle"
-          >
-            {paused ? (
-              <Play size={17} color={colors.ink} />
-            ) : (
-              <Pause size={17} color={colors.ink} />
-            )}
-            <Body fontSize={14} fontWeight="800" letterSpacing={1.4}>
-              {paused ? "RESUME" : "PAUSE"}
-            </Body>
-          </XStack>
-          <XStack
-            flex={1}
-            height={58}
-            borderWidth={1}
-            borderColor={inkAlpha(0.16)}
-            borderRadius={16}
-            alignItems="center"
-            justifyContent="center"
-            gap={8}
-            pressStyle={{ opacity: 0.7 }}
-            role="button"
-            aria-label="End match"
-            onPress={() => {
-              setEnding(true);
-            }}
-            testID="end-match"
-          >
-            <Square size={13} color={inkAlpha(0.55)} />
-            <Body fontSize={13} fontWeight="700" letterSpacing={1.4} color={inkAlpha(0.5)}>
-              END
-            </Body>
-          </XStack>
-        </XStack>
+        <LiveActionBar
+          paused={paused}
+          onUndo={undoPoint}
+          onTogglePause={togglePause}
+          onEnd={() => {
+            setEnding(true);
+          }}
+        />
 
-        <XStack alignItems="center" justifyContent="center" gap={6}>
-          <LiveDot size={6} />
-          <Body fontSize={11} fontWeight="600" color={inkAlpha(0.45)}>
-            {paused ? "Paused — workout paused on your watch too" : "Synced — 2 watches connected"}
-          </Body>
-        </XStack>
+        {events.length > 0 ? <SavedIndicator /> : null}
+        <WatchSyncLine link={watch} paused={paused} />
       </YStack>
 
       {ending ? (
@@ -482,6 +348,10 @@ export default function LiveScreen(): ReactNode {
           }}
         />
       ) : null}
+
+      {!paused && choicePending && staged === undefined && (
+        <SetChoiceSheet target={squashTarget} onChoose={chooseGameSet} />
+      )}
     </View>
   );
 }

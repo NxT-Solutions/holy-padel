@@ -10,11 +10,19 @@ test.describe("match setup and player picker (designs 1f + 3b)", () => {
     await expect(page.getByText("TEAM A", { exact: true })).toBeVisible();
     await expect(page.getByText("TEAM B", { exact: true })).toBeVisible();
     await expect(page.getByText("Nico", { exact: true })).toBeVisible();
+    // Rules are collapsed into the summary card; the sport and format lead it.
+    await expect(page.getByTestId("rules-summary")).toContainText("Padel · Doubles");
+    await expect(page.getByTestId("rules-summary")).toContainText("Best of 3");
+    await expect(page.getByText("Watches join automatically when the match starts")).toBeVisible();
+
+    // The full rule rows live inside the editor sheet.
+    await page.getByRole("button", { name: "Edit match rules" }).click();
     await expect(page.getByText("Sets", { exact: true })).toBeVisible();
-    await expect(page.getByText("Third set")).toBeVisible();
+    await expect(page.getByText("Last set")).toBeVisible();
     await expect(page.getByText("At deuce")).toBeVisible();
     await expect(page.getByText("First serve")).toBeVisible();
-    await expect(page.getByText("Watches join automatically when the match starts")).toBeVisible();
+    await page.getByRole("button", { name: "Use these rules" }).click();
+    await expect(page.getByText("Sets", { exact: true })).toHaveCount(0);
   });
 
   test("starting without four players does nothing", async ({ page }) => {
@@ -34,14 +42,14 @@ test.describe("match setup and player picker (designs 1f + 3b)", () => {
     await expect(page.getByText("PICK TEAM B")).toBeVisible();
 
     await page.getByPlaceholder("Search players…").fill("mar");
-    await expect(page.getByRole("button", { name: /Marta/u })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Javi/u })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Marta .* with you/u })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Javi .* with you/u })).toHaveCount(0);
     await page.getByPlaceholder("Search players…").fill("");
 
     // Pick three: the oldest pick drops, only two stay selected.
-    await page.getByRole("button", { name: /Marta/u }).click();
-    await page.getByRole("button", { name: /Leo/u }).click();
-    await page.getByRole("button", { name: /Ana/u }).click();
+    await page.getByRole("button", { name: /Marta .* with you/u }).click();
+    await page.getByRole("button", { name: /Leo .* with you/u }).click();
+    await page.getByRole("button", { name: /Ana .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
     await expect(page.getByText("Leo", { exact: true })).toBeVisible();
     await expect(page.getByText("Ana", { exact: true })).toBeVisible();
@@ -56,9 +64,9 @@ test.describe("match setup and player picker (designs 1f + 3b)", () => {
 
     await page.getByPlaceholder("New player").fill("Zoe");
     await page.getByPlaceholder("New player").press("Enter");
-    await expect(page.getByRole("button", { name: /Zoe/u })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Zoe .* with you/u })).toBeVisible();
     await expect(page.getByText("0 matches with you")).toBeVisible();
-    await page.getByRole("button", { name: /Zoe/u }).click();
+    await page.getByRole("button", { name: /Zoe .* with you/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
     await expect(page.getByText("Zoe", { exact: true })).toBeVisible();
   });

@@ -9,36 +9,33 @@ import {
 } from "@holy-padel/db";
 import type { MatchSnapshot } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
+import { FloodlightGlow } from "@/components/court-art.tsx";
+import { HistoryGrid } from "@/components/history-grid.tsx";
 import { ArrowRight, Plus } from "@/components/icons.tsx";
-import {
-  Avatar,
-  Body,
-  Card,
-  Display,
-  LiveDot,
-  Overline,
-  Pill,
-  ResultBadge,
-} from "@/components/ui.tsx";
+import { useLiveConflictGuard } from "@/components/live-conflict-sheet.tsx";
+import { Avatar, Body, Card, Display, LiveDot, Overline, ResultBadge } from "@/components/ui.tsx";
+import { WatchPill } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import {
   durationLabel,
   liveScoreLine,
-  matchMetaLabel,
   opponentsOf,
   ownerTeamOf,
   pairInitials,
   pairLabel,
 } from "@/lib/format.ts";
+import { computeHistory } from "@/lib/history.ts";
+import { closeLiveMatch, rematchConfig } from "@/lib/match-actions.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, inkAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { accentAlpha, colors, sportColor, textAlpha, whiteAlpha } from "@/theme/colors.ts";
+import { useWatchLink } from "@/watch/use-watch-connection.ts";
 
 function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
   const game = snapshot.currentGame;
@@ -46,6 +43,26 @@ function pointCallOf(snapshot: MatchSnapshot, team: "A" | "B"): string {
     return "";
   }
   return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
+}
+
+/** The sport marker tag on the live card — small fill, ink text. */
+function SportTag({
+  sport,
+}: {
+  readonly sport: "padel" | "squash" | "pickleball" | undefined;
+}): ReactNode {
+  return (
+    <View
+      backgroundColor={sportColor(sport)}
+      borderRadius={6}
+      paddingVertical={3}
+      paddingHorizontal={7}
+    >
+      <Body fontSize={10} fontWeight="800" letterSpacing={1.4} color={colors.onAccent}>
+        {(sport ?? "padel").toUpperCase()}
+      </Body>
+    </View>
+  );
 }
 
 function LiveCard({
@@ -62,13 +79,22 @@ function LiveCard({
     .filter((part): part is string => part !== undefined)
     .join(" · ");
   return (
-    <View backgroundColor={colors.ink} borderRadius={22} padding={18} gap={12}>
+    <View
+      backgroundColor={colors.ink}
+      borderRadius={22}
+      padding={18}
+      gap={12}
+      overflow="hidden"
+      position="relative"
+    >
+      <FloodlightGlow color={sportColor(match.config.sport)} opacity={0.28} />
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap={6}>
           <LiveDot size={7} />
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.lime}>
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.5} color={colors.accent}>
             LIVE NOW
           </Body>
+          <SportTag sport={match.config.sport} />
         </XStack>
         <Body fontSize={11} fontWeight="700" letterSpacing={1.4} color={whiteAlpha(0.5)}>
           {meta}
@@ -80,7 +106,7 @@ function LiveCard({
             <Display fontSize={22} color={colors.white} width={64}>
               {pairInitials(match.names.A)}
             </Display>
-            <Display fontSize={40} color={colors.lime} testID="home-point-A">
+            <Display fontSize={40} color={colors.accent} testID="home-point-A">
               {pointCallOf(snapshot, "A")}
             </Display>
           </XStack>
@@ -102,7 +128,7 @@ function LiveCard({
       </XStack>
       <XStack
         height={48}
-        backgroundColor={colors.lime}
+        backgroundColor={colors.accent}
         borderRadius={14}
         alignItems="center"
         justifyContent="center"
@@ -113,48 +139,40 @@ function LiveCard({
           router.push(`/live/${match.id}`);
         }}
       >
-        <Display fontSize={16} letterSpacing={1.4} color={colors.ink}>
+        <Display fontSize={16} letterSpacing={1.4} color={colors.onAccent}>
           RESUME SCORING
         </Display>
-        <ArrowRight size={15} color={colors.ink} />
+        <ArrowRight size={15} color={colors.onAccent} />
       </XStack>
     </View>
   );
 }
 
-function RecentRow({
-  match,
-  now,
-}: {
-  readonly match: MatchSummary;
-  readonly now: number;
-}): ReactNode {
-  const ownerTeam = ownerTeamOf(match, "nico");
-  const won = match.winner === ownerTeam;
+/** The NEW MATCH action — the primary (orange) CTA only when no match is live. */
+function NewMatchButton({ live }: { readonly live: boolean }): ReactNode {
   return (
-    <Card
+    <XStack
+      flex={1.5}
+      height={58}
+      backgroundColor={live ? colors.card : colors.accent}
+      borderWidth={live ? 2 : 0}
+      borderColor={colors.ink}
       borderRadius={16}
-      paddingVertical={13}
-      paddingHorizontal={16}
-      flexDirection="row"
       alignItems="center"
-      justifyContent="space-between"
-      pressStyle={{ opacity: 0.9 }}
+      justifyContent="center"
+      gap={9}
+      boxShadow={live ? "0 2px 10px rgba(14, 17, 22, 0.06)" : `0 6px 18px ${accentAlpha(0.45)}`}
+      pressStyle={{ opacity: 0.85 }}
       role="button"
       onPress={() => {
-        router.push(`/match/${match.id}`);
+        router.push("/new-match");
       }}
     >
-      <Body fontSize={12.5} fontWeight="700">
-        {`${matchMetaLabel(match, now).split(" · ")[0] ?? ""} · vs ${pairLabel(opponentsOf(match, ownerTeam))}`}
-      </Body>
-      <XStack alignItems="center" gap={10}>
-        <Display fontSize={14} color={inkAlpha(0.6)} letterSpacing={0.5}>
-          {match.scoreLine ?? ""}
-        </Display>
-        <ResultBadge won={won} size={24} />
-      </XStack>
-    </Card>
+      <Plus size={14} color={live ? colors.text : colors.onAccent} />
+      <Display fontSize={16} letterSpacing={1.2} color={live ? colors.text : colors.onAccent}>
+        NEW MATCH
+      </Display>
+    </XStack>
   );
 }
 
@@ -162,21 +180,31 @@ export default function HomeScreen(): ReactNode {
   const insets = useSafeAreaInsets();
   const now = useNow();
   const mutate = useDbMutation();
+  const watch = useWatchLink();
 
   const owner = useDbQuery(getOwner);
+  const ownerId = owner?.id ?? "nico";
   const live = useDbQuery(getLiveMatch);
   const liveSnapshot = useDbQuery((driver) =>
     live === undefined ? undefined : computeMatch(live.config, loadEvents(driver, live.id)),
   );
-  const stats = useDbQuery((driver) => computeProfileStats(driver, "nico"));
-  const recent = useDbQuery((driver) =>
-    listMatches(driver)
-      .filter((match) => match.status === "finished")
-      .slice(0, 2),
+  const stats = useDbQuery((driver) => computeProfileStats(driver, ownerId));
+  const allMatches = useDbQuery(listMatches);
+  const history = useMemo(
+    () => computeHistory(allMatches, ownerId, now),
+    [allMatches, ownerId, now],
   );
-  const [lastFinished] = recent;
+  const [selectedDay, setSelectedDay] = useState<number | undefined>(undefined);
+  // The REMATCH target: the most recent finished match.
+  const lastFinished = allMatches.find((match) => match.status === "finished");
 
   const rematchStarted = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      rematchStarted.current = false;
+    }, []),
+  );
+
   const startRematch = (): void => {
     if (lastFinished === undefined || rematchStarted.current) {
       return;
@@ -184,9 +212,11 @@ export default function HomeScreen(): ReactNode {
     rematchStarted.current = true;
     const id = newMatchId();
     mutate((driver) => {
+      // Only one match is ever live: a still-live one is saved as it stands.
+      closeLiveMatch(driver, Date.now());
       createMatch(driver, {
         id,
-        config: lastFinished.config,
+        config: rematchConfig(lastFinished.config),
         players: lastFinished.players,
         ...(lastFinished.court === undefined ? {} : { court: lastFinished.court }),
         ...(lastFinished.location === undefined ? {} : { location: lastFinished.location }),
@@ -196,8 +226,12 @@ export default function HomeScreen(): ReactNode {
     router.push(`/live/${id}`);
   };
 
+  // Modal: the sheet must cover the floating tab bar.
+  const rematchGuard = useLiveConflictGuard(ownerId, startRematch, true);
+
   return (
     <ScrollView
+      style={{ flex: 1, backgroundColor: colors.screen }}
       contentContainerStyle={{
         paddingTop: insets.top + 12,
         paddingHorizontal: 16,
@@ -211,18 +245,7 @@ export default function HomeScreen(): ReactNode {
           <Overline letterSpacing={1.6}>{owner?.club ?? "Holy Padel"}</Overline>
           <Display fontSize={24}>{`HOLA, ${(owner?.name ?? "").toUpperCase()}`}</Display>
         </YStack>
-        <Pill
-          borderWidth={1}
-          borderColor={inkAlpha(0.14)}
-          paddingVertical={7}
-          paddingHorizontal={12}
-          gap={6}
-        >
-          <LiveDot size={6} />
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={inkAlpha(0.55)}>
-            WATCH PAIRED
-          </Body>
-        </Pill>
+        <WatchPill link={watch} />
       </XStack>
 
       {live !== undefined && liveSnapshot !== undefined ? (
@@ -230,48 +253,31 @@ export default function HomeScreen(): ReactNode {
       ) : null}
 
       <XStack gap={8}>
-        <XStack
-          flex={1.5}
-          height={58}
-          backgroundColor={colors.white}
-          borderWidth={2}
-          borderColor={colors.ink}
-          borderRadius={16}
-          alignItems="center"
-          justifyContent="center"
-          gap={9}
-          boxShadow="0 2px 10px rgba(14, 17, 22, 0.06)"
-          pressStyle={{ opacity: 0.85 }}
-          role="button"
-          onPress={() => {
-            router.push("/new-match");
-          }}
-        >
-          <Plus size={14} color={colors.ink} />
-          <Display fontSize={16} letterSpacing={1.2}>
-            NEW MATCH
-          </Display>
-        </XStack>
+        <NewMatchButton live={live !== undefined} />
         <YStack
           flex={1}
           height={58}
           borderWidth={1}
-          borderColor={inkAlpha(0.16)}
+          borderColor={textAlpha(0.16)}
           borderRadius={16}
           alignItems="center"
           justifyContent="center"
           gap={2}
           pressStyle={{ opacity: 0.7 }}
           role="button"
-          onPress={startRematch}
+          onPress={() => {
+            if (lastFinished !== undefined) {
+              rematchGuard.request();
+            }
+          }}
         >
-          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={inkAlpha(0.5)}>
+          <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.5)}>
             REMATCH
           </Body>
-          <Body fontSize={10.5} fontWeight="700" color={inkAlpha(0.4)}>
+          <Body fontSize={10.5} fontWeight="700" color={textAlpha(0.4)}>
             {lastFinished === undefined
               ? "no matches yet"
-              : `vs ${pairLabel(opponentsOf(lastFinished, ownerTeamOf(lastFinished, "nico")))}`}
+              : `vs ${pairLabel(opponentsOf(lastFinished, ownerTeamOf(lastFinished, ownerId)))}`}
           </Body>
         </YStack>
       </XStack>
@@ -296,11 +302,19 @@ export default function HomeScreen(): ReactNode {
         >{`${String(stats.record.won)}–${String(stats.record.lost)}`}</Display>
       </Card>
 
-      <YStack gap={8}>
-        {recent.map((match) => (
-          <RecentRow key={match.id} match={match} now={now} />
-        ))}
-      </YStack>
+      <HistoryGrid
+        weeks={history.weeks}
+        played={history.played}
+        won={history.won}
+        lost={history.lost}
+        matches={allMatches}
+        ownerId={ownerId}
+        streak={stats.streak}
+        selectedDay={selectedDay}
+        onSelectDay={setSelectedDay}
+      />
+
+      {rematchGuard.sheet}
     </ScrollView>
   );
 }

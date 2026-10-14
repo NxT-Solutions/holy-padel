@@ -32,7 +32,7 @@ test.describe("a full match, start to save", () => {
     await expect(page.getByText("24–0")).toBeVisible(); // points tile
     await expect(page.getByText("Saved to this phone · watches updated")).toBeVisible();
 
-    await page.getByRole("button", { name: "SAVE & CLOSE" }).click();
+    await page.getByRole("button", { name: "DONE", exact: true }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
     // The ledger picked it up: matches tab count went from 13 to 14.
@@ -72,15 +72,16 @@ test.describe("a full match, start to save", () => {
     // Both matches exist: the finished one and the fresh live one.
     await page.goto("/matches");
     await expect(page.getByText("stored locally")).toBeVisible({ timeout: 90_000 });
-    // Two live matches now: the untouched seeded one and the rematch.
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(2);
+    // Only the rematch is live: the seeded match was saved when this one began.
+    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
   });
 
   test("a lost match saves as a loss", async ({ page }) => {
     await gotoHome(page);
     await startNewMatch(page, { bestOf: 1 });
     await winLoveGames(page, "B", 6);
-    await expect(page.getByText("MATCH WON")).toBeVisible();
+    // The owner's side lost — the headline says so, the winner is credited.
+    await expect(page.getByText("MATCH LOST")).toBeVisible();
     await expect(page.getByText("MARTA & LEO", { exact: true })).toBeVisible();
     await expect(page.getByText("DEF. NICO & JAVI")).toBeVisible();
     await expect(page.getByTestId("won-score")).toHaveText("0-6");

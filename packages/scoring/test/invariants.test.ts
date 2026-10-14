@@ -112,8 +112,10 @@ describe("engine invariants over random matches", () => {
         for (let index = 0; index <= events.length; index += 1) {
           const snapshot = computeMatch(config, events.slice(0, index));
           if (!snapshot.finished && snapshot.currentGame?.kind === "standard") {
-            const games = snapshot.totalGames.A + snapshot.totalGames.B;
-            gameServers.set(games, snapshot.servingTeam);
+            const { totalGames, servingTeam } = snapshot;
+            if (servingTeam !== undefined) {
+              gameServers.set(totalGames.A + totalGames.B, servingTeam);
+            }
           }
         }
         for (const [games, server] of gameServers) {

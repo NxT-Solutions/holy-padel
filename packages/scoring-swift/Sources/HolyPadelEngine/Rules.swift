@@ -81,6 +81,25 @@ enum Rules {
 
     /// Sets a team must win to take the match.
     static func setsToWin(_ bestOf: BestOf) -> Int {
-        bestOf == .one ? 1 : winByTwo
+        bestOf == .one ? 1 : (bestOf == .three ? winByTwo : 3)
+    }
+
+    /// Has a squash game been won based on tiebreak setting?
+    static func squashGameWon(_ tiebreak: SquashTiebreak, _ target: Int, _ winnerPoints: Int, _ loserPoints: Int) -> Bool {
+        if tiebreak == .winByTwo {
+            return winnerPoints >= target && (winnerPoints - loserPoints) >= winByTwo
+        }
+        if tiebreak == .setOne {
+            return winnerPoints >= target
+        }
+        return winnerPoints >= (target + 1)
+    }
+
+    /// Has a pickleball game been won based on tiebreak setting?
+    static func pbGameWon(_ tiebreak: PbTiebreak, _ target: Int, _ winnerPoints: Int, _ loserPoints: Int) -> Bool {
+        if tiebreak == .winByTwo {
+            return winnerPoints >= target && (winnerPoints - loserPoints) >= winByTwo
+        }
+        return winnerPoints >= target
     }
 }

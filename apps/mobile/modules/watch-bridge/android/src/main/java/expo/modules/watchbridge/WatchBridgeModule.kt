@@ -5,6 +5,7 @@ import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
@@ -34,16 +35,36 @@ class WatchBridgeModule : Module(), MessageClient.OnMessageReceivedListener {
     Events("onIntent")
 
     OnCreate {
-      runCatching { messageClient()?.addListener(this@WatchBridgeModule) }
+      Thread {
+        runCatching { messageClient()?.addListener(this@WatchBridgeModule) }
+      }.start()
     }
 
     OnDestroy {
-      runCatching { messageClient()?.removeListener(this@WatchBridgeModule) }
+      Thread {
+        runCatching { messageClient()?.removeListener(this@WatchBridgeModule) }
+      }.start()
     }
 
-    Function("pushState") { json: String ->
+    AsyncFunction("pushState") { json: String ->
       lastState = json
       putState(json)
+    }
+
+    // How many Wear nodes are connected right now (Bluetooth or cloud) — drives
+    // the phone's "Synced — N watches connected" line. Resolves 0 when Play
+    // services are missing, Bluetooth is off, or the query fails.
+    AsyncFunction("connectedWatchCount") { promise: Promise ->
+      val ctx = context
+      if (ctx == null) {
+        promise.resolve(0)
+        return@AsyncFunction
+      }
+      runCatching {
+        Wearable.getNodeClient(ctx).connectedNodes
+          .addOnSuccessListener { nodes -> promise.resolve(nodes.size) }
+          .addOnFailureListener { promise.resolve(0) }
+      }.onFailure { promise.resolve(0) }
     }
   }
 

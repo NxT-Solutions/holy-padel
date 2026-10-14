@@ -1,0 +1,156 @@
+import { getSetting, type SqlDriver, setSetting } from "@holy-padel/db";
+import { requireOptionalNativeModule } from "expo";
+import { StatusBar } from "expo-status-bar";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { Appearance, useColorScheme } from "react-native";
+import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import {
+  appliedColors,
+  applyColors,
+  applyTheme,
+  notifyThemeChanged,
+  subscribeTheme,
+  type ThemeMode,
+  themeMode,
+} from "@/theme/colors.ts";
+
+export type ThemeSetting = "system" | "light" | "dark";
+
+function resolveTheme(setting: ThemeSetting | undefined, systemDark: boolean): ThemeMode {
+  if (setting === "light" || setting === "dark") {
+    return setting;
+  }
+  return systemDark ? "dark" : "light";
+}
+
+const SETTING_KEY = "theme";
+const ACCENT_KEY = "accentColor";
+const TEAM_B_KEY = "teamBColor";
+
+/** The user's colour picks (ids); undefined = the default (orange / violet). */
+export interface ColorSetting {
+  readonly accent: string | undefined;
+  readonly teamB: string | undefined;
+}
+
+/** Read the persisted accent and Team B colour choices. */
+export function loadColorSetting(driver: SqlDriver): ColorSetting {
+  return { accent: getSetting(driver, ACCENT_KEY), teamB: getSetting(driver, TEAM_B_KEY) };
+}
+
+/** Read the persisted theme setting (undefined = follow the system). */
+export function loadThemeSetting(driver: SqlDriver): ThemeSetting | undefined {
+  const value = getSetting(driver, SETTING_KEY);
+  return value === "light" || value === "dark" || value === "system" ? value : undefined;
+}
+
+/**
+ * The SYSTEM theme, read the reliable way. RN's `useColorScheme()` mirrors the
+ * application context, which Android can leave pinned to light; the
+ * `SystemTheme` native module reads the CURRENT activity configuration instead.
+ * Note that `expo-system-ui` also forces the app's night mode from the
+ * generated `expo_system_ui_user_interface_style` resource — a stale `android/`
+ * prebuild can pin that to "light" and override everything (see CLAUDE.md).
+ * On web (e2e) there is no native module, so `useColorScheme()` stands.
+ *
+ * Subscribes to Appearance changes so a system flip (e.g. night mode) follows
+ * live instead of only on the next launch.
+ */
+function useSystemTheme(): ThemeMode {
+  const seeded = useColorScheme();
+  const read = useCallback((fallback: string | null | undefined): ThemeMode => {
+    try {
+      const dark = requireOptionalNativeModule("SystemTheme")?.isDarkMode();
+      if (typeof dark === "boolean") {
+        return dark ? "dark" : "light";
+      }
+    } catch {
+      // No native module (web, Expo Go) — fall back to the seeded scheme.
+    }
+    return fallback === "dark" ? "dark" : "light";
+  }, []);
+  const [system, setSystem] = useState<ThemeMode>(() => read(seeded));
+  useEffect(() => {
+    setSystem(read(seeded));
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystem(read(colorScheme));
+    });
+    return (): void => {
+      subscription.remove();
+    };
+  }, [read, seeded]);
+  return system;
+}
+
+/** Re-render on theme flips — for consumers ABOVE the db-reactive tree. */
+export function useThemeMode(): ThemeMode {
+  return useSyncExternalStore(subscribeTheme, themeMode);
+}
+
+export function ThemeController(): ReactNode {
+  const mode = useTheme();
+  const { accent, teamB } = appliedColors();
+  // Notify subscribers after commit (before paint) so root-level consumers —
+  // the navigator background in _layout — re-render with the new palette.
+  useLayoutEffect(() => {
+    notifyThemeChanged();
+  }, [mode, accent, teamB]);
+  // Rendered here — above the screens but inside the db-reactive tree — so
+  // the OS chrome flips in the same render as the palette.
+  return <StatusBar style={mode === "dark" ? "light" : "dark"} />;
+}
+
+/** Resolve the setting + system scheme into the active palette. Idempotent. */
+export function useTheme(): ThemeMode {
+  const setting = useDbQuery(loadThemeSetting);
+  const colorSetting = useDbQuery(loadColorSetting);
+  const system = useSystemTheme();
+  const resolved = resolveTheme(setting, system === "dark");
+
+  // Apply during render so children never paint with a stale palette; the
+  // state flips above this component re-render the tree afterwards.
+  if (themeMode() !== resolved) {
+    applyTheme(resolved);
+  }
+  const applied = appliedColors();
+  if (
+    applied.accent !== (colorSetting.accent ?? "orange") ||
+    applied.teamB !== (colorSetting.teamB ?? "violet")
+  ) {
+    applyColors(colorSetting.accent, colorSetting.teamB);
+  }
+
+  return resolved;
+}
+
+/** Persist a theme choice; `system` removes the override. */
+export function useSetThemeSetting(): (value: ThemeSetting) => void {
+  const mutate = useDbMutation();
+  return useCallback(
+    (value: ThemeSetting) => {
+      mutate((driver) => {
+        setSetting(driver, SETTING_KEY, value);
+      });
+    },
+    [mutate],
+  );
+}
+
+/** Persist an accent or Team B colour choice (by id). */
+export function useSetColorSetting(): (which: "accent" | "teamB", id: string) => void {
+  const mutate = useDbMutation();
+  return useCallback(
+    (which: "accent" | "teamB", id: string) => {
+      mutate((driver) => {
+        setSetting(driver, which === "accent" ? ACCENT_KEY : TEAM_B_KEY, id);
+      });
+    },
+    [mutate],
+  );
+}
+
+/** True while the currently-applied palette is dark (status bar icons etc.). */
+export function useIsDarkTheme(): boolean {
+  return useTheme() === "dark";
+}

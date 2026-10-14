@@ -15,7 +15,33 @@ const valid = {
 
 describe("parseWorkoutSummary", () => {
   it("parses a full summary", () => {
-    expect(parseWorkoutSummary(JSON.stringify(valid))).toEqual(valid);
+    expect(parseWorkoutSummary(JSON.stringify(valid))).toEqual({ ...valid, motion: [] });
+  });
+
+  it("parses steps and distance, dropping implausible intervals", () => {
+    const withMotion = {
+      ...valid,
+      motion: [
+        { t: 30_000, steps: 18, meters: 12.5 },
+        { t: 40_000, steps: -3, meters: 1 },
+        { t: 50_000, steps: 22, meters: 99_999 },
+        { t: 60_000, steps: 9, meters: 6 },
+      ],
+    };
+    expect(parseWorkoutSummary(JSON.stringify(withMotion))?.motion).toEqual([
+      { t: 30_000, steps: 18, meters: 12.5 },
+      { t: 60_000, steps: 9, meters: 6 },
+    ]);
+  });
+
+  it("accepts a movement-only summary (no HR, no calories)", () => {
+    const motionOnly = {
+      ...valid,
+      kcal: 0,
+      samples: [],
+      motion: [{ t: 30_000, steps: 18, meters: 12 }],
+    };
+    expect(parseWorkoutSummary(JSON.stringify(motionOnly))?.motion).toHaveLength(1);
   });
 
   it("drops malformed samples but keeps the workout", () => {

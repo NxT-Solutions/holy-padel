@@ -17,6 +17,13 @@ private struct FoldState {
     var tieBreakStarter: TeamId
     /// Server of the current standard game; after a game, the next game's server.
     var gameServer: TeamId
+    var serverConsecutivePoints: Int
+    var pbServerNumber: Int?
+    var isFirstTerm: Bool?
+    /// Pickleball games 2+: the first serve of the current game is undecided.
+    var pbServePending: Bool?
+    /// Squash "choice" tie-break: the current game's effective target once the receiver has decided.
+    var gameTarget: Int?
     var setNumber: Int
     var finished: Bool
     var winner: TeamId?
@@ -40,6 +47,17 @@ private func initialState(_ config: MatchConfig) -> FoldState {
         tieBreak: nil,
         tieBreakStarter: config.firstServe,
         gameServer: config.firstServe,
+        serverConsecutivePoints: 0,
+        pbServerNumber: {
+            if case let .pickleball(_, type, _, _, _, _) = config, type == .doubles { return 2 }
+            return nil
+        }(),
+        isFirstTerm: {
+            if case .pickleball = config { return true }
+            return nil
+        }(),
+        pbServePending: nil,
+        gameTarget: nil,
         setNumber: 1,
         finished: false,
         winner: nil,
@@ -49,19 +67,29 @@ private func initialState(_ config: MatchConfig) -> FoldState {
 }
 
 private func isDecidingSet(_ config: MatchConfig, _ setNumber: Int) -> Bool {
-    config.bestOf == .three && setNumber == DECIDING_SET
+    if case .squash = config { return false }
+    return config.bestOf == .three && setNumber == DECIDING_SET
 }
 
 /// Is the set being played one that runs without a tie-break at 6-6?
 private func currentSetHasTieBreak(_ config: MatchConfig, _ setNumber: Int) -> Bool {
-    !(isDecidingSet(config, setNumber) && Rules.thirdSetWithoutTieBreak(config.thirdSet))
+    if case .squash = config { return false }
+    let thirdSet = {
+        if case let .padel(_, _, third, _) = config { return third }
+        return ThirdSetMode.fullSet
+    }()
+    return !(isDecidingSet(config, setNumber) && Rules.thirdSetWithoutTieBreak(thirdSet))
 }
 
 private func startNextSet(_ state: FoldState, _ config: MatchConfig) -> FoldState {
     let setNumber = state.setNumber + 1
+    let isSuperTieBreak = {
+        if case let .padel(_, _, third, _) = config { return third == .superTieBreak }
+        return false
+    }()
     let superTieBreakDue =
         isDecidingSet(config, setNumber)
-        && config.thirdSet == .superTieBreak
+        && isSuperTieBreak
         && setsWonBy(state.completedSets, .A) == setsWonBy(state.completedSets, .B)
     var next = state
     next.setNumber = setNumber
@@ -69,6 +97,16 @@ private func startNextSet(_ state: FoldState, _ config: MatchConfig) -> FoldStat
     next.points = ZERO
     next.tieBreak = superTieBreakDue ? .superTieBreak : nil
     next.tieBreakStarter = state.gameServer
+    if case let .pickleball(_, type, _, _, _, _) = config, type == .doubles {
+        next.pbServerNumber = 2
+    }
+    if case .pickleball = config {
+        next.isFirstTerm = true
+        // Pickleball: the first serve of each new game is undecided (the
+        // previous game's winner does not automatically serve first).
+        next.pbServePending = true
+    }
+    next.gameTarget = nil
     return next
 }
 
@@ -118,9 +156,12 @@ private func applyTieBreakPoint(_ state: FoldState, _ config: MatchConfig, _ win
 }
 
 private func applyStandardPoint(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId) -> FoldState {
+    guard case let .padel(_, deuceMode, _, _) = config else {
+        fatalError("applyStandardPoint called for squash")
+    }
     let points = bump(state.points, winner)
     let loser = Rules.otherTeam(winner)
-    if !Rules.standardGameWon(config.deuceMode, points[winner], points[loser]) {
+    if !Rules.standardGameWon(deuceMode, points[winner], points[loser]) {
         var next = state
         next.points = points
         return next
@@ -147,12 +188,117 @@ private func applyStandardPoint(_ state: FoldState, _ config: MatchConfig, _ win
     return afterGame
 }
 
-private func applyPoint(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId) -> FoldState {
+private func applySquashPoint(
+    _ state: FoldState,
+    _ config: MatchConfig,
+    _ winner: TeamId,
+    _ gameSet: String?
+) -> FoldState {
+    guard case let .squash(_, squashMode, squashTarget, squashTiebreak, _, _, _, _, _) = config else {
+        fatalError("applySquashPoint called for padel")
+    }
+    let isPar = squashMode == .par
+    let choiceMode = squashTiebreak == .choice
+    let atChoicePoint = state.points.A == squashTarget - 1 && state.points.B == squashTarget - 1
+    // The receiver's decision rides on the rally played at the choice point:
+    // "one" keeps the game at its target, "two" extends it by one point.
+    let gameTarget: Int? = {
+        if choiceMode && state.gameTarget == nil && atChoicePoint {
+            return gameSet == "two" ? squashTarget + 1 : squashTarget
+        }
+        return state.gameTarget
+    }()
+    let target = choiceMode ? (gameTarget ?? squashTarget) : squashTarget
+    let effectiveTiebreak: SquashTiebreak = squashTiebreak == .choice ? .setOne : squashTiebreak
+    let points = (isPar || winner == state.gameServer) ? bump(state.points, winner) : state.points
+    let loser = Rules.otherTeam(winner)
+
+    let serverConsecutivePoints = winner == state.gameServer ? state.serverConsecutivePoints + 1 : 0
+
+    if !Rules.squashGameWon(effectiveTiebreak, target, points[winner], points[loser]) {
+        var next = state
+        next.points = points
+        next.gameServer = winner
+        next.serverConsecutivePoints = serverConsecutivePoints
+        next.gameTarget = gameTarget
+        return next
+    }
+    let summary = SetSummary(games: points, tieBreak: nil, winner: winner, kind: .set)
+    var afterGame = state
+    afterGame.points = ZERO
+    afterGame.gameServer = winner
+    afterGame.serverConsecutivePoints = 0
+    afterGame.gameTarget = nil
+    afterGame.totalGames = bump(state.totalGames, winner)
+    return completeSet(afterGame, config, summary)
+}
+
+private func applyPickleballPoint(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId) -> FoldState {
+    guard case let .pickleball(_, pbType, pbTarget, pbTiebreak, _) = config else {
+        fatalError("applyPickleballPoint called for non-pickleball")
+    }
+    let isDoubles = pbType == .doubles
+    let server = state.gameServer
+    let isSideout = winner != server
+
+    if !isSideout {
+        let points = bump(state.points, winner)
+        let loser = Rules.otherTeam(winner)
+        if Rules.pbGameWon(pbTiebreak, pbTarget, points[winner], points[loser]) {
+            let summary = SetSummary(games: points, tieBreak: nil, winner: winner, kind: .set)
+            var afterGame = state
+            afterGame.points = ZERO
+            afterGame.gameServer = winner
+            afterGame.pbServerNumber = isDoubles ? 2 : nil
+            afterGame.isFirstTerm = true
+            afterGame.totalGames = bump(state.totalGames, winner)
+            return completeSet(afterGame, config, summary)
+        }
+        var next = state
+        next.points = points
+        return next
+    }
+
+    if isDoubles && state.pbServerNumber == 1 {
+        var next = state
+        next.pbServerNumber = 2
+        return next
+    }
+
+    var next = state
+    next.gameServer = Rules.otherTeam(server)
+    next.isFirstTerm = false
+    next.pbServerNumber = isDoubles ? 1 : nil
+    return next
+}
+
+/// A `serve` event: a team takes the undecided first serve of a pickleball
+/// game 2+. No rally is scored; stray events (wrong sport, no pending serve)
+/// are ignored so a stale replay can never corrupt the fold.
+private func applyServeEvent(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId) -> FoldState {
+    guard case .pickleball = config, state.pbServePending == true else {
+        return state
+    }
+    var next = state
+    next.gameServer = winner
+    next.pbServePending = false
+    return next
+}
+
+private func applyPoint(_ state: FoldState, _ config: MatchConfig, _ winner: TeamId, _ gameSet: String?) -> FoldState {
     if state.finished {
+        // Unreachable in the fold, but mirrors TS invariant.
         fatalError("cannot score a point: the match is already finished")
     }
     var counted = state
     counted.totalPoints = bump(state.totalPoints, winner)
+
+    if case .pickleball = config {
+        return applyPickleballPoint(counted, config, winner)
+    }
+    if case .squash = config {
+        return applySquashPoint(counted, config, winner, gameSet)
+    }
     if counted.tieBreak != nil {
         return applyTieBreakPoint(counted, config, winner)
     }
@@ -177,14 +323,58 @@ private func leaderOf(_ points: TeamValues<Int>) -> TeamId? {
     return points.A > points.B ? .A : .B
 }
 
+private func squashMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
+    guard case let .squash(bestOf, _, squashTarget, squashTiebreak, _, _, _, _, _) = config else {
+        return .normal
+    }
+    let points = state.points
+    // "Choice" tie-break: at target-1 all the receiver picks long or short.
+    if squashTiebreak == .choice && state.gameTarget == nil
+        && points.A == squashTarget - 1 && points.B == squashTarget - 1 {
+        return .setChoice
+    }
+    guard let leader = leaderOf(points) else { return .normal }
+    let loser = Rules.otherTeam(leader)
+    let potentialPoints = bump(points, leader)
+    let effectiveTiebreak: SquashTiebreak = squashTiebreak == .choice ? .setOne : squashTiebreak
+    if !Rules.squashGameWon(effectiveTiebreak, state.gameTarget ?? squashTarget, potentialPoints[leader], potentialPoints[loser]) {
+        return .normal
+    }
+    let gamesAfter = setsWonBy(state.completedSets, leader) + 1
+    if gamesAfter == Rules.setsToWin(bestOf) {
+        return .matchPoint(team: leader)
+    }
+    return .gamePoint(team: leader)
+}
+
+private func pbMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
+    guard case let .pickleball(bestOf, _, pbTarget, pbTiebreak, _) = config else {
+        return .normal
+    }
+    let points = state.points
+    guard let leader = leaderOf(points) else { return .normal }
+    let loser = Rules.otherTeam(leader)
+    let potentialPoints = bump(points, leader)
+    if !Rules.pbGameWon(pbTiebreak, pbTarget, potentialPoints[leader], potentialPoints[loser]) {
+        return .normal
+    }
+    let gamesAfter = setsWonBy(state.completedSets, leader) + 1
+    if gamesAfter == Rules.setsToWin(bestOf) {
+        return .matchPoint(team: leader)
+    }
+    return .gamePoint(team: leader)
+}
+
 private func standardGameMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
+    if case .squash = config { return squashMoment(state, config) }
+    guard case let .padel(bestOf, deuceMode, _, _) = config else { return .normal }
     let points = state.points
     let setGames = state.setGames
     let setNumber = state.setNumber
     let completedSets = state.completedSets
 
-    if Rules.isDecidingPoint(config.deuceMode, points.A, points.B) {
-        return config.deuceMode == .goldenPoint ? .goldenPoint : .starPoint
+    if Rules.isDecidingPoint(deuceMode, points.A, points.B) {
+        return deuceMode == .goldenPoint ? .goldenPoint : .starPoint
     }
     if points.A >= Rules.deucePoints && points.B >= Rules.deucePoints {
         guard let leader = leaderOf(points) else {
@@ -196,7 +386,7 @@ private func standardGameMoment(_ state: FoldState, _ config: MatchConfig) -> Mo
         return .normal
     }
     let loser = Rules.otherTeam(leader)
-    if !Rules.standardGameWon(config.deuceMode, points[leader] + 1, points[loser]) {
+    if !Rules.standardGameWon(deuceMode, points[leader] + 1, points[loser]) {
         return .normal
     }
     let withTieBreak = currentSetHasTieBreak(config, setNumber)
@@ -204,7 +394,7 @@ private func standardGameMoment(_ state: FoldState, _ config: MatchConfig) -> Mo
         return .gamePoint(team: leader)
     }
     let setsAfter = setsWonBy(completedSets, leader) + 1
-    if setsAfter == Rules.setsToWin(config.bestOf) {
+    if setsAfter == Rules.setsToWin(bestOf) {
         return .matchPoint(team: leader)
     }
     return .setPoint(team: leader)
@@ -217,6 +407,9 @@ private func deriveMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
         }
         return .finished(winner: winner)
     }
+    if case .pickleball = config {
+        return pbMoment(state, config)
+    }
     if state.tieBreak == .superTieBreak {
         return .superTieBreak
     }
@@ -226,9 +419,15 @@ private func deriveMoment(_ state: FoldState, _ config: MatchConfig) -> Moment {
     return standardGameMoment(state, config)
 }
 
-private func currentGameOf(_ state: FoldState) -> CurrentGame? {
+private func currentGameOf(_ state: FoldState, _ config: MatchConfig) -> CurrentGame? {
     if state.finished {
         return nil
+    }
+    if case .pickleball = config {
+        return .pickleball(points: state.points, serverNumber: state.pbServerNumber)
+    }
+    if case .squash = config {
+        return .squash(points: state.points)
     }
     if let tieBreak = state.tieBreak {
         return .tieBreak(
@@ -240,12 +439,60 @@ private func currentGameOf(_ state: FoldState) -> CurrentGame? {
     return .standard(points: state.points, calls: pointCalls(state.points))
 }
 
-private func servingTeamOf(_ state: FoldState) -> TeamId {
+private func servingTeamOf(_ state: FoldState, _ config: MatchConfig) -> TeamId? {
+    if config.firstServePending == true && state.totalPoints.A == 0 && state.totalPoints.B == 0 {
+        return nil
+    }
+    // Pickleball games 2+: the first serve of the new game is undecided.
+    if state.pbServePending == true {
+        return nil
+    }
     if state.tieBreak != nil {
         return Rules.tieBreakServer(state.tieBreakStarter, state.points.A + state.points.B)
     }
     return state.gameServer
 }
+
+private func servingSideOf(_ state: FoldState, _ config: MatchConfig) -> String? {
+    if config.firstServePending == true && state.totalPoints.A == 0 && state.totalPoints.B == 0 {
+        return nil
+    }
+    if state.pbServePending == true {
+        return nil
+    }
+    if case let .pickleball(_, pbType, _, _, _) = config {
+        let score = state.points[state.gameServer]
+        if pbType == .singles {
+            return score % 2 == 0 ? "right" : "left"
+        }
+        if state.pbServerNumber == 1 || state.isFirstTerm == true {
+            return score % 2 == 0 ? "right" : "left"
+        } else {
+            return score % 2 == 0 ? "left" : "right"
+        }
+    }
+    if case let .squash(_, _, _, _, _, _, serveBoxes, boxA, boxB) = config {
+        // Squash serving: the chosen mode picks each hand's FIRST box — a fixed
+        // right/left, or the team's saved preference (default right) — then the
+        // boxes alternate every point while the team holds serve.
+        let startBox: String
+        switch serveBoxes {
+        case .left:
+            startBox = "left"
+        case .player:
+            startBox = state.gameServer == .A ? (boxA ?? "right") : (boxB ?? "right")
+        case .right, nil:
+            startBox = "right"
+        }
+        if state.serverConsecutivePoints % 2 == 1 {
+            return startBox == "right" ? "left" : "right"
+        }
+        return startBox
+    }
+    return (state.points.A + state.points.B) % 2 == 0 ? "right" : "left"
+}
+
+
 
 private func toSnapshot(_ state: FoldState, _ config: MatchConfig) -> MatchSnapshot {
     MatchSnapshot(
@@ -255,8 +502,10 @@ private func toSnapshot(_ state: FoldState, _ config: MatchConfig) -> MatchSnaps
         completedSets: state.completedSets,
         setNumber: state.finished ? state.completedSets.count : state.setNumber,
         currentSetGames: state.finished ? ZERO : state.setGames,
-        currentGame: currentGameOf(state),
-        servingTeam: servingTeamOf(state),
+        currentGame: currentGameOf(state, config),
+        servingTeam: servingTeamOf(state, config),
+        servingSide: servingSideOf(state, config),
+
         moment: deriveMoment(state, config),
         totalPoints: state.totalPoints,
         totalGames: state.totalGames
@@ -273,7 +522,9 @@ public func computeMatch(config: MatchConfig, events: [PointEvent]) -> MatchSnap
         if state.finished {
             break
         }
-        state = applyPoint(state, config, event.winner)
+        state = event.kind == .serve
+            ? applyServeEvent(state, config, event.winner)
+            : applyPoint(state, config, event.winner, event.gameSet)
     }
     return toSnapshot(state, config)
 }

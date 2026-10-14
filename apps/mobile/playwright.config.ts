@@ -35,6 +35,9 @@ export default defineConfig({
     command: `npx expo start --offline --port ${String(PORT)}`,
     url: `http://localhost:${String(PORT)}`,
     reuseExistingServer: CI === undefined,
+    // The e2e fixture ledger — real installs never seed demo data. The mock
+    // watch count exercises the "Synced — N watches connected" UI on web.
+    env: { EXPO_PUBLIC_SEED_DEMO: "1", EXPO_PUBLIC_MOCK_WATCH_COUNT: "2" },
     // Metro's first cold bundle on a CI runner can take several minutes.
     timeout: 420_000,
   },

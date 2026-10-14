@@ -23,12 +23,15 @@ conn+resume. Latest-wins (application context / a single Data Layer item at path
   "clock": "0:47",                // elapsed, mm or h:mm — empty when idle
   "court": "COURT 4",             // may be absent
   "setLabel": "SET 2",            // current set, e.g. "SET 2" / "SUPER TB"
-  "teamA": { "short": "N&J", "serving": true },
+  "teamA": { "short": "N&J", "serving": true, "servingSide": "right" },
   "teamB": { "short": "M&L", "serving": false },
   "pointA": "40",                 // display call: 0/15/30/40/AD or tie-break number
   "pointB": "30",
   "games": "6-4 · 4-3",           // completed sets + current, the live score line
   "status": "GAME PT",            // watchStatusLabel(), may be empty
+  "choicePending": true,          // squash "choice" tie-break at target-1 all:
+                                  // the watch shows its SHORT/LONG buttons while
+                                  // set; absent otherwise
   "startedAt": 1783200000000,     // epoch ms the match started — the watch's
                                   // workout-session start time and cross-device
                                   // dedup key; absent when idle
@@ -51,10 +54,11 @@ pushes fresh state back.
 
 | Path                     | Body        | Effect on the phone                          |
 | ------------------------ | ----------- | -------------------------------------------- |
-| `/holy-padel/score`      | `"A"`\|`"B"`| Append a point event for that team           |
+| `/holy-padel/score`      | `"A"`\|`"B"`| Append a point event for that team. While a first serve is undecided (game 1, or pickleball games 2+) the tap instead *takes* the serve — no rally is scored |
 | `/holy-padel/undo`       | `""`        | Remove the last point event                   |
 | `/holy-padel/pause`      | `""`        | Toggle pause ↔ resume on the live match       |
 | `/holy-padel/start-last` | `""`        | From idle: start a rematch of the last lineup |
+| `/holy-padel/set-choice` | `"one"`\|`"two"` | Squash "choice" tie-break: stage the receiver's long/short decision; the next scored rally carries it |
 | `/holy-padel/stop`       | `""`        | **Stop AND save** the match in its current state |
 | `/holy-padel/cancel`     | `""`        | **Discard** the live match — nothing is saved  |
 | `/holy-padel/end`        | `""`        | Legacy alias for `stop` (older builds)         |
@@ -70,12 +74,21 @@ is `phase = "idle"`. This is shared with the phone's END sheet via
 `stopAndSaveMatch` (`apps/mobile/src/lib/match-actions.ts`) so the two surfaces
 persist identically. `end` remains a back-compat alias for `stop`, and still
 backs the **DONE** control on the `won` screen — the user is never stuck on MATCH
-WON; DONE persists the finished match and the watch returns to idle.
+WON; with nothing live, `stop`/`end` just dismisses it and the watch returns to idle.
+
+**Finishing is saved on the deciding rally.** `score` goes through `recordPoint`
+(`match-actions.ts`), which marks the match finished in the same write as the
+rally that decides it — whether or not the phone's scoreboard is open. The phone
+then keeps the `won` phase for that match (`gatherWatchInput` in
+`apps/mobile/src/watch/gather-input.ts`) until DONE on either surface, a new
+match starts, or `WON_HOLD_MS` (30 min) passes. A match stopped mid-play goes
+straight to idle.
 
 ### Watch → phone: workout summary
 
 Wear OS has no Health Connect, so the watch tracks the match with **Health
-Services** (heart rate + calories, `RACQUETBALL` calorie model) and ships the
+Services** (heart rate, calories, and — where the device supports them for the
+exercise — steps and distance; `RACQUETBALL` calorie model) and ships the
 result to the phone, which is the **single Health Connect writer**. Sent once,
 when the live phase ends:
 
@@ -86,9 +99,21 @@ when the live phase ends:
   "kcal": 412.5,
   "avgBpm": 132,
   "maxBpm": 171,
-  "samples": [ { "t": 1783200015000, "bpm": 120 } ]  // one per ~15s
+  // Every reading at its own sensor timestamp, downsampled to one per ~5s.
+  // (Readings arrive batched while the screen is off; older builds kept only
+  // the newest per batch, stamped on arrival, which left long gaps.)
+  "samples": [ { "t": 1783200015000, "bpm": 120 } ],
+  // Steps and metres per 10s bucket, keyed by the bucket's end — deltas, so
+  // the phone sums the buckets inside each game for per-game totals. Absent
+  // from older builds; empty when the device can't measure them.
+  "motion": [ { "t": 1783200020000, "steps": 18, "meters": 12.5 } ]
 }
 ```
+
+The phone stores `samples` under `hr:<matchId>` and `motion` under
+`motion:<matchId>` (settings table). Each game's window runs from the previous
+game's last rally to its own, so the per-game heart rate, steps and distance on
+the score-race card tile the match without gaps.
 
 The phone writes `ExerciseSessionRecord` + `HeartRateRecord` + `TotalCaloriesBurnedRecord`
 with `Device.TYPE_WATCH` provenance and the same deterministic
@@ -150,6 +175,13 @@ autolinks into the app on `expo prebuild`. It exposes:
   - **iOS** (`WatchBridgeModule.swift`): `WCSession.updateApplicationContext(["state": json])`,
     plus `sendMessage(["state": json])` when reachable — the `"state"` key the watch
     target decodes (`WatchConnectivityManager.swift`).
+- `connectedWatchCount(): Promise<number>` — how many watches are connected right now
+  (Android: `NodeClient.connectedNodes` size; 0 when Play services are missing or
+  Bluetooth is off; absent on iOS builds older than the feature). The phone app polls
+  this every ~8 s (`use-watch-connection.ts`), refreshes early whenever an intent
+  arrives (an intent is proof of a connection) and on foregrounding, and drives the
+  live screen's "Synced — N watches connected" line and the home pill. The e2e suite
+  fakes the count on web with `EXPO_PUBLIC_MOCK_WATCH_COUNT`.
 - an **`onIntent`** event carrying `{ path, body }` — emitted when the watch sends one.
   - **Android:** a `MessageClient.OnMessageReceivedListener` → `{ path: event.path,
     body: String(event.data) }`.
@@ -166,6 +198,14 @@ physically paired devices.
   `live` → the scoreboard (square + round variants), `won` → the celebration.
 - Serving dots, status pill and point calls come straight from the fields above —
   the watch does no scoring math.
+- **Undecided serves** (game 1 of any match, and pickleball games 2+): the phone
+  sends no serving team (`serving` false on both); the next score intent from
+  either surface *takes* the serve rather than scoring a rally.
+- **Squash "choice" tie-break** (HIHO at target-1 all): `status` reads
+  "SET 1 OR 2" and `choicePending` is set; the phone shows a mandatory SHORT/LONG
+  sheet and the watch shows the same two buttons, firing `/holy-padel/set-choice`.
+  Scoring is refused until a choice is staged. The decision rides on the next
+  rally in the event log, so undo/resume re-ask naturally.
 - Because the payload is tiny and latest-wins, a missed update self-heals on the
   next point; there is no event replay on the watch.
 

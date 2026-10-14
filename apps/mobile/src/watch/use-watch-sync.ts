@@ -1,32 +1,34 @@
 import type { SqlDriver } from "@holy-padel/db";
-import { getLiveMatch, listMatches, loadEvents } from "@holy-padel/db";
-import { computeMatch } from "@holy-padel/scoring";
+import { listMatches, saveMatchHeartRate, saveMatchMotion } from "@holy-padel/db";
 import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { logWatchWorkout } from "@/health/health-log.ts";
 import { parseWorkoutSummary, WORKOUT_PATH } from "@/health/watch-workout.ts";
 import { newMatchId } from "@/lib/navigation.ts";
-import { useNow } from "@/lib/use-now.ts";
 import { applyWatchIntent } from "./apply-intent.ts";
 import { addIntentListener, pushWatchStateJson } from "./bridge.ts";
-import type { WatchStateInput } from "./build-state.ts";
 import { buildWatchState } from "./build-state.ts";
+import { gatherWatchInput } from "./gather-input.ts";
 
-// The app treats "nico" as the device owner throughout (see the matches screen).
-const OWNER_ID = "nico";
 const CLOCK_REFRESH_MS = 30_000;
 
-type GatheredInput = Pick<WatchStateInput, "ownerId" | "live" | "last">;
+/** Longest reasonable gap between a match's start and its tracked workout. */
+const WORKOUT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-function gatherWatchInput(driver: SqlDriver): GatheredInput {
-  const live = getLiveMatch(driver);
-  if (live !== undefined) {
-    const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
-    return { ownerId: OWNER_ID, live: { match: live, snapshot } };
+/**
+ * The match a workout summary belongs to: the most recent match that started
+ * within a day of the tracked session (the watch sends no match id).
+ */
+export function matchIdForWorkout(driver: SqlDriver, startedAt: number): string | undefined {
+  let best: { readonly id: string; readonly gap: number } | undefined;
+  for (const match of listMatches(driver)) {
+    const gap = Math.abs(match.startedAt - startedAt);
+    if (gap <= WORKOUT_WINDOW_MS && (best === undefined || gap < best.gap)) {
+      best = { id: match.id, gap };
+    }
   }
-  const last = listMatches(driver).find((match) => match.status === "finished");
-  return last === undefined ? { ownerId: OWNER_ID } : { ownerId: OWNER_ID, last };
+  return best?.id;
 }
 
 /**
@@ -34,26 +36,53 @@ function gatherWatchInput(driver: SqlDriver): GatheredInput {
  * payload on every ledger change (and on a slow clock tick), and applies the
  * score / undo / rematch intents the watch sends back through the same writes
  * the live screen uses. A no-op when no watch bridge is linked (see bridge.ts).
+ *
+ * The clock is stamped with a fresh `Date.now()` at push time, never a ticking
+ * state: scoring from the watch while the phone is pocketed (backgrounded, no
+ * JS timers) must still advance the watch's match clock on every point.
  */
 export function useWatchSync(): void {
   const mutate = useDbMutation();
-  const now = useNow(CLOCK_REFRESH_MS);
-  const input = useDbQuery(gatherWatchInput);
-
-  const json = useMemo(() => JSON.stringify(buildWatchState({ ...input, now })), [input, now]);
+  // Re-gathered on every ledger change; `now` ages out a held MATCH WON.
+  const input = useDbQuery((driver) => gatherWatchInput(driver, Date.now()));
+  const inputRef = useRef(input);
+  inputRef.current = input;
 
   useEffect(() => {
-    pushWatchStateJson(json);
-  }, [json]);
+    pushWatchStateJson(JSON.stringify(buildWatchState({ ...input, now: Date.now() })));
+  }, [input]);
+
+  // Foreground heartbeat: advances the watch clock between ledger changes.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      pushWatchStateJson(JSON.stringify(buildWatchState({ ...inputRef.current, now: Date.now() })));
+    }, CLOCK_REFRESH_MS);
+    return (): void => {
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(
     () =>
       addIntentListener((intent) => {
         if (intent.path === WORKOUT_PATH) {
-          // A tracked workout summary, not a scoring intent: persist it to the
-          // health platform (fire-and-forget) — the ledger is untouched.
+          // A tracked workout summary, not a scoring intent: keep the
+          // heart-rate series for the match it belongs to (the score-race
+          // overlay reads it back), and mirror the workout into the health
+          // platform (fire-and-forget) — the ledger is untouched.
           const summary = parseWorkoutSummary(intent.body);
           if (summary !== undefined) {
+            mutate((driver) => {
+              const matchId = matchIdForWorkout(driver, summary.startedAt);
+              if (matchId !== undefined) {
+                saveMatchHeartRate(
+                  driver,
+                  matchId,
+                  summary.samples.map((sample) => ({ t: sample.t, bpm: sample.bpm })),
+                );
+                saveMatchMotion(driver, matchId, summary.motion);
+              }
+            });
             void logWatchWorkout(JSON.stringify(summary));
           }
           return;

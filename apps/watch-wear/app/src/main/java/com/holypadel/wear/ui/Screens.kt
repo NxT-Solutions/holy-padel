@@ -1,5 +1,12 @@
 package com.holypadel.wear.ui
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import android.text.format.DateFormat
+import java.util.Date
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,6 +56,7 @@ fun WatchApp(
     liveBpm: Int,
     onScore: (String) -> Unit,
     onUndo: () -> Unit,
+    onSetChoice: (String) -> Unit,
     onStartLast: () -> Unit,
     onPause: () -> Unit,
     onStop: () -> Unit,
@@ -61,7 +69,7 @@ fun WatchApp(
     ) {
         when (state.phase) {
             Phase.IDLE -> IdleScreen(state, onStartLast)
-            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onUndo, onPause, onStop, onCancel)
+            Phase.LIVE -> LiveScoreScreen(state, liveBpm, onScore, onSetChoice, onUndo, onPause, onStop, onCancel)
             Phase.WON -> MatchWonScreen(state, onEnd)
         }
     }
@@ -88,7 +96,7 @@ private fun IdleScreen(state: MatchState, onStartLast: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(28.dp))
-                .background(CourtColors.Lime)
+                .background(CourtColors.Accent)
                 .clickable { onStartLast() }
                 .padding(vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -114,6 +122,7 @@ private fun LiveScoreScreen(
     state: MatchState,
     liveBpm: Int,
     onScore: (String) -> Unit,
+    onSetChoice: (String) -> Unit,
     onUndo: () -> Unit,
     onPause: () -> Unit,
     onStop: () -> Unit,
@@ -126,7 +135,7 @@ private fun LiveScoreScreen(
             if (page == 0) {
                 ControlsPage(state, onUndo, onPause, onStop, onCancel)
             } else {
-                ScorePage(state, liveBpm, onScore)
+                ScorePage(state, liveBpm, onScore, onSetChoice)
             }
         }
         PagerDots(
@@ -137,61 +146,149 @@ private fun LiveScoreScreen(
     }
 }
 
-/** The score face — nothing but the two tappable team halves plus a compact header. */
+/** The time of day, refreshed on the minute, in the watch's 12/24h format. */
 @Composable
-private fun ScorePage(state: MatchState, liveBpm: Int, onScore: (String) -> Unit) {
+private fun TimeOfDay() {
+    val context = LocalContext.current
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) {
+            value = System.currentTimeMillis()
+            delay(60_000L - value % 60_000L)
+        }
+    }
+    BodyText(
+        DateFormat.getTimeFormat(context).format(Date(now)),
+        color = CourtColors.White,
+        sizeSp = 14,
+        weight = FontWeight.Bold,
+    )
+}
+
+/**
+ * The score face, laid out for a ROUND screen: time, heart rate and match
+ * clock centred at the top (the corners of a round face are cut off), the two
+ * teams side by side as big tappable halves, and the game score + LIVE centred
+ * at the bottom.
+ */
+@Composable
+private fun ScorePage(
+    state: MatchState,
+    liveBpm: Int,
+    onScore: (String) -> Unit,
+    onSetChoice: (String) -> Unit,
+) {
     val paused = state.paused
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
-        // Header: clock (or live bpm) · set/games · LIVE (or PAUSED)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(top = 12.dp, bottom = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        TimeOfDay()
+        Row(verticalAlignment = Alignment.CenterVertically) {
             if (liveBpm > 0) {
-                BodyText("$liveBpm♥", color = CourtColors.Lime, sizeSp = 12)
-            } else {
-                BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
+                BodyText("♥ $liveBpm", color = CourtColors.Accent, sizeSp = 12, weight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
             }
-            LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Lime)
-                Spacer(Modifier.width(4.dp))
-                LabelText(
-                    if (paused) "PAUSED" else "LIVE",
-                    color = if (paused) CourtColors.White45 else CourtColors.Lime,
-                    sizeSp = 10,
-                )
-            }
+            BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
+        }
+
+        // During a squash "choice" tie-break the decision is mandatory: the
+        // SHORT/LONG buttons replace the score halves. Once a choice is staged
+        // (from either surface) the phone clears choicePending and moves the
+        // staged call into `status`, so the score face returns on the next
+        // state push — the phone owns the truth (docs/watch-sync.md).
+        if (state.choicePending) {
+            ChoiceButtons(onChoose = onSetChoice)
+            return@Column
         }
 
         // While paused, dim the halves and swallow taps — the phone rejects points
         // when paused anyway, but this keeps the watch honest (docs/watch-sync.md).
         val scoreEnabled = !paused
-        TeamRow(
-            modifier = Modifier
-                .weight(1f)
-                .alpha(if (paused) 0.35f else 1f)
-                .clickable(enabled = scoreEnabled) { onScore("A") },
-            short = state.teamA.short,
-            point = state.pointA,
-            serving = state.teamA.serving,
-        )
+        Row(
+            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TeamHalf(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .alpha(if (paused) 0.35f else 1f)
+                    .clickable(enabled = scoreEnabled) { onScore("A") },
+                short = state.teamA.short,
+                point = state.pointA,
+                serving = state.teamA.serving,
+                servingSide = state.teamA.servingSide,
+            )
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .fillMaxHeight(0.55f)
+                    .background(CourtColors.White25),
+            )
+            TeamHalf(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .alpha(if (paused) 0.35f else 1f)
+                    .clickable(enabled = scoreEnabled) { onScore("B") },
+                short = state.teamB.short,
+                point = state.pointB,
+                serving = state.teamB.serving,
+                servingSide = state.teamB.servingSide,
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
+            Spacer(Modifier.width(7.dp))
+            Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Accent)
+            Spacer(Modifier.width(4.dp))
+            LabelText(
+                if (paused) "PAUSED" else "LIVE",
+                color = if (paused) CourtColors.White45 else CourtColors.Accent,
+                sizeSp = 10,
+            )
+        }
+    }
+}
+
+/** The squash "choice" tie-break decision — short (set 1) or long (set 2). */
+@Composable
+private fun ChoiceButtons(onChoose: (String) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        LabelText("SET 1 OR 2?", color = CourtColors.Accent, sizeSp = 14)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(1.dp)
-                .background(CourtColors.White25),
-        )
-        TeamRow(
+                .clip(RoundedCornerShape(10.dp))
+                .background(CourtColors.Accent)
+                .clickable { onChoose("one") }
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BodyText("SHORT · SET 1", color = CourtColors.Black, sizeSp = 13)
+                LabelText("next point wins", color = CourtColors.Black.copy(alpha = 0.55f), sizeSp = 9)
+            }
+        }
+        Box(
             modifier = Modifier
-                .weight(1f)
-                .alpha(if (paused) 0.35f else 1f)
-                .clickable(enabled = scoreEnabled) { onScore("B") },
-            short = state.teamB.short,
-            point = state.pointB,
-            serving = state.teamB.serving,
-        )
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(CourtColors.Accent)
+                .clickable { onChoose("two") }
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BodyText("LONG · SET 2", color = CourtColors.Black, sizeSp = 13)
+                LabelText("two more points", color = CourtColors.Black.copy(alpha = 0.55f), sizeSp = 9)
+            }
+        }
     }
 }
 
@@ -213,7 +310,7 @@ private fun ControlsPage(
     ) {
         LabelText(
             if (paused) "PAUSED" else "CONTROLS",
-            color = if (paused) CourtColors.White45 else CourtColors.Lime,
+            color = if (paused) CourtColors.White45 else CourtColors.Accent,
             sizeSp = 11,
         )
         Row(
@@ -237,7 +334,7 @@ private fun ControlsPage(
             LabelText("DISCARD? SCORE LOST", color = CourtColors.White45, sizeSp = 9)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton("DISCARD", CourtColors.White.copy(alpha = 0.14f), CourtColors.White, onCancel)
-                PillButton("KEEP", CourtColors.Lime, CourtColors.Ink) { confirmingCancel = false }
+                PillButton("KEEP", CourtColors.Accent, CourtColors.Ink) { confirmingCancel = false }
             }
         } else {
             // Stop AND save — the filled square, "court time's up, don't lose the score".
@@ -245,7 +342,7 @@ private fun ControlsPage(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CourtColors.Lime)
+                    .background(CourtColors.Accent)
                     .clickable { onStop() }
                     .padding(vertical = 9.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
@@ -294,7 +391,7 @@ private fun PagerDots(count: Int, current: Int, modifier: Modifier = Modifier) {
         for (index in 0 until count) {
             Dot(
                 sizeDp = 5,
-                color = if (index == current) CourtColors.Lime else CourtColors.White.copy(alpha = 0.3f),
+                color = if (index == current) CourtColors.Accent else CourtColors.White.copy(alpha = 0.3f),
             )
         }
     }
@@ -311,7 +408,7 @@ private fun CircleIconButton(
     enabled: Boolean = true,
     diameterDp: Int = 36,
 ) {
-    val background = if (accent) CourtColors.Lime else CourtColors.White.copy(alpha = 0.14f)
+    val background = if (accent) CourtColors.Accent else CourtColors.White.copy(alpha = 0.14f)
     val tint = if (accent) CourtColors.Ink else CourtColors.White
     Box(
         modifier = Modifier
@@ -375,19 +472,26 @@ private fun DrawScope.drawControlIcon(icon: ControlIcon, color: Color) {
     }
 }
 
+/** One team's half of the side-by-side score face: serve dot + name over the big point. */
 @Composable
-private fun TeamRow(modifier: Modifier, short: String, point: String, serving: Boolean) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+private fun TeamHalf(modifier: Modifier, short: String, point: String, serving: Boolean, servingSide: String?) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Dot(sizeDp = 8, visible = serving)
-            Spacer(Modifier.width(7.dp))
-            DisplayText(short, sizeSp = 20, color = CourtColors.White)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (serving) 1f else 0f)) {
+                Dot(
+                    sizeDp = if (servingSide != null) 14 else 8,
+                    visible = true,
+                    label = if (servingSide == "right") "R" else if (servingSide == "left") "L" else null,
+                )
+            }
+            Spacer(Modifier.width(5.dp))
+            DisplayText(short, sizeSp = 16, color = CourtColors.White)
         }
-        DisplayText(point, sizeSp = 56, color = CourtColors.White)
+        DisplayText(point, sizeSp = 52, color = CourtColors.White)
     }
 }
 
@@ -399,7 +503,7 @@ private fun MatchWonScreen(state: MatchState, onEnd: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        DisplayText("MATCH WON", sizeSp = 24, color = CourtColors.Lime)
+        DisplayText("MATCH WON", sizeSp = 24, color = CourtColors.Accent)
         Spacer(Modifier.height(6.dp))
         DisplayText(won?.winnerShort ?: state.teamA.short, sizeSp = 30, color = CourtColors.White)
         Spacer(Modifier.height(6.dp))
@@ -415,7 +519,7 @@ private fun MatchWonScreen(state: MatchState, onEnd: () -> Unit) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(28.dp))
-                .background(CourtColors.Lime)
+                .background(CourtColors.Accent)
                 .clickable { onEnd() }
                 .padding(horizontal = 22.dp, vertical = 10.dp),
         ) {

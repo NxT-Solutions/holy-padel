@@ -88,4 +88,23 @@ fun tieBreakServer(starter: TeamId, pointIndex: Int): TeamId {
 fun thirdSetWithoutTieBreak(mode: ThirdSetMode): Boolean = mode == ThirdSetMode.advantageSet
 
 /** Sets a team must win to take the match. */
-fun setsToWin(bestOf: Int): Int = if (bestOf == 1) 1 else WIN_BY_TWO
+fun setsToWin(bestOf: Int): Int = if (bestOf == 1) 1 else if (bestOf == 3) WIN_BY_TWO else 3
+
+/** Has a squash game been won based on tiebreak setting? */
+fun squashGameWon(tiebreak: SquashTiebreak, target: Int, winnerPoints: Int, loserPoints: Int): Boolean {
+    if (tiebreak == SquashTiebreak.winByTwo) {
+        return winnerPoints >= target && (winnerPoints - loserPoints) >= WIN_BY_TWO
+    }
+    if (tiebreak == SquashTiebreak.setOne) {
+        return winnerPoints >= target
+    }
+    return winnerPoints >= (target + 1)
+}
+
+/** Has a pickleball game been won based on tiebreak setting? */
+fun pbGameWon(tiebreak: PbTiebreak, target: Int, winnerPoints: Int, loserPoints: Int): Boolean {
+    if (tiebreak == PbTiebreak.winByTwo) {
+        return winnerPoints >= target && (winnerPoints - loserPoints) >= WIN_BY_TWO
+    }
+    return winnerPoints >= target
+}

@@ -27,19 +27,58 @@ enum class DeuceMode { advantage, starPoint, goldenPoint }
  */
 enum class ThirdSetMode { fullSet, advantageSet, superTieBreak }
 
-data class MatchConfig(
-    val bestOf: Int, // 1 or 3
-    val deuceMode: DeuceMode,
-    val thirdSet: ThirdSetMode,
-    /** Team serving the first game of the match. */
-    val firstServe: TeamId,
-)
+enum class SquashMode { par, hiho }
+enum class SquashTiebreak { winByTwo, setOne, setTwo, choice }
+enum class SquashServeBoxes { right, left, player }
 
-/** The only mutating event of a match: a rally ended and `winner` won it. */
+enum class PbType { singles, doubles }
+enum class PbTiebreak { winByTwo, winByOne }
+
+sealed class MatchConfig {
+    abstract val bestOf: Int
+    abstract val firstServe: TeamId
+    abstract val firstServePending: Boolean?
+
+    data class Padel(
+        override val bestOf: Int,
+        val deuceMode: DeuceMode,
+        val thirdSet: ThirdSetMode,
+        override val firstServe: TeamId,
+        override val firstServePending: Boolean? = null,
+    ) : MatchConfig()
+
+    data class Squash(
+        override val bestOf: Int,
+        val squashMode: SquashMode,
+        val squashTarget: Int,
+        val squashTiebreak: SquashTiebreak,
+        val squashServeBoxes: SquashServeBoxes? = null,
+        val squashServeBoxA: String? = null,
+        val squashServeBoxB: String? = null,
+        override val firstServe: TeamId,
+        override val firstServePending: Boolean? = null,
+    ) : MatchConfig()
+
+    data class Pickleball(
+        override val bestOf: Int,
+        val pbType: PbType,
+        val pbTarget: Int,
+        val pbTiebreak: PbTiebreak,
+        override val firstServe: TeamId,
+        override val firstServePending: Boolean? = null,
+    ) : MatchConfig()
+}
+
+/** A rally (`point`) or a team taking the undecided first serve of a pickleball game 2+ (`serve`). */
+enum class EventKind { point, serve }
+
 data class PointEvent(
     val winner: TeamId,
     /** Epoch milliseconds — used for durations, never for scoring. */
     val at: Long,
+    val kind: EventKind = EventKind.point,
+    /** Squash "choice" tie-break: the receiver's long/short decision at target-1 all. */
+    val gameSet: String? = null,
 )
 
 data class TeamValues<T>(val a: T, val b: T) {
@@ -85,6 +124,7 @@ sealed class Moment {
     data class Advantage(val team: TeamId) : Moment()
     object GoldenPoint : Moment()
     object StarPoint : Moment()
+    object SetChoice : Moment()
     data class TieBreak(val setNumber: Int) : Moment()
     object SuperTieBreak : Moment()
     data class Finished(val winner: TeamId) : Moment()
@@ -102,7 +142,18 @@ sealed class CurrentGame {
         val target: Int,
         val points: TeamValues<Int>,
     ) : CurrentGame()
+
+    data class Squash(
+        val points: TeamValues<Int>,
+    ) : CurrentGame()
+
+    data class Pickleball(
+        val points: TeamValues<Int>,
+        val serverNumber: Int?,
+    ) : CurrentGame()
 }
+
+
 
 /** Everything the UI needs about a match, derived from config + events. */
 data class MatchSnapshot(
@@ -117,7 +168,10 @@ data class MatchSnapshot(
     /** The game in play; null once the match is finished. */
     val currentGame: CurrentGame?,
     /** Team serving the point in play (tie-break rotation included). */
-    val servingTeam: TeamId,
+    val servingTeam: TeamId?,
+    /** Side of the court the server is serving from. */
+    val servingSide: String?,
+
     val moment: Moment,
     /** Rally points won over the whole match. */
     val totalPoints: TeamValues<Int>,

@@ -8,13 +8,14 @@ import {
 } from "@expo-google-fonts/archivo";
 import { Stack } from "expo-router";
 import { hideAsync, preventAutoHideAsync } from "expo-splash-screen";
-import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
+import { Text, View } from "react-native";
 import { TamaguiProvider } from "tamagui";
 import { DbProvider } from "@/db/provider.tsx";
 import { tamaguiConfig } from "@/tamagui.config.ts";
 import { colors } from "@/theme/colors.ts";
+import { ThemeController, useThemeMode } from "@/theme/theme.tsx";
 import { WatchSync } from "@/watch/use-watch-sync.ts";
 
 void preventAutoHideAsync();
@@ -26,8 +27,12 @@ export const unstable_settings = {
 };
 
 export default function RootLayout(): ReactNode {
+  // Re-renders on theme flips so the navigator background follows the palette
+  // (the ThemeController below the provider applies the palette itself).
+  useThemeMode();
+
   // biome-ignore-start lint/style/useNamingConvention: Google Fonts registry names
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Anton_400Regular,
     Archivo_400Regular,
     Archivo_500Medium,
@@ -38,29 +43,47 @@ export default function RootLayout(): ReactNode {
   // biome-ignore-end lint/style/useNamingConvention: Google Fonts registry names
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded || fontError) {
       void hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded) {
+  if (!(fontsLoaded || fontError)) {
     return null;
+  }
+
+  if (fontError) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.ink,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: colors.white }}>Font Error: {fontError.message}</Text>
+      </View>
+    );
   }
 
   return (
     <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
       <DbProvider>
+        <ThemeController />
         <WatchSync />
-        <StatusBar style="dark" />
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: colors.cream },
+            contentStyle: { backgroundColor: colors.screen },
           }}
         >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="new-match" options={{ presentation: "modal" }} />
           <Stack.Screen name="edit-profile" options={{ presentation: "modal" }} />
+          <Stack.Screen name="edit-player/[id]" options={{ presentation: "modal" }} />
+          <Stack.Screen name="edit-defaults" options={{ presentation: "modal" }} />
+          <Stack.Screen name="player/[id]" />
           <Stack.Screen name="data" options={{ presentation: "modal" }} />
           <Stack.Screen name="live/[id]" options={{ gestureEnabled: false }} />
           <Stack.Screen name="match/[id]" />

@@ -52,7 +52,7 @@ name: New match through to match won
     visible: "MATCH WON"
     timeout: 20000
 - assertVisible: "DEF. MARTA & LEO"
-- tapOn: "SAVE & CLOSE"
+- tapOn: "DONE"
 
 # The result reached the ledger: the matches tab count grew to 14.
 - extendedWaitUntil:
