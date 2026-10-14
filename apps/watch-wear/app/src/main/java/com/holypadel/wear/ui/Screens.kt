@@ -1,5 +1,12 @@
 package com.holypadel.wear.ui
 
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import android.text.format.DateFormat
+import java.util.Date
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -139,7 +146,30 @@ private fun LiveScoreScreen(
     }
 }
 
-/** The score face — nothing but the two tappable team halves plus a compact header. */
+/** The time of day, refreshed on the minute, in the watch's 12/24h format. */
+@Composable
+private fun TimeOfDay() {
+    val context = LocalContext.current
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) {
+            value = System.currentTimeMillis()
+            delay(60_000L - value % 60_000L)
+        }
+    }
+    BodyText(
+        DateFormat.getTimeFormat(context).format(Date(now)),
+        color = CourtColors.White,
+        sizeSp = 14,
+        weight = FontWeight.Bold,
+    )
+}
+
+/**
+ * The score face, laid out for a ROUND screen: time, heart rate and match
+ * clock centred at the top (the corners of a round face are cut off), the two
+ * teams side by side as big tappable halves, and the game score + LIVE centred
+ * at the bottom.
+ */
 @Composable
 private fun ScorePage(
     state: MatchState,
@@ -148,28 +178,17 @@ private fun ScorePage(
     onSetChoice: (String) -> Unit,
 ) {
     val paused = state.paused
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
-        // Header: clock (or live bpm) · set/games · LIVE (or PAUSED)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(top = 12.dp, bottom = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        TimeOfDay()
+        Row(verticalAlignment = Alignment.CenterVertically) {
             if (liveBpm > 0) {
-                BodyText("$liveBpm♥", color = CourtColors.Accent, sizeSp = 12)
-            } else {
-                BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
+                BodyText("♥ $liveBpm", color = CourtColors.Accent, sizeSp = 12, weight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
             }
-            LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Accent)
-                Spacer(Modifier.width(4.dp))
-                LabelText(
-                    if (paused) "PAUSED" else "LIVE",
-                    color = if (paused) CourtColors.White45 else CourtColors.Accent,
-                    sizeSp = 10,
-                )
-            }
+            BodyText(state.clock, color = CourtColors.White45, sizeSp = 12)
         }
 
         // During a squash "choice" tie-break the decision is mandatory: the
@@ -185,32 +204,51 @@ private fun ScorePage(
         // While paused, dim the halves and swallow taps — the phone rejects points
         // when paused anyway, but this keeps the watch honest (docs/watch-sync.md).
         val scoreEnabled = !paused
-        TeamRow(
-            modifier = Modifier
-                .weight(1f)
-                .alpha(if (paused) 0.35f else 1f)
-                .clickable(enabled = scoreEnabled) { onScore("A") },
-            short = state.teamA.short,
-            point = state.pointA,
-            serving = state.teamA.serving,
-            servingSide = state.teamA.servingSide,
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(CourtColors.White25),
-        )
-        TeamRow(
-            modifier = Modifier
-                .weight(1f)
-                .alpha(if (paused) 0.35f else 1f)
-                .clickable(enabled = scoreEnabled) { onScore("B") },
-            short = state.teamB.short,
-            point = state.pointB,
-            serving = state.teamB.serving,
-            servingSide = state.teamB.servingSide,
-        )
+        Row(
+            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TeamHalf(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .alpha(if (paused) 0.35f else 1f)
+                    .clickable(enabled = scoreEnabled) { onScore("A") },
+                short = state.teamA.short,
+                point = state.pointA,
+                serving = state.teamA.serving,
+                servingSide = state.teamA.servingSide,
+            )
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .fillMaxHeight(0.55f)
+                    .background(CourtColors.White25),
+            )
+            TeamHalf(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .alpha(if (paused) 0.35f else 1f)
+                    .clickable(enabled = scoreEnabled) { onScore("B") },
+                short = state.teamB.short,
+                point = state.pointB,
+                serving = state.teamB.serving,
+                servingSide = state.teamB.servingSide,
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LabelText(listOf(state.setLabel, state.games).filter { it.isNotEmpty() }.joinToString("  "))
+            Spacer(Modifier.width(7.dp))
+            Dot(sizeDp = 6, color = if (paused) CourtColors.White45 else CourtColors.Accent)
+            Spacer(Modifier.width(4.dp))
+            LabelText(
+                if (paused) "PAUSED" else "LIVE",
+                color = if (paused) CourtColors.White45 else CourtColors.Accent,
+                sizeSp = 10,
+            )
+        }
     }
 }
 
@@ -434,25 +472,26 @@ private fun DrawScope.drawControlIcon(icon: ControlIcon, color: Color) {
     }
 }
 
+/** One team's half of the side-by-side score face: serve dot + name over the big point. */
 @Composable
-private fun TeamRow(modifier: Modifier, short: String, point: String, serving: Boolean, servingSide: String?) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+private fun TeamHalf(modifier: Modifier, short: String, point: String, serving: Boolean, servingSide: String?) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (serving) 1f else 0f)) {
                 Dot(
-                    sizeDp = if (servingSide != null) 14 else 8, 
-                    visible = true, 
-                    label = if (servingSide == "right") "R" else if (servingSide == "left") "L" else null
+                    sizeDp = if (servingSide != null) 14 else 8,
+                    visible = true,
+                    label = if (servingSide == "right") "R" else if (servingSide == "left") "L" else null,
                 )
             }
-            Spacer(Modifier.width(7.dp))
-            DisplayText(short, sizeSp = 20, color = CourtColors.White)
+            Spacer(Modifier.width(5.dp))
+            DisplayText(short, sizeSp = 16, color = CourtColors.White)
         }
-        DisplayText(point, sizeSp = 56, color = CourtColors.White)
+        DisplayText(point, sizeSp = 52, color = CourtColors.White)
     }
 }
 
