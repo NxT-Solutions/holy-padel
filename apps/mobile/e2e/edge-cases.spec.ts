@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { confirmSheet, gotoHome, gotoLive, score, winLoveGames } from "./helpers.ts";
+import {
+  confirmSheet,
+  gotoHome,
+  gotoLive,
+  saveLiveMatchIfAsked,
+  score,
+  winLoveGames,
+} from "./helpers.ts";
 
 test.describe("input edges", () => {
   test("a player picked for one team disappears from the other picker", async ({ page }) => {
@@ -24,7 +31,7 @@ test.describe("input edges", () => {
     await expect(page.getByRole("button", { name: /Ana .* with you/u })).toBeVisible();
   });
 
-  test("double-tapping START MATCH creates exactly one match", async ({ page }) => {
+  test("double-tapping the start confirmation creates exactly one match", async ({ page }) => {
     await gotoHome(page);
     await page.getByRole("button", { name: "NEW MATCH" }).click();
     await page.getByText("Pick a player").first().click();
@@ -35,12 +42,15 @@ test.describe("input edges", () => {
     await page.getByRole("button", { name: /Leo/u }).click();
     await page.getByRole("button", { name: "DONE" }).click();
 
-    await page.getByRole("button", { name: "START MATCH" }).dblclick();
+    // The seeded match is still live, so starting asks to save it first.
+    await page.getByRole("button", { name: "START MATCH" }).click();
+    await page.getByRole("button", { name: "SAVE & START NEW" }).dblclick();
     await expect(page.getByTestId("point-A")).toBeVisible();
 
     await page.goto("/matches");
     await expect(page.getByText("14 stored locally")).toBeVisible({ timeout: 90_000 });
-    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(2);
+    // The seeded match was saved, not orphaned: only the new one is live.
+    await expect(page.getByText("LIVE", { exact: true })).toHaveCount(1);
   });
 
   test("a tap racing the final point cannot poison the match", async ({ page }) => {
@@ -76,6 +86,7 @@ test.describe("input edges", () => {
     await page.getByRole("button", { name: "DONE" }).click();
 
     await page.getByRole("button", { name: "START MATCH" }).click();
+    await saveLiveMatchIfAsked(page);
     await expect(page.getByRole("button", { name: "Point Nico & Rita" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Point Sam & Tess" })).toBeVisible();
 

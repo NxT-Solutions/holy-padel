@@ -98,6 +98,19 @@ export async function startNewMatch(page: Page, options: NewMatchOptions = {}): 
   }
 
   await page.getByRole("button", { name: "START MATCH" }).click();
+  await saveLiveMatchIfAsked(page);
   await expect(page.getByTestId("point-A")).toBeVisible();
   await expectPoints(page, "0", "0");
+}
+
+/**
+ * Starting a match while another is live (the seeded one) asks to save the
+ * live one first. Confirm it when asked; continue when nothing was live.
+ */
+export async function saveLiveMatchIfAsked(page: Page): Promise<void> {
+  const sheet = page.getByText("MATCH STILL LIVE");
+  await expect(page.getByTestId("point-A").or(sheet)).toBeVisible();
+  if (await sheet.isVisible()) {
+    await page.getByRole("button", { name: "SAVE & START NEW" }).click();
+  }
 }

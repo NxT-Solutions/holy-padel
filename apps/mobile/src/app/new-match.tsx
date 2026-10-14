@@ -23,6 +23,7 @@ import { useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, YStack } from "tamagui";
+import { useLiveConflictGuard } from "@/components/live-conflict-sheet.tsx";
 import { ModalHeader } from "@/components/modal-header.tsx";
 import {
   MatchNoteInput,
@@ -35,6 +36,7 @@ import {
 } from "@/components/new-match-parts.tsx";
 import { Body } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
+import { closeLiveMatch } from "@/lib/match-actions.ts";
 import { buildConfig } from "@/lib/match-config-builder.ts";
 import { goBack, newMatchId } from "@/lib/navigation.ts";
 import { useMatchDraftPersistence } from "@/lib/use-match-draft.ts";
@@ -50,6 +52,7 @@ export default function NewMatchScreen(): ReactNode {
   const draft = useDbQuery(loadMatchDraft);
   const savedDefaults = useDbQuery(loadMatchDefaults);
   const lastMatch = useDbQuery(listMatches)?.[0];
+
   const c = lastMatch?.config;
 
   // Precedence: the in-progress draft, then the player's saved defaults,
@@ -155,6 +158,8 @@ export default function NewMatchScreen(): ReactNode {
     const boxFor = (playerId: string): "right" | "left" =>
       roster.find((entry) => entry.id === playerId)?.side ?? "right";
     mutate((driver) => {
+      // Only one match is ever live: a still-live one is saved as it stands.
+      closeLiveMatch(driver, Date.now());
       const isFirstServePending = firstServe === "undecided";
       const firstServeId = isFirstServePending ? "A" : firstServe;
       const config = buildConfig({
@@ -187,6 +192,8 @@ export default function NewMatchScreen(): ReactNode {
     });
     router.replace(`/live/${id}`);
   };
+
+  const liveGuard = useLiveConflictGuard(ownerId, startMatch);
 
   const togglePick = (id: string): void => {
     if (picking === "A") {
@@ -281,7 +288,9 @@ export default function NewMatchScreen(): ReactNode {
         <MatchNoteInput value={note} onChange={setNote} />
       </ScrollView>
 
-      <StartMatchButton ready={ready} onStart={startMatch} bottomInset={insets.bottom} />
+      <StartMatchButton ready={ready} onStart={liveGuard.request} bottomInset={insets.bottom} />
+
+      {liveGuard.sheet}
 
       {picking === undefined ? null : (
         <MatchPickerSheet

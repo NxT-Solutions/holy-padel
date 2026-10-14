@@ -11,7 +11,8 @@ import { colors, textAlpha } from "@/theme/colors.ts";
  * square corners, which broke the dark theme.
  *
  * The whole sheet is dismissable (backdrop tap and CANCEL), and the confirm
- * action is the danger fill so "this deletes something" reads instantly.
+ * action is the danger fill so "this deletes something" reads instantly. The
+ * `primary` tone (ink fill, lime label) is for confirmations that keep data.
  */
 export function ConfirmSheet({
   title,
@@ -19,12 +20,14 @@ export function ConfirmSheet({
   confirmLabel,
   onConfirm,
   onCancel,
+  tone = "danger",
 }: {
   readonly title: string;
   readonly message: string;
   readonly confirmLabel: string;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
+  readonly tone?: "danger" | "primary";
 }): ReactNode {
   const insets = useSafeAreaInsets();
   return (
@@ -53,7 +56,7 @@ export function ConfirmSheet({
         <XStack
           height={58}
           marginTop={4}
-          backgroundColor={colors.danger}
+          backgroundColor={tone === "danger" ? colors.danger : colors.ink}
           borderRadius={17}
           alignItems="center"
           justifyContent="center"
@@ -63,7 +66,11 @@ export function ConfirmSheet({
           onPress={onConfirm}
           testID="confirm-action"
         >
-          <Display fontSize={17} letterSpacing={1.2} color={colors.white}>
+          <Display
+            fontSize={17}
+            letterSpacing={1.2}
+            color={tone === "danger" ? colors.white : colors.lime}
+          >
             {confirmLabel}
           </Display>
         </XStack>

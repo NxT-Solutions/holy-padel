@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoHome } from "./helpers.ts";
+import { gotoHome, saveLiveMatchIfAsked } from "./helpers.ts";
 
 test.describe("home screen (design 3a)", () => {
   test("renders the seeded state", async ({ page }) => {
@@ -40,6 +40,7 @@ test.describe("home screen (design 3a)", () => {
   test("rematch creates a fresh live match against the last opponents", async ({ page }) => {
     await gotoHome(page);
     await page.getByRole("button", { name: /REMATCH/u }).click();
+    await saveLiveMatchIfAsked(page);
     await expect(page).toHaveURL(/\/live\/match-/u);
     await expect(page.getByTestId("point-A")).toHaveText("0");
     await expect(page.getByTestId("point-B")).toHaveText("0");

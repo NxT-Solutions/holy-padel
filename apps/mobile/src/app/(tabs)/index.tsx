@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { HistoryGrid } from "@/components/history-grid.tsx";
 import { ArrowRight, Plus } from "@/components/icons.tsx";
+import { useLiveConflictGuard } from "@/components/live-conflict-sheet.tsx";
 import { Avatar, Body, Card, Display, LiveDot, Overline, ResultBadge } from "@/components/ui.tsx";
 import { WatchPill } from "@/components/watch-status.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
@@ -30,7 +31,7 @@ import {
   pairLabel,
 } from "@/lib/format.ts";
 import { computeHistory } from "@/lib/history.ts";
-import { rematchConfig } from "@/lib/match-actions.ts";
+import { closeLiveMatch, rematchConfig } from "@/lib/match-actions.ts";
 import { newMatchId } from "@/lib/navigation.ts";
 import { useNow } from "@/lib/use-now.ts";
 import { colors, textAlpha, whiteAlpha } from "@/theme/colors.ts";
@@ -195,6 +196,8 @@ export default function HomeScreen(): ReactNode {
     rematchStarted.current = true;
     const id = newMatchId();
     mutate((driver) => {
+      // Only one match is ever live: a still-live one is saved as it stands.
+      closeLiveMatch(driver, Date.now());
       createMatch(driver, {
         id,
         config: rematchConfig(lastFinished.config),
@@ -206,6 +209,9 @@ export default function HomeScreen(): ReactNode {
     });
     router.push(`/live/${id}`);
   };
+
+  // Modal: the sheet must cover the floating tab bar.
+  const rematchGuard = useLiveConflictGuard(ownerId, startRematch, true);
 
   return (
     <ScrollView
@@ -264,7 +270,11 @@ export default function HomeScreen(): ReactNode {
           gap={2}
           pressStyle={{ opacity: 0.7 }}
           role="button"
-          onPress={startRematch}
+          onPress={() => {
+            if (lastFinished !== undefined) {
+              rematchGuard.request();
+            }
+          }}
         >
           <Body fontSize={10} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.5)}>
             REMATCH
@@ -314,6 +324,8 @@ export default function HomeScreen(): ReactNode {
         selectedDay={selectedDay}
         onSelectDay={setSelectedDay}
       />
+
+      {rematchGuard.sheet}
     </ScrollView>
   );
 }

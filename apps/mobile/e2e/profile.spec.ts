@@ -54,15 +54,17 @@ test.describe("profile tab (design 3f)", () => {
     await gotoHome(page);
     await startNewMatch(page, { bestOf: 1 });
     await winLoveGames(page, "A", 6);
-    await page.getByRole("button", { name: "SAVE & CLOSE" }).click();
+    await page.getByRole("button", { name: "DONE", exact: true }).click();
     await expect(page.getByText("HOLA, NICO")).toBeVisible();
 
+    // Two new wins: this match, and the seeded live one (Nico & Javi ahead),
+    // saved when this match started.
     await gotoProfile(page);
-    await expect(page.getByText("13", { exact: true })).toBeVisible();
-    await expect(page.getByText("9–4", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("69%", { exact: true })).toBeVisible();
-    await expect(page.getByText("9–3", { exact: true })).toBeVisible(); // with Javi
-    await expect(page.getByText("5–3", { exact: true })).toBeVisible(); // vs Marta & Leo
+    await expect(page.getByText("14", { exact: true })).toBeVisible();
+    await expect(page.getByText("10–4", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("71%", { exact: true })).toBeVisible();
+    await expect(page.getByText("10–3", { exact: true })).toBeVisible(); // with Javi
+    await expect(page.getByText("6–3", { exact: true })).toBeVisible(); // vs Marta & Leo
     await expect(page.getByText(/SQLite · 14 matches/u)).toBeVisible();
   });
 });

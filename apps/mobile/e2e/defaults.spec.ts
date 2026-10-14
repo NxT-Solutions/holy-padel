@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoHome } from "./helpers.ts";
+import { gotoHome, saveLiveMatchIfAsked } from "./helpers.ts";
 
 test.describe("match defaults and draft persistence", () => {
   test("the profile row summarises defaults and opens the editor", async ({ page }) => {
@@ -54,6 +54,7 @@ test.describe("match defaults and draft persistence", () => {
 
     // Starting the match clears the draft — the next fresh screen has no picks.
     await page.getByRole("button", { name: "START MATCH" }).click();
+    await saveLiveMatchIfAsked(page);
     await expect(page.getByTestId("point-A")).toBeVisible();
     await gotoHome(page);
     await page.getByRole("button", { name: "NEW MATCH" }).click();

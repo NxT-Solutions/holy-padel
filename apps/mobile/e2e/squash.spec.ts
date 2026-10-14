@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
-import { expectPoints, gotoHome, statusPill } from "./helpers.ts";
+import { expectPoints, gotoHome, saveLiveMatchIfAsked, statusPill } from "./helpers.ts";
 
 /**
  * HI-HO squash: only the server scores, a receiver's rally is a hand-out, and
@@ -35,6 +35,7 @@ async function startSquashHiho(page: Page, options: { choice?: boolean } = {}): 
     await page.getByRole("button", { name: "Ask at 10", exact: true }).click();
   }
   await page.getByRole("button", { name: "START MATCH" }).click();
+  await saveLiveMatchIfAsked(page);
   await expect(page.getByTestId("point-A")).toBeVisible();
   await expectPoints(page, "0", "0");
 }
