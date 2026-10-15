@@ -9,14 +9,14 @@ paths:
 # Design system — Court Bold
 
 `DESIGN.md` at the repo root is the token source of truth: Court Bold — Anton
-display + Archivo body, ball-lime `#C6F135` on ink `#0E1116` over cream `#F1F0EA`.
+display + Archivo body, signal orange `#FF6B35` on ink `#0E1116` over cream `#F1F0EA`.
 When a value is in doubt, `DESIGN.md` wins.
 
 ## Where tokens live
 
 - **`apps/mobile/src/theme/colors.ts` is the canonical palette.** All app colour
   comes from here (the `colors` const and the `inkAlpha` / `whiteAlpha` /
-  `limeAlpha` helpers). Don't hard-code hex in components.
+  `accentAlpha` helpers). Don't hard-code hex in components.
 - The watches **mirror** this palette — they don't own colours:
   - watchOS: `Court` in `apps/mobile/targets/watch/Theme.swift`.
   - Wear OS: `CourtColors`.
@@ -33,11 +33,13 @@ count, and display heading across phone and both watches.
 
 ## Colour intent
 
-- **Lime is reserved for signal only** — serve indicator, primary CTA, the live /
+- **Orange is reserved for signal only** — serve indicator, primary CTA, the live /
   active accent. It is not a decorative fill. Ink and cream carry the layout;
-  lime marks the one thing that matters right now.
-- **Teams read by colour**: Team A is lime-on-ink; Team B is `teamBlue`
-  (`#2E5BFF`). Keep that pairing consistent wherever both teams appear.
+  orange marks the one thing that matters right now.
+- **Teams read by colour**: Team A is the accent-on-ink; Team B is `teamB`
+  (default `#8B7CFF` violet). Both are user-selectable in Settings, so always
+  read them from `colors` / `accentAlpha` / `accentRgb` / `teamBRgb` — never
+  hard-code the default hex. Keep the pairing consistent wherever both teams appear.
 - Use `danger` for destructive actions only.
 
 ## Cross-surface

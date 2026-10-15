@@ -1,5 +1,5 @@
-import type { MatchSummary } from "@holy-padel/db";
-import type { MatchSnapshot, TeamId, TeamValues } from "@holy-padel/scoring";
+import type { MatchSummary, NewMatchDefaults } from "@holy-padel/db";
+import type { DeuceMode, MatchSnapshot, TeamId, TeamValues } from "@holy-padel/scoring";
 
 const DAY_MS = 86_400_000;
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
@@ -18,13 +18,22 @@ const MONTHS = [
   "DEC",
 ] as const;
 
-/** "Nico & Javi" */
-export function pairLabel(names: readonly [string, string]): string {
+/**
+ * "Nico & Javi" — the second slot is undefined for singles-era rows whose
+ * second player column is NULL; the pair is then just the one player.
+ */
+export function pairLabel(names: readonly [string, string | undefined]): string {
+  if (names[1] === undefined || names[0] === names[1]) {
+    return names[0];
+  }
   return `${names[0]} & ${names[1]}`;
 }
 
 /** "N&J" */
-export function pairInitials(names: readonly [string, string]): string {
+export function pairInitials(names: readonly [string, string | undefined]): string {
+  if (names[1] === undefined || names[0] === names[1]) {
+    return names[0].slice(0, 2).toUpperCase();
+  }
   return `${names[0].charAt(0).toUpperCase()}&${names[1].charAt(0).toUpperCase()}`;
 }
 
@@ -37,7 +46,10 @@ export function teamInitials(match: MatchSummary): TeamValues<string> {
 }
 
 /** The pair facing the owner's team. */
-export function opponentsOf(match: MatchSummary, ownerTeam: TeamId): readonly [string, string] {
+export function opponentsOf(
+  match: MatchSummary,
+  ownerTeam: TeamId,
+): readonly [string, string | undefined] {
   return ownerTeam === "A" ? match.names.B : match.names.A;
 }
 
@@ -115,27 +127,43 @@ export function matchMetaLabel(match: MatchSummary, now: number): string {
     .join(" · ");
 }
 
+export function currentSetScore(snapshot: MatchSnapshot): string {
+  const game = snapshot.currentGame;
+  if (snapshot.config.sport === "pickleball" && game?.kind === "pickleball") {
+    const serverNum = game.serverNumber === undefined ? "" : `-${game.serverNumber}`;
+    const serverPoints = snapshot.servingTeam === "B" ? game.points.B : game.points.A;
+    const receiverPoints = snapshot.servingTeam === "B" ? game.points.A : game.points.B;
+    return `${String(serverPoints)}-${String(receiverPoints)}${serverNum}`;
+  }
+  if (snapshot.config.sport === "squash" && game?.kind === "squash") {
+    return `${String(game.points.A)}-${String(game.points.B)}`;
+  }
+  if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
+    return `${String(game.points.A)}-${String(game.points.B)}`;
+  }
+  return `${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`;
+}
+
 /** "6-4 · 4-3" — completed sets plus the set in play (super TB shows its points). */
 export function liveScoreLine(snapshot: MatchSnapshot): string {
   const parts = snapshot.completedSets.map(
     (set) => `${String(set.games.A)}-${String(set.games.B)}`,
   );
   if (!snapshot.finished) {
-    const game = snapshot.currentGame;
-    if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
-      parts.push(`${String(game.points.A)}-${String(game.points.B)}`);
-    } else {
-      parts.push(`${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`);
-    }
+    parts.push(currentSetScore(snapshot));
   }
   return parts.join(" · ");
 }
 
 /** "6-3 · 7-6" for a finished match, from the snapshot. */
 export function finalScoreLine(snapshot: MatchSnapshot): string {
-  return snapshot.completedSets
-    .map((set) => `${String(set.games.A)}-${String(set.games.B)}`)
-    .join(" · ");
+  const parts = snapshot.completedSets.map(
+    (set) => `${String(set.games.A)}-${String(set.games.B)}`,
+  );
+  if (snapshot.config.sport === "pickleball" && snapshot.completedSets.length > 0) {
+    // For pickleball, just return the sets as usual
+  }
+  return parts.join(" · ");
 }
 
 /**
@@ -168,17 +196,144 @@ export function pointDisplay(snapshot: MatchSnapshot, team: TeamId): string {
   return game.kind === "standard" ? game.calls[team] : String(game.points[team]);
 }
 
-/** "SET 2" / "SUPER TB" — the set in play, in the watch header's compact style. */
+/**
+ * The match around the live point, without repeating it — the watches show
+ * the point score big already. Padel: "SET 2" and "6-4 · 3-2" (set scores and
+ * games in this set). Squash and pickleball: "GAME 2" and the games won,
+ * "1-0" (nothing in game 1). The label only appears when the match has more
+ * than one set or game; a super tie-break is always labelled, with just the
+ * set scores beside it.
+ */
+export function matchContext(snapshot: MatchSnapshot): {
+  readonly label: string;
+  readonly score: string;
+} {
+  const { config, completedSets, currentGame } = snapshot;
+  const sets = completedSets.map((set) => `${String(set.games.A)}-${String(set.games.B)}`);
+  if (currentGame?.kind === "tieBreak" && currentGame.tieBreakKind === "superTieBreak") {
+    return { label: "SUPER TB", score: sets.join(" · ") };
+  }
+  const several = config.bestOf > 1;
+  if (config.sport === "squash" || config.sport === "pickleball") {
+    const wonA = completedSets.filter((set) => set.winner === "A").length;
+    return {
+      label: several ? `GAME ${String(snapshot.setNumber)}` : "",
+      score:
+        completedSets.length === 0 ? "" : `${String(wonA)}-${String(completedSets.length - wonA)}`,
+    };
+  }
+  const games = `${String(snapshot.currentSetGames.A)}-${String(snapshot.currentSetGames.B)}`;
+  return {
+    label: several ? `SET ${String(snapshot.setNumber)}` : "",
+    score: [...sets, games].join(" · "),
+  };
+}
+
+/** "SET 2" / "SUPER TB" / "GAME 1" — the set in play, in the watch header's compact style. */
 export function watchSetLabel(snapshot: MatchSnapshot): string {
   const game = snapshot.currentGame;
   if (game?.kind === "tieBreak" && game.tieBreakKind === "superTieBreak") {
     return "SUPER TB";
   }
-  return `SET ${String(snapshot.setNumber)}`;
+  const isSquash = snapshot.config.sport === "squash";
+  return `${isSquash ? "GAME" : "SET"} ${String(snapshot.setNumber)}`;
 }
 
 /** "1.2 MB" */
 export function megabytesLabel(bytes: number): string {
   const megabytes = bytes / (1024 * 1024);
   return `${megabytes.toFixed(1)} MB`;
+}
+
+const SPORT_LABELS: Record<NewMatchDefaults["sport"], string> = {
+  padel: "Padel",
+  squash: "Squash",
+  pickleball: "Pickleball",
+};
+
+/** "Padel · Doubles" — the rules summary card's title. */
+export function setupTitle(setup: NewMatchDefaults): string {
+  return `${SPORT_LABELS[setup.sport]} · ${setup.format === "singles" ? "Singles" : "Doubles"}`;
+}
+
+/**
+ * Whether two setups describe the exact same rules — the saved preset chip
+ * for the current setup reads as active. Compared field by field (not
+ * stringified) so key ordering can never make equal setups look different.
+ */
+export function sameSetup(left: NewMatchDefaults, right: NewMatchDefaults): boolean {
+  return (
+    left.format === right.format &&
+    left.bestOf === right.bestOf &&
+    left.thirdSet === right.thirdSet &&
+    left.deuceMode === right.deuceMode &&
+    left.firstServe === right.firstServe &&
+    left.sport === right.sport &&
+    left.squashMode === right.squashMode &&
+    left.squashTarget === right.squashTarget &&
+    left.squashTiebreak === right.squashTiebreak &&
+    left.squashServeBoxes === right.squashServeBoxes &&
+    left.pbTarget === right.pbTarget &&
+    left.pbTiebreak === right.pbTiebreak
+  );
+}
+
+function serveLabel(firstServe: NewMatchDefaults["firstServe"]): string {
+  if (firstServe === "undecided") {
+    return "Serve: toss";
+  }
+  return `Serve: Team ${firstServe}`;
+}
+
+function squashTiebreakLabel(setup: NewMatchDefaults): string {
+  if (setup.squashTiebreak === "winByTwo") {
+    return "Win by 2";
+  }
+  if (setup.squashTiebreak === "choice") {
+    return `Ask at ${String(setup.squashTarget - 1)}`;
+  }
+  return setup.squashTiebreak === "setOne" ? "Set 1" : "Set 2";
+}
+
+function squashBoxLabel(boxes: NewMatchDefaults["squashServeBoxes"]): string {
+  return `Box: ${boxes === "player" ? "auto" : boxes}`;
+}
+
+/**
+ * The rules summary card's small pills — the current setup in the sport's own
+ * vocabulary, most distinctive rule first. Squash leads with its mode and
+ * target; padel and pickleball lead with the set/goal format.
+ */
+export function setupSummary(setup: NewMatchDefaults): string[] {
+  if (setup.sport === "squash") {
+    return [
+      `${setup.squashMode === "par" ? "PAR" : "HIHO"} to ${String(setup.squashTarget)}`,
+      `Best of ${String(setup.bestOf)}`,
+      squashTiebreakLabel(setup),
+      squashBoxLabel(setup.squashServeBoxes),
+    ];
+  }
+  if (setup.sport === "pickleball") {
+    return [
+      `To ${String(setup.pbTarget)}`,
+      `Best of ${String(setup.bestOf)}`,
+      setup.pbTiebreak === "winByTwo" ? "Win by 2" : "Win by 1",
+      serveLabel(setup.firstServe),
+    ];
+  }
+  const thirdSet = setup.thirdSet === "superTieBreak" ? "Super TB" : "Full set";
+  return [
+    `Best of ${String(setup.bestOf)}`,
+    // A single set has no decider to describe.
+    ...(setup.bestOf === 1 ? [] : [`${thirdSet} decider`]),
+    deuceLabel(setup.deuceMode),
+    serveLabel(setup.firstServe),
+  ];
+}
+
+function deuceLabel(deuceMode: DeuceMode): "Golden pt" | "Star pt" | "Advantage" {
+  if (deuceMode === "goldenPoint") {
+    return "Golden pt";
+  }
+  return deuceMode === "starPoint" ? "Star pt" : "Advantage";
 }

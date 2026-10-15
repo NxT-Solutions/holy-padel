@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable } from "react-native";
 import { View, XStack } from "tamagui";
 import { Body } from "@/components/ui.tsx";
-import { colors, inkAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha } from "@/theme/colors.ts";
 
 export interface Segment<T extends string | number> {
   readonly value: T;
@@ -46,7 +46,7 @@ export function SegmentedRow<T extends string | number>({
                 <Body
                   fontSize={12.5}
                   fontWeight={active ? "800" : "700"}
-                  color={active ? colors.white : inkAlpha(0.45)}
+                  color={active ? colors.white : textAlpha(0.45)}
                 >
                   {option.label}
                 </Body>

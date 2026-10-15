@@ -20,12 +20,31 @@ interface WatchBridgeModule {
     event: "onIntent",
     listener: (payload: IntentPayload) => void,
   ) => { remove: () => void };
+  /** Added with the connection-status feature; absent in older native builds. */
+  connectedWatchCount?: () => Promise<number>;
 }
 
 const native = requireOptionalNativeModule<WatchBridgeModule>("WatchBridge");
 
 export function isWatchBridgeAvailable(): boolean {
   return native !== null;
+}
+
+/**
+ * How many watches are connected right now (Android: Wear nodes; iOS: not yet
+ * implemented). null = unknowable — no bridge, or a native build from before
+ * the connection feature. Callers treat null as "don't show watch status".
+ */
+export async function connectedWatchCountAsync(): Promise<number | null> {
+  if (native === null || typeof native.connectedWatchCount !== "function") {
+    return null;
+  }
+  try {
+    const count = await native.connectedWatchCount();
+    return typeof count === "number" && count >= 0 ? count : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Push the latest match state to the watch (already-serialised JSON). */

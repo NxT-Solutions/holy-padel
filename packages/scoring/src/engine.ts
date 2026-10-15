@@ -1,54 +1,17 @@
+import type { FoldState } from "./internal.ts";
+import { bump, completeSet, currentSetHasTieBreak, ZERO } from "./internal.ts";
 import {
-  DEUCE_POINTS,
-  isDecidingPoint,
   otherTeam,
   SUPER_TIE_BREAK_TARGET,
-  setsToWin,
   setWon,
   standardGameWon,
   TIE_BREAK_TARGET,
-  thirdSetWithoutTieBreak,
   tieBreakDue,
-  tieBreakServer,
   tieBreakWon,
 } from "./rules.ts";
-import type {
-  CurrentGame,
-  MatchConfig,
-  MatchSnapshot,
-  Moment,
-  PointCall,
-  PointEvent,
-  SetSummary,
-  TeamId,
-  TeamValues,
-  TieBreakKind,
-} from "./types.ts";
-
-interface FoldState {
-  completedSets: SetSummary[];
-  setGames: TeamValues<number>;
-  points: TeamValues<number>;
-  tieBreak: TieBreakKind | undefined;
-  tieBreakStarter: TeamId;
-  /** Server of the current standard game; after a game, the next game's server. */
-  gameServer: TeamId;
-  setNumber: number;
-  finished: boolean;
-  winner: TeamId | undefined;
-  totalPoints: TeamValues<number>;
-  totalGames: TeamValues<number>;
-}
-
-const ZERO: TeamValues<number> = { A: 0, B: 0 };
-
-function bump(values: TeamValues<number>, team: TeamId): TeamValues<number> {
-  return team === "A" ? { A: values.A + 1, B: values.B } : { A: values.A, B: values.B + 1 };
-}
-
-function setsWonBy(sets: readonly SetSummary[], team: TeamId): number {
-  return sets.filter((set) => set.winner === team).length;
-}
+import { currentGameOf, deriveMoment, servingSideOf, servingTeamOf } from "./snapshot.ts";
+import { applyPickleballPoint, applyServeEvent, applySquashPoint } from "./sports.ts";
+import type { MatchConfig, MatchSnapshot, PointEvent, SetSummary, TeamId } from "./types.ts";
 
 function initialState(config: MatchConfig): FoldState {
   return {
@@ -58,50 +21,15 @@ function initialState(config: MatchConfig): FoldState {
     tieBreak: undefined,
     tieBreakStarter: config.firstServe,
     gameServer: config.firstServe,
+    serverConsecutivePoints: 0,
+    pbServerNumber: config.sport === "pickleball" && config.pbType === "doubles" ? 2 : undefined,
+    isFirstTerm: config.sport === "pickleball",
     setNumber: 1,
     finished: false,
     winner: undefined,
     totalPoints: ZERO,
     totalGames: ZERO,
   };
-}
-
-/** The deciding set of a best-of-3 match, where third-set variants apply. */
-const DECIDING_SET = 3;
-
-function isDecidingSet(config: MatchConfig, setNumber: number): boolean {
-  return config.bestOf === DECIDING_SET && setNumber === DECIDING_SET;
-}
-
-/** Is the set being played one that runs without a tie-break at 6-6? */
-function currentSetHasTieBreak(config: MatchConfig, setNumber: number): boolean {
-  return !(isDecidingSet(config, setNumber) && thirdSetWithoutTieBreak(config.thirdSet));
-}
-
-function startNextSet(state: FoldState, config: MatchConfig): FoldState {
-  const setNumber = state.setNumber + 1;
-  const superTieBreakDue =
-    isDecidingSet(config, setNumber) &&
-    config.thirdSet === "superTieBreak" &&
-    setsWonBy(state.completedSets, "A") === setsWonBy(state.completedSets, "B");
-  return {
-    ...state,
-    setNumber,
-    setGames: ZERO,
-    points: ZERO,
-    tieBreak: superTieBreakDue ? "superTieBreak" : undefined,
-    tieBreakStarter: state.gameServer,
-  };
-}
-
-function completeSet(state: FoldState, config: MatchConfig, summary: SetSummary): FoldState {
-  const completedSets = [...state.completedSets, summary];
-  const finished = setsWonBy(completedSets, summary.winner) === setsToWin(config.bestOf);
-  const settled: FoldState = { ...state, completedSets };
-  if (finished) {
-    return { ...settled, finished: true, winner: summary.winner, points: ZERO };
-  }
-  return startNextSet(settled, config);
 }
 
 function applyTieBreakPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
@@ -135,6 +63,9 @@ function applyTieBreakPoint(state: FoldState, config: MatchConfig, winner: TeamI
 }
 
 function applyStandardPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+  if (config.sport === "squash" || config.sport === "pickleball") {
+    throw new Error("applyStandardPoint called for non-padel match");
+  }
   const points = bump(state.points, winner);
   const loser = otherTeam(winner);
   if (!standardGameWon(config.deuceMode, points[winner], points[loser])) {
@@ -160,110 +91,26 @@ function applyStandardPoint(state: FoldState, config: MatchConfig, winner: TeamI
   return afterGame;
 }
 
-function applyPoint(state: FoldState, config: MatchConfig, winner: TeamId): FoldState {
+function applyPoint(
+  state: FoldState,
+  config: MatchConfig,
+  winner: TeamId,
+  gameSet: "one" | "two" | undefined,
+): FoldState {
   if (state.finished) {
     throw new Error("cannot score a point: the match is already finished");
   }
   const counted: FoldState = { ...state, totalPoints: bump(state.totalPoints, winner) };
+  if (config.sport === "squash") {
+    return applySquashPoint(counted, config, { winner, gameSet });
+  }
+  if (config.sport === "pickleball") {
+    return applyPickleballPoint(counted, config, winner);
+  }
   if (counted.tieBreak !== undefined) {
     return applyTieBreakPoint(counted, config, winner);
   }
   return applyStandardPoint(counted, config, winner);
-}
-
-function pointCalls(points: TeamValues<number>): TeamValues<PointCall> {
-  const call = (own: number, other: number): PointCall => {
-    if (own <= DEUCE_POINTS) {
-      const calls: readonly PointCall[] = ["0", "15", "30", "40"];
-      const indexed = calls[own];
-      if (indexed === undefined) {
-        throw new Error(`impossible point count ${String(own)}`);
-      }
-      return indexed;
-    }
-    return own > other ? "AD" : "40";
-  };
-  return { A: call(points.A, points.B), B: call(points.B, points.A) };
-}
-
-function leaderOf(points: TeamValues<number>): TeamId | undefined {
-  if (points.A === points.B) {
-    return;
-  }
-  return points.A > points.B ? "A" : "B";
-}
-
-function standardGameMoment(state: FoldState, config: MatchConfig): Moment {
-  const { points, setGames, setNumber, completedSets } = state;
-  if (isDecidingPoint(config.deuceMode, points.A, points.B)) {
-    return config.deuceMode === "goldenPoint" ? { kind: "goldenPoint" } : { kind: "starPoint" };
-  }
-  if (points.A >= DEUCE_POINTS && points.B >= DEUCE_POINTS) {
-    const leader = leaderOf(points);
-    if (leader === undefined) {
-      return { kind: "deuce" };
-    }
-    return { kind: "advantage", team: leader };
-  }
-  const leader = leaderOf(points);
-  if (leader === undefined) {
-    return { kind: "normal" };
-  }
-  const loser = otherTeam(leader);
-  if (!standardGameWon(config.deuceMode, points[leader] + 1, points[loser])) {
-    return { kind: "normal" };
-  }
-  const withTieBreak = currentSetHasTieBreak(config, setNumber);
-  if (!setWon(setGames[leader] + 1, setGames[loser], withTieBreak)) {
-    return { kind: "gamePoint", team: leader };
-  }
-  const setsAfter = setsWonBy(completedSets, leader) + 1;
-  if (setsAfter === setsToWin(config.bestOf)) {
-    return { kind: "matchPoint", team: leader };
-  }
-  return { kind: "setPoint", team: leader };
-}
-
-function deriveMoment(state: FoldState, config: MatchConfig): Moment {
-  if (state.finished) {
-    if (state.winner === undefined) {
-      throw new Error("finished match without a winner");
-    }
-    return { kind: "finished", winner: state.winner };
-  }
-  if (state.tieBreak === "superTieBreak") {
-    return { kind: "superTieBreak" };
-  }
-  if (state.tieBreak === "setTieBreak") {
-    return { kind: "tieBreak", setNumber: state.setNumber };
-  }
-  return standardGameMoment(state, config);
-}
-
-function currentGameOf(state: FoldState): CurrentGame | undefined {
-  if (state.finished) {
-    return;
-  }
-  if (state.tieBreak !== undefined) {
-    return {
-      kind: "tieBreak",
-      tieBreakKind: state.tieBreak,
-      target: state.tieBreak === "superTieBreak" ? SUPER_TIE_BREAK_TARGET : TIE_BREAK_TARGET,
-      points: state.points,
-    };
-  }
-  return {
-    kind: "standard",
-    points: state.points,
-    calls: pointCalls(state.points),
-  };
-}
-
-function servingTeamOf(state: FoldState): TeamId {
-  if (state.tieBreak !== undefined) {
-    return tieBreakServer(state.tieBreakStarter, state.points.A + state.points.B);
-  }
-  return state.gameServer;
 }
 
 function toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot {
@@ -274,8 +121,10 @@ function toSnapshot(state: FoldState, config: MatchConfig): MatchSnapshot {
     completedSets: state.completedSets,
     setNumber: state.finished ? state.completedSets.length : state.setNumber,
     currentSetGames: state.finished ? ZERO : state.setGames,
-    currentGame: currentGameOf(state),
-    servingTeam: servingTeamOf(state),
+    currentGame: currentGameOf(state, config),
+    servingTeam: servingTeamOf(state, config),
+    servingSide: servingSideOf(state, config),
+
     moment: deriveMoment(state, config),
     totalPoints: state.totalPoints,
     totalGames: state.totalGames,
@@ -296,9 +145,34 @@ export function computeMatch(config: MatchConfig, events: readonly PointEvent[])
     if (state.finished) {
       break;
     }
-    state = applyPoint(state, config, event.winner);
+    state =
+      event.kind === "serve"
+        ? applyServeEvent(state, config, event.winner)
+        : applyPoint(state, config, event.winner, event.gameSet);
   }
   return toSnapshot(state, config);
+}
+
+/**
+ * Every snapshot along the ledger in one pass: `[0]` is before the first event
+ * and `[i]` is after the first `i` events, so `replayMatch(c, e)[i]` equals
+ * `computeMatch(c, e.slice(0, i))`. Point-by-point analysis (stats, insights)
+ * reads this instead of re-folding a prefix for every event. Events after the
+ * match is decided repeat the final snapshot, matching `computeMatch`.
+ */
+export function replayMatch(config: MatchConfig, events: readonly PointEvent[]): MatchSnapshot[] {
+  let state = initialState(config);
+  const snapshots = [toSnapshot(state, config)];
+  for (const event of events) {
+    if (!state.finished) {
+      state =
+        event.kind === "serve"
+          ? applyServeEvent(state, config, event.winner)
+          : applyPoint(state, config, event.winner, event.gameSet);
+    }
+    snapshots.push(toSnapshot(state, config));
+  }
+  return snapshots;
 }
 
 /** Undo is just forgetting the last event — the fold does the rest. */

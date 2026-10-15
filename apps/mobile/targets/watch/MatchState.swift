@@ -13,6 +13,7 @@ enum Phase: String, Decodable {
 struct TeamState: Decodable {
     var short: String = ""
     var serving: Bool = false
+    var servingSide: String?
 }
 
 struct WonState: Decodable {
@@ -24,6 +25,12 @@ struct WonState: Decodable {
 struct LastState: Decodable {
     var line: String = ""
     var won: Bool = false
+}
+
+/// The user's highlight and Team B colours as `#RRGGBB` (see Court.apply).
+struct PaletteState: Decodable {
+    var accent: String = ""
+    var teamB: String = ""
 }
 
 struct MatchState: Decodable {
@@ -41,10 +48,17 @@ struct MatchState: Decodable {
     /// True while a live match is paused; scoring is disabled and the workout
     /// session is paused until the phone reports it resumed.
     var paused: Bool = false
+    /// Squash "choice" tie-break at target-1 all: the receiver must pick
+    /// long or short (the watch shows its SHORT/LONG buttons while set).
+    var choicePending: Bool = false
     /// Epoch ms the match started — workout session start + dedup key. Nil when idle.
     var startedAt: Double?
+    /// Epoch ms the match clock counts up from — the watch ticks it itself. Nil while paused.
+    var clockBase: Double?
     var won: WonState?
     var last: LastState?
+    /// Nil from older phone builds — the watch keeps its built-in colours.
+    var palette: PaletteState?
 
     /// The blank state shown before the phone has pushed anything.
     static let idle = MatchState()
@@ -53,7 +67,7 @@ struct MatchState: Decodable {
 extension MatchState {
     private enum CodingKeys: String, CodingKey {
         case v, phase, clock, court, setLabel, teamA, teamB, pointA, pointB, games, status,
-            paused, startedAt, won, last
+            paused, choicePending, startedAt, clockBase, won, last, palette
     }
 
     /// Decode defensively: a missing or malformed field falls back to its default
@@ -73,8 +87,11 @@ extension MatchState {
         games = try c.decodeIfPresent(String.self, forKey: .games) ?? ""
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         paused = try c.decodeIfPresent(Bool.self, forKey: .paused) ?? false
+        choicePending = try c.decodeIfPresent(Bool.self, forKey: .choicePending) ?? false
         startedAt = try c.decodeIfPresent(Double.self, forKey: .startedAt)
+        clockBase = try c.decodeIfPresent(Double.self, forKey: .clockBase)
         won = try c.decodeIfPresent(WonState.self, forKey: .won)
         last = try c.decodeIfPresent(LastState.self, forKey: .last)
+        palette = try? c.decodeIfPresent(PaletteState.self, forKey: .palette)
     }
 }

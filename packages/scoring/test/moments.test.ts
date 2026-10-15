@@ -54,4 +54,22 @@ describe("status labels (design copy)", () => {
     expect(watchStatusLabel({ kind: "advantage", team: "A" }, SHORT)).toBe("AD · N&J");
     expect(watchStatusLabel({ kind: "tieBreak", setNumber: 2 }, SHORT)).toBe("TIE-BREAK");
   });
+
+  it("says game ball and match ball for squash", () => {
+    expect(statusLabel({ kind: "gamePoint", team: "A" }, NAMES, "squash")).toBe(
+      "GAME BALL — NICO & JAVI",
+    );
+    expect(statusLabel({ kind: "matchPoint", team: "B" }, NAMES, "squash")).toBe(
+      "MATCH BALL — MARTA & LEO",
+    );
+    expect(watchStatusLabel({ kind: "gamePoint", team: "A" }, SHORT, "squash")).toBe("GAME BALL");
+    expect(watchStatusLabel({ kind: "matchPoint", team: "B" }, SHORT, "squash")).toBe("MATCH BALL");
+  });
+
+  it("keeps point wording for padel and pickleball", () => {
+    expect(statusLabel({ kind: "matchPoint", team: "A" }, NAMES, "pickleball")).toBe(
+      "MATCH POINT — NICO & JAVI",
+    );
+    expect(watchStatusLabel({ kind: "gamePoint", team: "A" }, SHORT, "pickleball")).toBe("GAME PT");
+  });
 });

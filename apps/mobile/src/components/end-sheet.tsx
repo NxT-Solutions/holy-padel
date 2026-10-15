@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
 import { Square } from "@/components/icons.tsx";
 import { Body, Display } from "@/components/ui.tsx";
-import { colors, inkAlpha } from "@/theme/colors.ts";
+import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
 
 /**
  * The END sheet — the crux of "don't lose the score". Court time runs out
@@ -26,7 +26,7 @@ export function EndSheet({
     <YStack position="absolute" top={0} left={0} right={0} bottom={0}>
       <View flex={1} backgroundColor="rgba(14, 17, 22, 0.55)" onPress={onCancel} />
       <YStack
-        backgroundColor={colors.cream}
+        backgroundColor={colors.screen}
         borderTopLeftRadius={26}
         borderTopRightRadius={26}
         paddingTop={22}
@@ -35,26 +35,26 @@ export function EndSheet({
         gap={11}
       >
         <Display fontSize={24}>END THE MATCH?</Display>
-        <Body fontSize={13} fontWeight="600" color={inkAlpha(0.5)}>
+        <Body fontSize={13} fontWeight="600" color={textAlpha(0.5)}>
           Court time up? Stop and keep the score as it stands. Or discard the match entirely.
         </Body>
         <XStack
           height={60}
           marginTop={4}
-          backgroundColor={colors.lime}
+          backgroundColor={colors.accent}
           borderRadius={17}
           alignItems="center"
           justifyContent="center"
           gap={10}
-          boxShadow="0 6px 18px rgba(198, 241, 53, 0.45)"
+          boxShadow={`0 6px 18px ${accentAlpha(0.45)}`}
           pressStyle={{ opacity: 0.85 }}
           role="button"
           aria-label="Stop and save"
           onPress={onStopSave}
           testID="end-stop-save"
         >
-          <Square size={17} color={colors.ink} />
-          <Display fontSize={18} letterSpacing={1.2} color={colors.ink}>
+          <Square size={17} color={colors.onAccent} />
+          <Display fontSize={18} letterSpacing={1.2} color={colors.onAccent}>
             STOP & SAVE
           </Display>
         </XStack>
@@ -85,7 +85,7 @@ export function EndSheet({
           onPress={onCancel}
           testID="end-keep-playing"
         >
-          <Body fontSize={13} fontWeight="700" letterSpacing={1.2} color={inkAlpha(0.55)}>
+          <Body fontSize={13} fontWeight="700" letterSpacing={1.2} color={textAlpha(0.55)}>
             KEEP PLAYING
           </Body>
         </XStack>

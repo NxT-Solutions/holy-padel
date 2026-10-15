@@ -10,6 +10,7 @@ and the generated GitNexus wiki is there when you want a map of the code.
 | [Project guide](project-guide.md) | Curious readers, players, open-source visitors | What the app is, why it exists, and how it behaves |
 | [Technical overview](technical-overview.md) | Developers and maintainers | How the app is built, where data flows, and how pieces fit |
 | [FIP scoring spec](fip-scoring-spec.md) | Rule-focused contributors | Which padel scoring rules the engine implements |
+| [Squash scoring spec](squash-scoring-spec.md) | Rule-focused contributors | PAR/HI-HO squash, targets, choice tie-breaks and serve boxes |
 | [Watch sync contract](watch-sync.md) | Watch/mobile contributors | Exact JSON payloads and intent paths between phone and watches |
 | [GitNexus wiki](gitnexus-wiki/README.md) | Code explorers | Generated module-level documentation from the indexed graph |
 
@@ -31,7 +32,7 @@ honest.
 | --- | --- |
 | Understand the product | [Project guide](project-guide.md) |
 | Understand the architecture | [Technical overview](technical-overview.md) |
-| Change scoring behavior | [FIP scoring spec](fip-scoring-spec.md), then `packages/scoring` |
+| Change scoring behavior | [FIP scoring spec](fip-scoring-spec.md) / [Squash scoring spec](squash-scoring-spec.md), then `packages/scoring` |
 | Change watch sync | [Watch sync contract](watch-sync.md), then `apps/mobile/src/watch` |
 | Find the right code area | [GitNexus wiki](gitnexus-wiki/README.md) |
 | Update generated docs | `pnpm gitnexus:wiki` from the repo root |

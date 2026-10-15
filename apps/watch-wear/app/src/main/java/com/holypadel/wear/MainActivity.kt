@@ -1,6 +1,7 @@
 package com.holypadel.wear
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +12,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.holypadel.wear.ui.CourtColors
 import com.holypadel.wear.ui.WatchApp
 import kotlinx.coroutines.launch
 
@@ -50,6 +52,7 @@ class MainActivity : ComponentActivity() {
         // Drive the exercise session from phase transitions in the mirrored state.
         lifecycleScope.launch {
             sync.state.collect { state ->
+                CourtColors.applyPalette(state.palette)
                 val phase = state.phase
                 if (phase == Phase.LIVE && lastPhase != Phase.LIVE) {
                     startTracking(state.startedAt)
@@ -66,6 +69,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        handleTileAction(intent)
+
         setContent {
             val state by sync.state.collectAsState()
             val stats by tracker.stats.collectAsState()
@@ -74,6 +79,7 @@ class MainActivity : ComponentActivity() {
                 liveBpm = if (stats.tracking) stats.bpm else 0,
                 onScore = { team -> sync.score(team) },
                 onUndo = { sync.undo() },
+                onSetChoice = { choice -> sync.setChoice(choice) },
                 onStartLast = { sync.startLast() },
                 onPause = { sync.pause() },
                 onStop = { sync.stopMatch() },
@@ -81,6 +87,24 @@ class MainActivity : ComponentActivity() {
                 onEnd = { sync.end() },
             )
         }
+    }
+
+    /**
+     * START LAST on the tile opens the app with an extra: send the same
+     * start-last intent the idle screen's button does. Consumed so a rotation
+     * or recreation doesn't start a second rematch; the phone ignores it while
+     * a match is already live.
+     */
+    private fun handleTileAction(intent: Intent?) {
+        if (intent?.getStringExtra(TILE_ACTION_EXTRA) == TILE_ACTION_START_LAST) {
+            intent.removeExtra(TILE_ACTION_EXTRA)
+            sync.startLast()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleTileAction(intent)
     }
 
     private fun startTracking(startedAt: Long) {

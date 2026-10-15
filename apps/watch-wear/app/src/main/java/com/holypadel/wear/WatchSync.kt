@@ -19,6 +19,7 @@ object SyncPaths {
     const val UNDO = "/holy-padel/undo"
     const val START_LAST = "/holy-padel/start-last"
     const val PAUSE = "/holy-padel/pause"
+    const val SET_CHOICE = "/holy-padel/set-choice"
     const val STOP = "/holy-padel/stop"
     const val CANCEL = "/holy-padel/cancel"
     const val END = "/holy-padel/end"
@@ -108,6 +109,9 @@ class WatchSync(context: Context) : DataClient.OnDataChangedListener {
     fun score(team: String) = tap(SyncPaths.SCORE, team)
 
     fun undo() = tap(SyncPaths.UNDO, "")
+
+    /** Squash "choice" tie-break: stage the receiver's long/short decision. */
+    fun setChoice(choice: String) = tap(SyncPaths.SET_CHOICE, choice)
 
     fun startLast() = tap(SyncPaths.START_LAST, "")
 

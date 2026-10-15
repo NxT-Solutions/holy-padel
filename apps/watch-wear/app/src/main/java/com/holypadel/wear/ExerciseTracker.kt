@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.health.services.client.ExerciseUpdateCallback
 import androidx.health.services.client.HealthServices
@@ -22,10 +23,11 @@ import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
 
 /**
- * Tracks the live match as a Health Services exercise: workout-grade heart rate
- * and calories while the scoreboard is up. Everything is best-effort — a watch
+ * Tracks the live match as a Health Services exercise: workout-grade heart rate,
+ * calories, steps and distance while the scoreboard is up. Everything is best-effort — a watch
  * without sensors (or a declined permission) just means no fitness data; the
  * scoreboard itself must never be affected.
  *
@@ -52,23 +54,43 @@ class ExerciseTracker(context: Context) {
     private val samples = mutableListOf<Pair<Long, Int>>()
     private var lastSampleAt = 0L
 
+    /** Steps and metres per [MOTION_BUCKET_MS] bucket, keyed by the bucket's end. */
+    private val motion = sortedMapOf<Long, DoubleArray>()
+
+    /** The wall-clock instant the device booted — data points are stamped from boot. */
+    private fun bootInstant(): Instant =
+        Instant.ofEpochMilli(System.currentTimeMillis() - SystemClock.elapsedRealtime())
+
     private val callback = object : ExerciseUpdateCallback {
         override fun onExerciseUpdateReceived(update: ExerciseUpdate) {
-            val now = System.currentTimeMillis()
-            val bpm = update.latestMetrics.getData(DataType.HEART_RATE_BPM)
-                .lastOrNull()?.value?.toInt()
-            val kcal = update.latestMetrics.getData(DataType.CALORIES_TOTAL)?.total
-            if (bpm != null && bpm > 0) {
+            val boot = bootInstant()
+            val metrics = update.latestMetrics
+            // Keep EVERY reading in the update at its own timestamp. With the
+            // screen off Health Services batches readings and delivers them
+            // minutes apart; taking only the newest one per delivery (stamped
+            // with arrival time) left long gaps in the stored series.
+            val heartRate = metrics.getData(DataType.HEART_RATE_BPM)
+            for (point in heartRate) {
+                val bpm = point.value.toInt()
+                if (bpm <= 0) continue
                 if (bpm > maxBpm) maxBpm = bpm
-                // Downsample the stored series to one point per 15s — a 90-minute
-                // match stays well under the Data Layer message size limit.
-                if (now - lastSampleAt >= SAMPLE_INTERVAL_MS) {
-                    samples.add(now to bpm)
-                    lastSampleAt = now
+                val t = point.getTimeInstant(boot).toEpochMilli()
+                // Downsample to one point per 5s — a 90-minute match stays well
+                // under the Data Layer message size limit.
+                if (t - lastSampleAt >= SAMPLE_INTERVAL_MS) {
+                    samples.add(t to bpm)
+                    lastSampleAt = t
                 }
             }
+            for (point in metrics.getData(DataType.STEPS)) {
+                addMotion(point.getEndInstant(boot).toEpochMilli(), steps = point.value.toDouble())
+            }
+            for (point in metrics.getData(DataType.DISTANCE)) {
+                addMotion(point.getEndInstant(boot).toEpochMilli(), meters = point.value)
+            }
+            val kcal = metrics.getData(DataType.CALORIES_TOTAL)?.total
             statsFlow.value = LiveStats(
-                bpm = bpm ?: statsFlow.value.bpm,
+                bpm = heartRate.lastOrNull()?.value?.toInt()?.takeIf { it > 0 } ?: statsFlow.value.bpm,
                 kcal = kcal ?: statsFlow.value.kcal,
                 tracking = true,
             )
@@ -97,6 +119,31 @@ class ExerciseTracker(context: Context) {
             PackageManager.PERMISSION_GRANTED
     }
 
+    /** Fold one steps/distance delta into its time bucket. */
+    private fun addMotion(endedAt: Long, steps: Double = 0.0, meters: Double = 0.0) {
+        val bucketEnd = (endedAt / MOTION_BUCKET_MS + 1) * MOTION_BUCKET_MS
+        val bucket = motion.getOrPut(bucketEnd) { DoubleArray(2) }
+        bucket[0] += steps
+        bucket[1] += meters
+    }
+
+    /**
+     * The data types to request: heart rate and calories always, steps and
+     * distance only when the device supports them for this exercise — asking
+     * for an unsupported type makes the whole exercise fail to start.
+     */
+    private suspend fun requestedDataTypes(): Set<DataType<*, *>> {
+        val wanted = setOf<DataType<*, *>>(DataType.STEPS, DataType.DISTANCE)
+        val supported = runCatching {
+            client.getCapabilitiesAsync().await()
+                .typeToCapabilities[ExerciseType.RACQUETBALL]
+                ?.supportedDataTypes
+                .orEmpty()
+        }.getOrDefault(emptySet())
+        return setOf<DataType<*, *>>(DataType.HEART_RATE_BPM, DataType.CALORIES_TOTAL) +
+            wanted.intersect(supported)
+    }
+
     /** Start tracking; safe to call when unsupported — it just stays idle. */
     fun start(startedAt: Long) {
         if (statsFlow.value.tracking) return
@@ -107,13 +154,14 @@ class ExerciseTracker(context: Context) {
         maxBpm = 0
         samples.clear()
         lastSampleAt = 0L
+        motion.clear()
         scope.launch {
             runCatching {
                 client.setUpdateCallback(callback)
                 client.startExerciseAsync(
                     ExerciseConfig(
                         exerciseType = ExerciseType.RACQUETBALL,
-                        dataTypes = setOf(DataType.HEART_RATE_BPM, DataType.CALORIES_TOTAL),
+                        dataTypes = requestedDataTypes(),
                         isAutoPauseAndResumeEnabled = false,
                         isGpsEnabled = false,
                         exerciseGoals = emptyList(),
@@ -156,7 +204,7 @@ class ExerciseTracker(context: Context) {
 
     private fun buildSummary(): String? {
         val kcal = statsFlow.value.kcal
-        if (samples.isEmpty() && kcal <= 0.0) {
+        if (samples.isEmpty() && kcal <= 0.0 && motion.isEmpty()) {
             return null
         }
         val avgBpm = if (samples.isEmpty()) 0 else samples.sumOf { it.second } / samples.size
@@ -174,10 +222,25 @@ class ExerciseTracker(context: Context) {
                     }
                 },
             )
+            put(
+                "motion",
+                JSONArray().apply {
+                    for ((t, bucket) in motion) {
+                        put(
+                            JSONObject().apply {
+                                put("t", t)
+                                put("steps", bucket[0].toLong())
+                                put("meters", Math.round(bucket[1] * 10) / 10.0)
+                            },
+                        )
+                    }
+                },
+            )
         }.toString()
     }
 
     private companion object {
-        const val SAMPLE_INTERVAL_MS = 15_000L
+        const val SAMPLE_INTERVAL_MS = 5_000L
+        const val MOTION_BUCKET_MS = 10_000L
     }
 }

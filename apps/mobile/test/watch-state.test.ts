@@ -29,6 +29,8 @@ function baseMatch(overrides: Partial<MatchSummary> = {}): MatchSummary {
     scoreLine: undefined,
     pausedMs: 0,
     pausedAt: undefined,
+    pendingGameSet: undefined,
+    note: undefined,
     names: { A: ["Nico", "Javi"], B: ["Marta", "Leo"] },
     ...overrides,
   };
@@ -37,6 +39,51 @@ function baseMatch(overrides: Partial<MatchSummary> = {}): MatchSummary {
 function wins(team: TeamId, count: number): PointEvent[] {
   return Array.from({ length: count }, () => ({ winner: team, at: 0 }));
 }
+
+describe("buildWatchState — squash set choice", () => {
+  const squashConfig: MatchConfig = {
+    sport: "squash",
+    bestOf: 3,
+    deuceMode: "advantage",
+    thirdSet: "fullSet",
+    squashMode: "par",
+    squashTarget: 9,
+    squashTiebreak: "choice",
+    firstServe: "A",
+  };
+
+  function choiceSnapshot(pendingGameSet: MatchSummary["pendingGameSet"]) {
+    // 8-8 in PAR scoring reaches the receiver's choice point.
+    const winners = "AAAAAAAABBBBBBBB";
+    const events: PointEvent[] = [...winners].map((winner, index) => ({
+      winner: winner === "A" ? ("A" as const) : ("B" as const),
+      at: index,
+    }));
+    const snapshot = computeMatch(squashConfig, events);
+    return { match: baseMatch({ pendingGameSet }), snapshot };
+  }
+
+  it("with no staged decision the watch shows its SHORT/LONG buttons", () => {
+    const state = buildWatchState({
+      ownerId: "nico",
+      now: NOW,
+      live: choiceSnapshot(undefined),
+    });
+    expect(state.status).toBe("SET 1 OR 2");
+    expect(state.choicePending).toBe(true);
+    expect(state.status).toBe("SET 1 OR 2");
+  });
+
+  it("once staged the buttons clear and the staged call becomes the status", () => {
+    const state = buildWatchState({
+      ownerId: "nico",
+      now: NOW,
+      live: choiceSnapshot("two"),
+    });
+    expect(state.choicePending).toBeUndefined();
+    expect(state.status).toBe("LONG · SET 2");
+  });
+});
 
 describe("buildWatchState", () => {
   it("mirrors a live game — serving, point calls, clock and status", () => {
@@ -51,13 +98,15 @@ describe("buildWatchState", () => {
     });
 
     expect(state.phase).toBe("live");
-    expect(state.teamA).toEqual({ short: "N&J", serving: true });
-    expect(state.teamB).toEqual({ short: "M&L", serving: false });
+    expect(state.teamA).toEqual({ short: "N&J", serving: true, servingSide: "right" });
+    expect(state.teamB).toEqual({ short: "M&L", serving: false, servingSide: null });
     expect(state.pointA).toBe("40");
     expect(state.pointB).toBe("15");
     expect(state.games).toBe("0-0");
     expect(state.setLabel).toBe("SET 1");
     expect(state.clock).toBe("0:47");
+    // The watch runs the clock itself from here between pushes.
+    expect(state.clockBase).toBe(STARTED);
     expect(state.court).toBe("COURT 4");
     expect(state.startedAt).toBe(STARTED);
     expect(state.status).toBe("GAME PT");
@@ -81,6 +130,7 @@ describe("buildWatchState", () => {
     expect(state.phase).toBe("live");
     expect(state.paused).toBe(true);
     expect(state.clock).toBe("0:42"); // 47m elapsed − 5m open pause
+    expect(state.clockBase).toBeUndefined();
   });
 
   it("labels the deciding super tie-break", () => {
@@ -96,6 +146,8 @@ describe("buildWatchState", () => {
 
     expect(state.phase).toBe("live");
     expect(state.setLabel).toBe("SUPER TB");
+    // Just the sets beside it — the tie-break points are already the big numbers.
+    expect(state.games).toBe("6-0 · 0-6");
     expect(state.pointA).toBe("1");
     expect(state.pointB).toBe("0");
   });

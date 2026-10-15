@@ -16,9 +16,18 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("../../mobile/android/app/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -34,6 +43,10 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    lint {
+        checkReleaseBuilds = false
     }
 }
 
@@ -59,4 +72,9 @@ dependencies {
     implementation("androidx.health:health-services-client:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
+
+    // Tile (score / START LAST one swipe from the watch face). Signatures checked
+    // against the 1.6.2 / 1.4.2 release AARs; both need compileSdk >= 35.
+    implementation("androidx.wear.tiles:tiles:1.6.2")
+    implementation("androidx.wear.protolayout:protolayout:1.4.2")
 }

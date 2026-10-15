@@ -1,5 +1,5 @@
 import type { MatchSummary, SqlDriver } from "@holy-padel/db";
-import { countMatches, listMatches, loadEvents } from "@holy-padel/db";
+import { countMatches, getOwner, listMatches, loadEvents } from "@holy-padel/db";
 import { computeMatch } from "@holy-padel/scoring";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { XStack, YStack } from "tamagui";
+import { SportStripe } from "@/components/court-art.tsx";
 import { Plus } from "@/components/icons.tsx";
 import { Body, Card, Display, Overline, Pill, ResultBadge } from "@/components/ui.tsx";
 import { useDbQuery } from "@/db/provider.tsx";
@@ -19,9 +20,10 @@ import {
   pairLabel,
 } from "@/lib/format.ts";
 import { useNow } from "@/lib/use-now.ts";
-import { colors, inkAlpha } from "@/theme/colors.ts";
+import { colors, textAlpha } from "@/theme/colors.ts";
 
 type Filter = "all" | "won" | "lost" | "rivals";
+type SportFilter = "all" | "padel" | "squash" | "pickleball";
 
 /** A pair's stable identity: the two player ids, order-independent. */
 function opponentKey(match: MatchSummary, ownerTeam: "A" | "B"): string {
@@ -47,12 +49,14 @@ function MatchRow({
   match,
   scoreLine,
   now,
+  ownerId,
 }: {
   readonly match: MatchSummary;
   readonly scoreLine: string;
   readonly now: number;
+  readonly ownerId: string;
 }): ReactNode {
-  const ownerTeam = ownerTeamOf(match, "nico");
+  const ownerTeam = ownerTeamOf(match, ownerId);
   const live = match.status === "live";
   return (
     <Card
@@ -61,13 +65,15 @@ function MatchRow({
       flexDirection="row"
       alignItems="center"
       justifyContent="space-between"
+      gap={12}
       pressStyle={{ opacity: 0.9 }}
       role="button"
       onPress={() => {
         router.push(live ? `/live/${match.id}` : `/match/${match.id}`);
       }}
     >
-      <YStack gap={4}>
+      <SportStripe sport={match.config.sport} />
+      <YStack gap={4} flex={1}>
         <Overline letterSpacing={1.4}>{matchMetaLabel(match, now)}</Overline>
         <Body fontSize={16} fontWeight="800">
           {`vs ${pairLabel(opponentsOf(match, ownerTeam))}`}
@@ -84,7 +90,7 @@ function MatchRow({
             paddingHorizontal={9}
             borderRadius={8}
           >
-            <Display fontSize={12} letterSpacing={1} color={colors.lime}>
+            <Display fontSize={12} letterSpacing={1} color={colors.accent}>
               LIVE
             </Display>
           </Pill>
@@ -111,7 +117,7 @@ function FilterChip({
       paddingHorizontal={15}
       backgroundColor={active ? colors.ink : "transparent"}
       borderWidth={active ? 0 : 1}
-      borderColor={inkAlpha(0.16)}
+      borderColor={textAlpha(0.16)}
       pressStyle={{ opacity: 0.8 }}
       role="button"
       onPress={onPress}
@@ -120,7 +126,7 @@ function FilterChip({
         fontSize={11}
         fontWeight="800"
         letterSpacing={1}
-        color={active ? colors.white : inkAlpha(0.5)}
+        color={active ? colors.white : textAlpha(0.5)}
       >
         {label}
       </Body>
@@ -132,6 +138,9 @@ export default function MatchesScreen(): ReactNode {
   const insets = useSafeAreaInsets();
   const now = useNow();
   const [filter, setFilter] = useState<Filter>("all");
+  const [sport, setSport] = useState<SportFilter>("all");
+  const owner = useDbQuery(getOwner);
+  const ownerId = owner?.id ?? "nico";
 
   const total = useDbQuery(countMatches);
   const rows = useDbQuery((driver) =>
@@ -145,7 +154,7 @@ export default function MatchesScreen(): ReactNode {
     const finished = listMatches(driver).filter((match) => match.status === "finished");
     const counts = new Map<string, { label: string; count: number }>();
     for (const match of finished) {
-      const ownerTeam = ownerTeamOf(match, "nico");
+      const ownerTeam = ownerTeamOf(match, ownerId);
       const key = opponentKey(match, ownerTeam);
       const entry = counts.get(key) ?? {
         label: pairInitials(opponentsOf(match, ownerTeam)),
@@ -158,12 +167,15 @@ export default function MatchesScreen(): ReactNode {
     return top === undefined ? undefined : { key: top[0], label: top[1].label };
   });
 
-  const visible = rows.filter(({ match }) =>
-    FILTER_PREDICATES[filter](match, ownerTeamOf(match, "nico"), rivals?.key),
-  );
+  const visible = rows
+    .filter(({ match }) =>
+      FILTER_PREDICATES[filter](match, ownerTeamOf(match, ownerId), rivals?.key),
+    )
+    .filter(({ match }) => sport === "all" || match.config.sport === sport);
 
   return (
     <ScrollView
+      style={{ flex: 1, backgroundColor: colors.screen }}
       contentContainerStyle={{
         paddingTop: insets.top + 12,
         paddingHorizontal: 16,
@@ -174,7 +186,7 @@ export default function MatchesScreen(): ReactNode {
       <XStack alignItems="flex-end" justifyContent="space-between">
         <YStack>
           <Display fontSize={34}>MATCHES</Display>
-          <Body fontSize={12.5} fontWeight="600" color={inkAlpha(0.45)} marginTop={2}>
+          <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.45)} marginTop={2}>
             {`${String(total)} stored locally`}
           </Body>
         </YStack>
@@ -189,50 +201,114 @@ export default function MatchesScreen(): ReactNode {
             router.push("/new-match");
           }}
         >
-          <Plus size={12} color={colors.lime} />
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.lime}>
+          <Plus size={12} color={colors.accent} />
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={colors.accent}>
             NEW
           </Body>
         </Pill>
       </XStack>
 
-      <XStack gap={7}>
-        <FilterChip
-          label="ALL"
-          active={filter === "all"}
-          onPress={() => {
-            setFilter("all");
-          }}
-        />
-        <FilterChip
-          label="WON"
-          active={filter === "won"}
-          onPress={() => {
-            setFilter("won");
-          }}
-        />
-        <FilterChip
-          label="LOST"
-          active={filter === "lost"}
-          onPress={() => {
-            setFilter("lost");
-          }}
-        />
-        {rivals === undefined ? null : (
+      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+        <XStack gap={7}>
           <FilterChip
-            label={`VS ${rivals.label}`}
-            active={filter === "rivals"}
+            label="ALL"
+            active={filter === "all"}
             onPress={() => {
-              setFilter("rivals");
+              setFilter("all");
             }}
           />
-        )}
-      </XStack>
+          <FilterChip
+            label="WON"
+            active={filter === "won"}
+            onPress={() => {
+              setFilter("won");
+            }}
+          />
+          <FilterChip
+            label="LOST"
+            active={filter === "lost"}
+            onPress={() => {
+              setFilter("lost");
+            }}
+          />
+          {rivals === undefined ? null : (
+            <FilterChip
+              label={`VS ${rivals.label}`}
+              active={filter === "rivals"}
+              onPress={() => {
+                setFilter("rivals");
+              }}
+            />
+          )}
+          <FilterChip
+            label="PADEL"
+            active={sport === "padel"}
+            onPress={() => {
+              setSport(sport === "padel" ? "all" : "padel");
+            }}
+          />
+          <FilterChip
+            label="SQUASH"
+            active={sport === "squash"}
+            onPress={() => {
+              setSport(sport === "squash" ? "all" : "squash");
+            }}
+          />
+          <FilterChip
+            label="PICKLE"
+            active={sport === "pickleball"}
+            onPress={() => {
+              setSport(sport === "pickleball" ? "all" : "pickleball");
+            }}
+          />
+        </XStack>
+      </ScrollView>
 
       <YStack gap={9}>
-        {visible.map(({ match, scoreLine }) => (
-          <MatchRow key={match.id} match={match} scoreLine={scoreLine} now={now} />
-        ))}
+        {visible.length === 0 ? (
+          <YStack alignItems="center" gap={10} paddingVertical={46} testID="matches-empty">
+            <Display fontSize={19} color={textAlpha(0.6)}>
+              {total === 0 ? "NO MATCHES YET" : "NOTHING HERE"}
+            </Display>
+            <Body fontSize={12.5} fontWeight="600" color={textAlpha(0.4)} textAlign="center">
+              {total === 0
+                ? "Play your first match and it will show up here."
+                : "No matches match these filters."}
+            </Body>
+            {total === 0 ? (
+              <XStack
+                marginTop={6}
+                height={48}
+                backgroundColor={colors.ink}
+                borderRadius={14}
+                alignItems="center"
+                justifyContent="center"
+                gap={8}
+                paddingHorizontal={22}
+                pressStyle={{ opacity: 0.85 }}
+                role="button"
+                onPress={() => {
+                  router.push("/new-match");
+                }}
+              >
+                <Plus size={13} color={colors.accent} />
+                <Display fontSize={14} letterSpacing={1.2} color={colors.accent}>
+                  START YOUR FIRST MATCH
+                </Display>
+              </XStack>
+            ) : null}
+          </YStack>
+        ) : (
+          visible.map(({ match, scoreLine }) => (
+            <MatchRow
+              key={match.id}
+              match={match}
+              scoreLine={scoreLine}
+              now={now}
+              ownerId={ownerId}
+            />
+          ))
+        )}
       </YStack>
     </ScrollView>
   );

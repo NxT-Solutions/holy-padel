@@ -5,9 +5,11 @@ import { useState } from "react";
 import { ScrollView, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { View, XStack, YStack } from "tamagui";
-import { Check, Plus, Search } from "@/components/icons.tsx";
+import { Check, Search } from "@/components/icons.tsx";
+import { NewPlayerRow } from "@/components/new-player-row.tsx";
 import { Avatar, Body, Display } from "@/components/ui.tsx";
-import { colors, inkAlpha } from "@/theme/colors.ts";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset.ts";
+import { colors, textAlpha } from "@/theme/colors.ts";
 
 function RosterRow({
   entry,
@@ -25,9 +27,9 @@ function RosterRow({
     <XStack
       alignItems="center"
       gap={12}
-      backgroundColor={colors.white}
+      backgroundColor={colors.card}
       borderWidth={2}
-      borderColor={picked ? colors.lime : "transparent"}
+      borderColor={picked ? colors.accent : "transparent"}
       borderRadius={15}
       paddingVertical={11}
       paddingHorizontal={14}
@@ -40,14 +42,14 @@ function RosterRow({
       <Avatar
         letter={entry.name.charAt(0)}
         size={36}
-        background={opponentPick ? colors.teamBlue : colors.ink}
-        color={opponentPick ? colors.white : colors.lime}
+        background={opponentPick ? colors.teamB : colors.ink}
+        color={opponentPick ? colors.white : colors.accent}
       />
       <YStack flex={1}>
         <Body fontSize={15} fontWeight="700">
           {entry.name}
         </Body>
-        <Body fontSize={10.5} fontWeight="600" color={inkAlpha(0.4)}>
+        <Body fontSize={10.5} fontWeight="600" color={textAlpha(0.4)}>
           {`${String(entry.matchesWithOwner)} ${entry.matchesWithOwner === 1 ? "match" : "matches"} with you`}
         </Body>
       </YStack>
@@ -56,11 +58,11 @@ function RosterRow({
           width={24}
           height={24}
           borderRadius={12}
-          backgroundColor={colors.lime}
+          backgroundColor={colors.accent}
           alignItems="center"
           justifyContent="center"
         >
-          <Check size={12} color={colors.ink} />
+          <Check size={12} color={colors.onAccent} />
         </View>
       ) : (
         <View
@@ -68,56 +70,9 @@ function RosterRow({
           height={24}
           borderRadius={12}
           borderWidth={1.5}
-          borderColor={inkAlpha(0.2)}
+          borderColor={textAlpha(0.2)}
         />
       )}
-    </XStack>
-  );
-}
-
-function NewPlayerRow({
-  onCreate,
-  onCreated,
-}: {
-  readonly onCreate: (name: string) => void;
-  readonly onCreated: () => void;
-}): ReactNode {
-  const [newName, setNewName] = useState("");
-  return (
-    <XStack alignItems="center" gap={10} paddingVertical={11} paddingHorizontal={14}>
-      <View
-        width={36}
-        height={36}
-        borderRadius={18}
-        borderWidth={1.5}
-        borderColor={inkAlpha(0.3)}
-        borderStyle="dashed"
-        alignItems="center"
-        justifyContent="center"
-      >
-        <Plus size={14} color={inkAlpha(0.45)} strokeWidth={2.6} />
-      </View>
-      <TextInput
-        style={{
-          flex: 1,
-          fontSize: 14,
-          fontFamily: "Archivo_700Bold",
-          color: colors.ink,
-          padding: 0,
-        }}
-        placeholder="New player"
-        placeholderTextColor={inkAlpha(0.55)}
-        value={newName}
-        onChangeText={setNewName}
-        onSubmitEditing={() => {
-          if (newName.trim() !== "") {
-            onCreate(newName.trim());
-            setNewName("");
-            onCreated();
-          }
-        }}
-        returnKeyType="done"
-      />
     </XStack>
   );
 }
@@ -144,6 +99,8 @@ export function PickerSheet({
 }): ReactNode {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
+  // Lift the sheet above the keyboard so search / "New player" stay visible.
+  const keyboard = useKeyboardInset();
   const visible = roster.filter(
     (entry) =>
       !taken.includes(entry.id) &&
@@ -157,7 +114,7 @@ export function PickerSheet({
         role="button"
         aria-label="Close"
         flex={1}
-        backgroundColor={inkAlpha(0.45)}
+        backgroundColor={textAlpha(0.45)}
         onPress={onDone}
       />
       <YStack
@@ -166,7 +123,7 @@ export function PickerSheet({
         borderTopRightRadius={28}
         paddingTop={14}
         paddingHorizontal={16}
-        paddingBottom={insets.bottom + 16}
+        paddingBottom={(keyboard > 0 ? keyboard : insets.bottom) + 16}
         gap={12}
         maxHeight="88%"
         boxShadow="0 -12px 40px rgba(14, 17, 22, 0.25)"
@@ -176,11 +133,11 @@ export function PickerSheet({
           width={40}
           height={5}
           borderRadius={999}
-          backgroundColor={inkAlpha(0.15)}
+          backgroundColor={textAlpha(0.15)}
         />
         <XStack alignItems="center" justifyContent="space-between">
           <Display fontSize={21}>{`PICK TEAM ${team}`}</Display>
-          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={inkAlpha(0.45)}>
+          <Body fontSize={11} fontWeight="800" letterSpacing={1.2} color={textAlpha(0.45)}>
             {stepLabel}
           </Body>
         </XStack>
@@ -192,17 +149,17 @@ export function PickerSheet({
           paddingVertical={11}
           paddingHorizontal={14}
         >
-          <Search size={14} color={inkAlpha(0.4)} />
+          <Search size={14} color={textAlpha(0.4)} />
           <TextInput
             style={{
               flex: 1,
               fontSize: 14,
               fontFamily: "Archivo_600SemiBold",
-              color: colors.ink,
+              color: colors.text,
               padding: 0,
             }}
             placeholder="Search players…"
-            placeholderTextColor={inkAlpha(0.35)}
+            placeholderTextColor={textAlpha(0.35)}
             value={query}
             onChangeText={setQuery}
           />
@@ -226,7 +183,7 @@ export function PickerSheet({
         </ScrollView>
         <XStack
           height={56}
-          backgroundColor={colors.lime}
+          backgroundColor={colors.accent}
           borderRadius={16}
           alignItems="center"
           justifyContent="center"
@@ -234,7 +191,7 @@ export function PickerSheet({
           role="button"
           onPress={onDone}
         >
-          <Display fontSize={18} letterSpacing={1.4} color={colors.ink}>
+          <Display fontSize={18} letterSpacing={1.4} color={colors.onAccent}>
             DONE
           </Display>
         </XStack>

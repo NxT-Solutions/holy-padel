@@ -1,4 +1,4 @@
-export { computeMatch, undoLastPoint } from "./engine.ts";
+export { computeMatch, replayMatch, undoLastPoint } from "./engine.ts";
 export { statusLabel, watchStatusLabel } from "./labels.ts";
 export {
   EXTENDED_SET_TARGET,
@@ -17,9 +17,12 @@ export type {
   MatchConfig,
   MatchSnapshot,
   Moment,
+  PbTiebreak,
   PointCall,
   PointEvent,
   SetSummary,
+  SquashServeBoxes,
+  SquashTiebreak,
   TeamId,
   TeamValues,
   ThirdSetMode,

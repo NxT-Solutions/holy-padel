@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { MatchConfig, MatchSnapshot, PointEvent, TeamId } from "../src/index.ts";
-import { computeMatch, undoLastPoint } from "../src/index.ts";
+import { computeMatch, replayMatch, undoLastPoint } from "../src/index.ts";
 
 const configArbitrary: fc.Arbitrary<MatchConfig> = fc.record({
   bestOf: fc.constantFrom<1 | 3>(1, 3),
@@ -112,8 +112,10 @@ describe("engine invariants over random matches", () => {
         for (let index = 0; index <= events.length; index += 1) {
           const snapshot = computeMatch(config, events.slice(0, index));
           if (!snapshot.finished && snapshot.currentGame?.kind === "standard") {
-            const games = snapshot.totalGames.A + snapshot.totalGames.B;
-            gameServers.set(games, snapshot.servingTeam);
+            const { totalGames, servingTeam } = snapshot;
+            if (servingTeam !== undefined) {
+              gameServers.set(totalGames.A + totalGames.B, servingTeam);
+            }
           }
         }
         for (const [games, server] of gameServers) {
@@ -122,6 +124,22 @@ describe("engine invariants over random matches", () => {
             expect(server).not.toBe(previous);
           }
         }
+      }),
+      { numRuns: 60 },
+    );
+  });
+});
+
+describe("replayMatch", () => {
+  it("matches computeMatch on every prefix of the ledger", () => {
+    fc.assert(
+      fc.property(configArbitrary, winnersArbitrary, (config, winners) => {
+        const events = winners.map((winner, index) => ({ winner, at: index * 1000 }));
+        const snapshots = replayMatch(config, events);
+        expect(snapshots).toHaveLength(events.length + 1);
+        snapshots.forEach((snapshot, index) => {
+          expect(snapshot).toEqual(computeMatch(config, events.slice(0, index)));
+        });
       }),
       { numRuns: 60 },
     );

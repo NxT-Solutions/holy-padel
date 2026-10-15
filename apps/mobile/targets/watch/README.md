@@ -10,7 +10,7 @@ the watch just draws it and sends intents back. See
 This directory is an [`@bacons/apple-targets`](https://github.com/EvanBacon/expo-apple-targets)
 target. `expo-target.config.js` declares a `watch`-type target; on
 `expo prebuild -p ios` the plugin generates the watch app into the native Xcode
-project (bundle id `com.holypadel.app.watchkitapp`, accent from the design lime)
+project (bundle id `com.holypadel.app.watchkitapp`, accent from the design orange)
 and wires the phone app's "Embed Watch Content" phase. Every file here is linked
 into the target, so the app stays a managed Expo app — there is no committed
 `ios/` project.

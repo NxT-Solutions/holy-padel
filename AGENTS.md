@@ -24,7 +24,8 @@ are the leading source of truth for all scoring.
 ## Golden rules
 
 - **Phone is the single source of truth; watches only mirror it.** No scoring logic on a watch.
-- When scoring behaviour changes: update `docs/fip-scoring-spec.md`, regenerate the golden vectors
+- When scoring behaviour changes: update `docs/fip-scoring-spec.md` (or
+  `docs/squash-scoring-spec.md` for squash), regenerate the golden vectors
   (`node packages/scoring/scripts/write-vectors.ts`), and keep the Swift + Kotlin ports passing.
 - **Design tokens live in [DESIGN.md](DESIGN.md)** (source of truth) + `apps/mobile/src/theme/colors.ts`.
   Never set a tight `lineHeight` on Anton/Display text — round glyphs clip ("0" reads "U").
@@ -51,7 +52,8 @@ native-touching PRs, **merge manually once the native jobs report green** — ne
 land before them (a wrong androidx signature once broke `main`).
 
 More: full guide + `.claude/` workspace map in **[CLAUDE.md](CLAUDE.md)**; design system in
-**[DESIGN.md](DESIGN.md)**; contracts in `docs/fip-scoring-spec.md` and `docs/watch-sync.md`.
+**[DESIGN.md](DESIGN.md)**; contracts in `docs/fip-scoring-spec.md`,
+`docs/squash-scoring-spec.md` and `docs/watch-sync.md`.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

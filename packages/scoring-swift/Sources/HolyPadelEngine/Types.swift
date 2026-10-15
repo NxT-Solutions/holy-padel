@@ -28,32 +28,94 @@ public enum ThirdSetMode: String, Sendable, Equatable {
 public enum BestOf: Int, Sendable, Equatable {
     case one = 1
     case three = 3
+    case five = 5
 }
 
-public struct MatchConfig: Sendable, Equatable {
-    public let bestOf: BestOf
-    public let deuceMode: DeuceMode
-    public let thirdSet: ThirdSetMode
-    /// Team serving the first game of the match.
-    public let firstServe: TeamId
+public enum SquashMode: String, Sendable, Equatable {
+    case par
+    case hiho
+}
 
-    public init(bestOf: BestOf, deuceMode: DeuceMode, thirdSet: ThirdSetMode, firstServe: TeamId) {
-        self.bestOf = bestOf
-        self.deuceMode = deuceMode
-        self.thirdSet = thirdSet
-        self.firstServe = firstServe
+public enum SquashTiebreak: String, Sendable, Equatable {
+    case winByTwo
+    case setOne
+    case setTwo
+    case choice
+}
+
+/// What picks each hand's FIRST service box: a fixed `right`/`left` box, or
+/// `player` — the serving team's saved preference. Either way the boxes then
+/// alternate every point while the team holds serve.
+public enum SquashServeBoxes: String, Sendable, Equatable {
+    case right
+    case left
+    case player
+}
+
+public enum PbType: String, Sendable, Equatable {
+    case singles
+    case doubles
+}
+
+public enum PbTiebreak: String, Sendable, Equatable {
+    case winByTwo
+    case winByOne
+}
+
+public enum MatchConfig: Sendable, Equatable {
+    case padel(bestOf: BestOf, deuceMode: DeuceMode, thirdSet: ThirdSetMode, firstServe: TeamId, firstServePending: Bool? = nil)
+    case squash(
+        bestOf: BestOf, squashMode: SquashMode, squashTarget: Int, squashTiebreak: SquashTiebreak,
+        firstServe: TeamId, firstServePending: Bool? = nil,
+        squashServeBoxes: SquashServeBoxes? = nil, squashServeBoxA: String? = nil,
+        squashServeBoxB: String? = nil
+    )
+    case pickleball(bestOf: BestOf, pbType: PbType, pbTarget: Int, pbTiebreak: PbTiebreak, firstServe: TeamId, firstServePending: Bool? = nil)
+
+    public var bestOf: BestOf {
+        switch self {
+        case .padel(let bestOf, _, _, _, _): return bestOf
+        case .squash(let bestOf, _, _, _, _, _, _, _, _): return bestOf
+        case .pickleball(let bestOf, _, _, _, _, _): return bestOf
+        }
+    }
+    public var firstServe: TeamId {
+        switch self {
+        case .padel(_, _, _, let firstServe, _): return firstServe
+        case .squash(_, _, _, _, let firstServe, _, _, _, _): return firstServe
+        case .pickleball(_, _, _, _, let firstServe, _): return firstServe
+        }
+    }
+    public var firstServePending: Bool? {
+        switch self {
+        case .padel(_, _, _, _, let pending): return pending
+        case .squash(_, _, _, _, _, let pending, _, _, _): return pending
+        case .pickleball(_, _, _, _, _, let pending): return pending
+        }
     }
 }
 
-/// The only mutating event of a match: a rally ended and `winner` won it.
+/// A rally (`point`) or a team taking the undecided first serve of a
+/// pickleball game 2+ (`serve`, which scores no rally).
+public enum EventKind: String, Sendable, Equatable {
+    case point
+    case serve
+}
+
+/// One event of a match's log.
 public struct PointEvent: Sendable, Equatable {
     public let winner: TeamId
     /// Epoch milliseconds — used for durations, never for scoring.
     public let at: Int
+    public let kind: EventKind
+    /// Squash "choice" tie-break: the receiver's long/short decision riding on the rally at the choice point.
+    public let gameSet: String?
 
-    public init(winner: TeamId, at: Int) {
+    public init(winner: TeamId, at: Int, kind: EventKind = .point, gameSet: String? = nil) {
         self.winner = winner
         self.at = at
+        self.kind = kind
+        self.gameSet = gameSet
     }
 }
 
@@ -110,6 +172,7 @@ public enum Moment: Sendable, Equatable {
     case advantage(team: TeamId)
     case goldenPoint
     case starPoint
+    case setChoice
     case tieBreak(setNumber: Int)
     case superTieBreak
     case finished(winner: TeamId)
@@ -119,7 +182,11 @@ public enum Moment: Sendable, Equatable {
 public enum CurrentGame: Sendable, Equatable {
     case standard(points: TeamValues<Int>, calls: TeamValues<PointCall>)
     case tieBreak(tieBreakKind: TieBreakKind, target: Int, points: TeamValues<Int>)
+    case squash(points: TeamValues<Int>)
+    case pickleball(points: TeamValues<Int>, serverNumber: Int?)
 }
+
+
 
 /// Everything the UI needs about a match, derived from config + events.
 public struct MatchSnapshot: Sendable, Equatable {
@@ -134,7 +201,10 @@ public struct MatchSnapshot: Sendable, Equatable {
     /// The game in play; nil once the match is finished.
     public let currentGame: CurrentGame?
     /// Team serving the point in play (tie-break rotation included).
-    public let servingTeam: TeamId
+    public let servingTeam: TeamId?
+    /// Side of the court the server is serving from.
+    public let servingSide: String?
+
     public let moment: Moment
     /// Rally points won over the whole match.
     public let totalPoints: TeamValues<Int>

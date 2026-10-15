@@ -1,12 +1,21 @@
-import type { SqlDriver, TeamPlayers } from "@holy-padel/db";
+import type {
+  CourtSide,
+  HeartRateSample,
+  MotionSample,
+  SqlDriver,
+  TeamPlayers,
+} from "@holy-padel/db";
 import {
   appendEvents,
   countMatches,
   createMatch,
   createPlayer,
   finishMatch,
+  getMatch,
   inTransaction,
   listPlayers,
+  saveMatchHeartRate,
+  saveMatchMotion,
 } from "@holy-padel/db";
 import type { MatchConfig, PointEvent, TeamId } from "@holy-padel/scoring";
 import { computeMatch } from "@holy-padel/scoring";
@@ -81,11 +90,19 @@ function setPoints(plan: SetPlan): TeamId[] {
   return [...points, ...tieBreakPoints];
 }
 
+/**
+ * A repeatable wobble on each point's time, up to 18 s late, so the demo's
+ * rallies run long and short instead of all lasting exactly `SECONDS_PER_POINT`.
+ */
+function wobbleMs(index: number): number {
+  return ((index * index * 7 + index * 3) % 13) * 1500;
+}
+
 function planEvents(plans: readonly SetPlan[], startedAt: number): PointEvent[] {
   const winners = plans.flatMap(setPoints);
   return winners.map((winner, index) => ({
     winner,
-    at: startedAt + index * SECONDS_PER_POINT * 1000,
+    at: startedAt + index * SECONDS_PER_POINT * 1000 + wobbleMs(index),
   }));
 }
 
@@ -100,14 +117,19 @@ const DEFAULT_CONFIG: MatchConfig = {
   firstServe: "A",
 };
 
-const ROSTER: readonly { id: string; name: string }[] = [
-  { id: "javi", name: "Javi" },
-  { id: "marta", name: "Marta" },
-  { id: "leo", name: "Leo" },
-  { id: "ana", name: "Ana" },
-  { id: "pablo", name: "Pablo" },
-  { id: "carla", name: "Carla" },
-  { id: "hugo", name: "Hugo" },
+const ROSTER: readonly {
+  readonly id: string;
+  readonly name: string;
+  readonly club?: string;
+  readonly side: CourtSide;
+}[] = [
+  { id: "javi", name: "Javi", club: "Club Padel Norte", side: "right" },
+  { id: "marta", name: "Marta", club: "Club Padel Norte", side: "left" },
+  { id: "leo", name: "Leo", side: "right" },
+  { id: "ana", name: "Ana", club: "Club Río Sur", side: "left" },
+  { id: "pablo", name: "Pablo", side: "left" },
+  { id: "carla", name: "Carla", club: "Club Río Sur", side: "right" },
+  { id: "hugo", name: "Hugo", side: "left" },
 ];
 
 /**
@@ -215,7 +237,10 @@ function seedFinishedMatch(driver: SqlDriver, plan: MatchPlan, now: number): voi
     A: ["nico", plan.partner],
     B: [plan.opponents[0], plan.opponents[1]],
   };
-  const config: MatchConfig = { ...DEFAULT_CONFIG, ...plan.config };
+  // The spread widens optional keys to `| undefined`, which
+  // exactOptionalPropertyTypes rejects — seed plans only ever tighten
+  // the default config, so the cast is safe.
+  const config = { ...DEFAULT_CONFIG, ...plan.config } as MatchConfig;
   const match = {
     id: plan.id,
     config,
@@ -237,6 +262,35 @@ function seedFinishedMatch(driver: SqlDriver, plan: MatchPlan, now: number): voi
     endedAt: lastEvent === undefined ? startedAt : lastEvent.at,
     scoreLine: scoreLineOf(plan.sets),
   });
+}
+
+const HR_STEP_MS = 5000;
+const MOTION_STEP_MS = 10_000;
+
+/**
+ * Watch data for the latest finished match, so the demo shows the heart-rate
+ * curve and per-game steps/distance. Deterministic waves, not random noise,
+ * so screenshots and e2e assertions stay stable.
+ */
+function seedWatchData(driver: SqlDriver, matchId: string, baseBpm = 138): void {
+  const match = getMatch(driver, matchId);
+  if (match?.endedAt === undefined) {
+    return;
+  }
+  const { startedAt, endedAt } = match;
+  const heartRate: HeartRateSample[] = [];
+  for (let t = startedAt; t <= endedAt; t += HR_STEP_MS) {
+    const minutes = (t - startedAt) / MINUTE_MS;
+    const bpm = baseBpm + 14 * Math.sin(minutes / 2.3) + 6 * Math.sin(minutes * 1.7);
+    heartRate.push({ t, bpm: Math.round(bpm) });
+  }
+  const motion: MotionSample[] = [];
+  for (let t = startedAt + MOTION_STEP_MS; t <= endedAt; t += MOTION_STEP_MS) {
+    const steps = Math.round(13 + 6 * Math.sin((t - startedAt) / 47_000));
+    motion.push({ t, steps, meters: Math.round(steps * 6.8) / 10 });
+  }
+  saveMatchHeartRate(driver, matchId, heartRate);
+  saveMatchMotion(driver, matchId, motion);
 }
 
 function seedLiveMatch(driver: SqlDriver, now: number): void {
@@ -291,11 +345,22 @@ export function seedIfEmpty(driver: SqlDriver): void {
     });
     for (const entry of ROSTER) {
       createdAt += MINUTE_MS;
-      createPlayer(driver, { id: entry.id, name: entry.name, createdAt });
+      createPlayer(driver, {
+        id: entry.id,
+        name: entry.name,
+        createdAt,
+        side: entry.side,
+        ...(entry.club === undefined ? {} : { club: entry.club }),
+      });
     }
     for (const plan of FINISHED) {
       seedFinishedMatch(driver, plan, now);
     }
+    // Four tracked matches give the Stats trend something to draw.
+    seedWatchData(driver, "seed-09", 133);
+    seedWatchData(driver, "seed-10", 144);
+    seedWatchData(driver, "seed-11", 129);
+    seedWatchData(driver, "seed-12");
     seedLiveMatch(driver, now);
   });
 }

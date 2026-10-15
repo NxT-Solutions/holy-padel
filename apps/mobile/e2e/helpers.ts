@@ -51,11 +51,9 @@ export async function expectPoints(page: Page, a: string, b: string): Promise<vo
   await expect(page.getByTestId("point-B")).toHaveText(b);
 }
 
-/** Arm the next confirm() dialog before clicking the trigger. */
-export function armConfirm(page: Page, accept: boolean): void {
-  page.once("dialog", (dialog) => {
-    void (accept ? dialog.accept() : dialog.dismiss());
-  });
+/** Accept the in-app confirm sheet that guards destructive actions. */
+export async function confirmSheet(page: Page): Promise<void> {
+  await page.getByTestId("confirm-action").click();
 }
 
 export interface NewMatchOptions {
@@ -63,6 +61,24 @@ export interface NewMatchOptions {
   readonly thirdSet?: "Full set" | "Super TB";
   readonly deuce?: "Advantage" | "Golden pt";
   readonly firstServe?: "Team A" | "Team B";
+}
+
+/** Open the rules editor sheet and change options; closes via "Use these rules". */
+export async function editRules(page: Page, options: NewMatchOptions): Promise<void> {
+  await page.getByRole("button", { name: "Edit match rules" }).click();
+  if (options.bestOf !== undefined) {
+    await page.getByRole("button", { name: String(options.bestOf), exact: true }).click();
+  }
+  if (options.thirdSet !== undefined) {
+    await page.getByRole("button", { name: options.thirdSet, exact: true }).click();
+  }
+  if (options.deuce !== undefined) {
+    await page.getByRole("button", { name: options.deuce, exact: true }).click();
+  }
+  if (options.firstServe !== undefined) {
+    await page.getByRole("button", { name: options.firstServe, exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Use these rules" }).click();
 }
 
 /**
@@ -76,30 +92,34 @@ export async function startNewMatch(page: Page, options: NewMatchOptions = {}): 
   // Team A: pick the partner.
   await page.getByText("Pick a player").first().click();
   await expect(page.getByText("PICK TEAM A")).toBeVisible();
-  await page.getByRole("button", { name: /Javi/u }).click();
+  await page.getByRole("button", { name: /Javi .* with you/u }).click();
   await page.getByRole("button", { name: "DONE" }).click();
 
   // Team B: pick both opponents.
   await page.getByText("Pick a player").first().click();
   await expect(page.getByText("PICK TEAM B")).toBeVisible();
-  await page.getByRole("button", { name: /Marta/u }).click();
-  await page.getByRole("button", { name: /Leo/u }).click();
+  await page.getByRole("button", { name: /Marta .* with you/u }).click();
+  await page.getByRole("button", { name: /Leo .* with you/u }).click();
   await page.getByRole("button", { name: "DONE" }).click();
 
-  if (options.bestOf !== undefined) {
-    await page.getByRole("button", { name: String(options.bestOf), exact: true }).click();
-  }
-  if (options.thirdSet !== undefined) {
-    await page.getByRole("button", { name: options.thirdSet, exact: true }).click();
-  }
-  if (options.deuce !== undefined) {
-    await page.getByRole("button", { name: options.deuce, exact: true }).click();
-  }
-  if (options.firstServe !== undefined) {
-    await page.getByRole("button", { name: options.firstServe, exact: true }).click();
+  if (Object.keys(options).length > 0) {
+    await editRules(page, options);
   }
 
   await page.getByRole("button", { name: "START MATCH" }).click();
+  await saveLiveMatchIfAsked(page);
   await expect(page.getByTestId("point-A")).toBeVisible();
   await expectPoints(page, "0", "0");
+}
+
+/**
+ * Starting a match while another is live (the seeded one) asks to save the
+ * live one first. Confirm it when asked; continue when nothing was live.
+ */
+export async function saveLiveMatchIfAsked(page: Page): Promise<void> {
+  const sheet = page.getByText("MATCH STILL LIVE");
+  await expect(page.getByTestId("point-A").or(sheet)).toBeVisible();
+  if (await sheet.isVisible()) {
+    await page.getByRole("button", { name: "SAVE & START NEW" }).click();
+  }
 }

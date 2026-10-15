@@ -20,6 +20,7 @@ struct ContentView: View {
                     liveBpm: workout.heartRate,
                     onScore: sync.score,
                     onUndo: sync.undo,
+                    onSetChoice: sync.setChoice,
                     onPause: sync.pause,
                     onStop: sync.stop,
                     onCancel: sync.cancel

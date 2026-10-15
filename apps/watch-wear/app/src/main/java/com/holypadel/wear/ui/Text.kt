@@ -81,20 +81,33 @@ fun ResultBadge(won: Boolean, sizeDp: Int = 22) {
         modifier = Modifier
             .size(sizeDp.dp)
             .clip(RoundedCornerShape((sizeDp * 0.28).dp))
-            .background(if (won) CourtColors.Lime else CourtColors.Greige),
+            .background(if (won) CourtColors.Accent else CourtColors.Greige),
         contentAlignment = Alignment.Center,
     ) {
         DisplayText(if (won) "W" else "L", sizeSp = (sizeDp * 0.45).toInt(), color = CourtColors.Ink)
     }
 }
 
-/** The lime serve/live dot. */
+/** The accent serve/live dot. */
 @Composable
-fun Dot(sizeDp: Int = 8, color: Color = CourtColors.Lime, visible: Boolean = true) {
+fun Dot(sizeDp: Int = 8, color: Color = CourtColors.Accent, visible: Boolean = true, label: String? = null) {
     Box(
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(sizeDp.dp)
             .clip(CircleShape)
             .background(if (visible) color else Color.Transparent),
-    )
+    ) {
+        if (label != null) {
+            BasicText(
+                text = label,
+                style = TextStyle(
+                    color = CourtColors.Ink,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = (sizeDp * 0.6).sp,
+                    lineHeight = (sizeDp * 0.6).sp
+                )
+            )
+        }
+    }
 }

@@ -43,6 +43,21 @@ private fun serializeGame(game: CurrentGame?): JsonElement =
                 put("target", game.target)
                 put("points", teamValues(game.points))
             }
+        is CurrentGame.Squash ->
+            buildJsonObject {
+                put("kind", "squash")
+                put("points", teamValues(game.points))
+            }
+        is CurrentGame.Pickleball ->
+            buildJsonObject {
+                put("kind", "pickleball")
+                put("points", teamValues(game.points))
+                if (game.serverNumber != null) {
+                    put("serverNumber", game.serverNumber)
+                } else {
+                    put("serverNumber", JsonNull)
+                }
+            }
     }
 
 private fun serializeMoment(moment: Moment): JsonElement =
@@ -68,6 +83,7 @@ private fun serializeMoment(moment: Moment): JsonElement =
             }
             is Moment.GoldenPoint -> put("kind", "goldenPoint")
             is Moment.StarPoint -> put("kind", "starPoint")
+            is Moment.SetChoice -> put("kind", "setChoice")
             is Moment.TieBreak -> {
                 put("kind", "tieBreak")
                 put("setNumber", moment.setNumber)
@@ -92,7 +108,19 @@ fun serializeSnapshot(snap: MatchSnapshot): JsonElement =
         put("setNumber", snap.setNumber)
         put("currentSetGames", teamValues(snap.currentSetGames))
         put("currentGame", serializeGame(snap.currentGame))
-        put("servingTeam", team(snap.servingTeam))
+        // The TS generator serialises via JSON.stringify, which DROPS keys
+        // whose value is undefined — servingTeam/servingSide must be omitted,
+        // not null, when no serving team is resolved (e.g. pickleball games
+        // 2+ before the first serve is decided).
+        val st = snap.servingTeam
+        if (st != null) {
+            put("servingTeam", team(st))
+        }
+        val ss = snap.servingSide
+        if (ss != null) {
+            put("servingSide", ss)
+        }
+
         put("moment", serializeMoment(snap.moment))
         put("totalGames", teamValues(snap.totalGames))
         put("totalPoints", teamValues(snap.totalPoints))

@@ -1,11 +1,11 @@
 import type { SqlDriver, TeamPlayers } from "@holy-padel/db";
-import { createMatch, createPlayer, getLiveMatch, loadEvents, migrate } from "@holy-padel/db";
+import { createMatch, createPlayer, getMatch, migrate, setSetting } from "@holy-padel/db";
 import type { MatchConfig } from "@holy-padel/scoring";
-import { computeMatch } from "@holy-padel/scoring";
 import { describe, expect, it } from "vitest";
 import { applyWatchIntent, INTENT_PATHS } from "../src/watch/apply-intent.ts";
 import type { WatchState } from "../src/watch/build-state.ts";
 import { buildWatchState } from "../src/watch/build-state.ts";
+import { acknowledgeWon, gatherWatchInput, WON_HOLD_MS } from "../src/watch/gather-input.ts";
 import { memoryDriver } from "./memory-driver.ts";
 
 // Ties the two pure halves together over a real driver: an intent from the watch
@@ -29,13 +29,15 @@ function freshDb() {
 }
 
 // What the phone would push right now, gathered exactly like useWatchSync does.
-function currentState(driver: SqlDriver): WatchState {
-  const live = getLiveMatch(driver);
-  if (live === undefined) {
-    return buildWatchState({ ownerId: "nico", now: 0 });
+function currentState(driver: SqlDriver, now = ctx.now): WatchState {
+  return buildWatchState({ ...gatherWatchInput(driver, now), now });
+}
+
+function scoreOut(driver: SqlDriver): void {
+  // best-of-1, six love games = 24 straight points to A.
+  for (let point = 0; point < 24; point += 1) {
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
   }
-  const snapshot = computeMatch(live.config, loadEvents(driver, live.id));
-  return buildWatchState({ ownerId: "nico", now: 0, live: { match: live, snapshot } });
 }
 
 describe("watch sync loop", () => {
@@ -56,18 +58,66 @@ describe("watch sync loop", () => {
     expect(currentState(driver).pointA).toBe("15");
   });
 
-  it("scoring the match out flips the payload to won", () => {
+  it("scoring the match out saves it and flips the payload to won", () => {
     const driver = freshDb();
     createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    scoreOut(driver);
 
-    // best-of-1, six love games = 24 straight points to A.
-    for (let point = 0; point < 24; point += 1) {
-      applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
-    }
-
+    expect(getMatch(driver, "m1")?.status).toBe("finished");
     const state = currentState(driver);
     expect(state.phase).toBe("won");
     expect(state.won?.winnerShort).toBe("N&J");
     expect(state.games).toBe("6-0");
+  });
+
+  it("the watch's DONE dismisses MATCH WON back to idle", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    scoreOut(driver);
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.end, body: "" }, ctx);
+
+    const state = currentState(driver);
+    expect(state.phase).toBe("idle");
+    expect(state.last?.won).toBe(true);
+  });
+
+  it("the phone's DONE dismisses it too", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    scoreOut(driver);
+
+    acknowledgeWon(driver);
+
+    expect(currentState(driver).phase).toBe("idle");
+  });
+
+  it("MATCH WON times out on its own", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    scoreOut(driver);
+
+    expect(currentState(driver, ctx.now + WON_HOLD_MS + 1).phase).toBe("idle");
+  });
+
+  it("a match stopped mid-play goes straight to idle", () => {
+    const driver = freshDb();
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+    applyWatchIntent(driver, { path: INTENT_PATHS.score, body: "A" }, ctx);
+
+    applyWatchIntent(driver, { path: INTENT_PATHS.stop, body: "" }, ctx);
+
+    expect(currentState(driver).phase).toBe("idle");
+  });
+
+  it("carries the user's colours, defaulting to orange and violet", () => {
+    const driver = freshDb();
+    expect(currentState(driver).palette).toEqual({ accent: "#FF6B35", teamB: "#8B7CFF" });
+
+    setSetting(driver, "accentColor", "mint");
+    setSetting(driver, "teamBColor", "teal");
+    createMatch(driver, { id: "m1", config, players, startedAt: 0 });
+
+    expect(currentState(driver).palette).toEqual({ accent: "#2EE6A0", teamB: "#12A594" });
   });
 });
