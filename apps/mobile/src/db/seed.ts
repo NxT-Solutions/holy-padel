@@ -90,11 +90,19 @@ function setPoints(plan: SetPlan): TeamId[] {
   return [...points, ...tieBreakPoints];
 }
 
+/**
+ * A repeatable wobble on each point's time, up to 18 s late, so the demo's
+ * rallies run long and short instead of all lasting exactly `SECONDS_PER_POINT`.
+ */
+function wobbleMs(index: number): number {
+  return ((index * index * 7 + index * 3) % 13) * 1500;
+}
+
 function planEvents(plans: readonly SetPlan[], startedAt: number): PointEvent[] {
   const winners = plans.flatMap(setPoints);
   return winners.map((winner, index) => ({
     winner,
-    at: startedAt + index * SECONDS_PER_POINT * 1000,
+    at: startedAt + index * SECONDS_PER_POINT * 1000 + wobbleMs(index),
   }));
 }
 
