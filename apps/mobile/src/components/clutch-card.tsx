@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { XStack, YStack } from "tamagui";
-import { CardHeader, ShareRow } from "@/components/insight-parts.tsx";
+import { CardHeader, ShareRow, ShareTile } from "@/components/insight-parts.tsx";
 import { Body, Card, Display } from "@/components/ui.tsx";
 import type { Clutch, Tally } from "@/lib/clutch.ts";
 import { percentOf } from "@/lib/clutch.ts";
 import type { Sport } from "@/lib/insights.ts";
-import { colors, textAlpha } from "@/theme/colors.ts";
+import { textAlpha } from "@/theme/colors.ts";
 
 function detail(tally: Tally): string {
   return `${String(tally.won)} of ${String(tally.of)}`;
@@ -20,45 +20,6 @@ function turnaroundWords(sport: Sport | undefined): { won: string; lost: string 
     return { won: "sets or games won from behind", lost: "sets or games lost from ahead" };
   }
   return { won: "games won from 4+ points down", lost: "games lost from 4+ points up" };
-}
-
-/** One of the two headline shares: a big percentage, what it is, and the raw count. */
-function Share({
-  tally,
-  label,
-  explain,
-  testID,
-}: {
-  readonly tally: Tally;
-  readonly label: string;
-  readonly explain: string;
-  readonly testID: string;
-}): ReactNode {
-  const share = percentOf(tally);
-  return (
-    <YStack
-      flex={1}
-      backgroundColor={colors.row}
-      borderRadius={14}
-      paddingVertical={12}
-      paddingHorizontal={12}
-      gap={2}
-      testID={testID}
-    >
-      <Display fontSize={34} color={share === undefined ? textAlpha(0.3) : colors.accentOnCard}>
-        {share === undefined ? "—" : `${String(share)}%`}
-      </Display>
-      <Body fontSize={10} fontWeight="800" letterSpacing={1.2}>
-        {label}
-      </Body>
-      <Body fontSize={11} fontWeight="600" color={textAlpha(0.5)}>
-        {explain}
-      </Body>
-      <Body fontSize={11} fontWeight="700" color={textAlpha(0.4)}>
-        {tally.of === 0 ? "none yet" : detail(tally)}
-      </Body>
-    </YStack>
-  );
 }
 
 /** A count with a plain sentence of what it counts. */
@@ -127,13 +88,13 @@ export function ClutchCard({
     >
       <CardHeader title="UNDER PRESSURE" />
       <XStack gap={8}>
-        <Share
+        <ShareTile
           tally={clutch.closing}
           label="CLOSING OUT"
           explain="When you're a point away"
           testID="clutch-closing"
         />
-        <Share
+        <ShareTile
           tally={clutch.saving}
           label="SAVING"
           explain="When they're a point away"

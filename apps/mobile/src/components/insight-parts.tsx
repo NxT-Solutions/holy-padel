@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { View, XStack, YStack } from "tamagui";
 import { Body, Display, Overline } from "@/components/ui.tsx";
+import type { Tally } from "@/lib/clutch.ts";
+import { percentOf } from "@/lib/clutch.ts";
 import { ZONES } from "@/lib/effort.ts";
 import { accentAlpha, colors, textAlpha } from "@/theme/colors.ts";
 
@@ -55,6 +57,45 @@ export function ShareRow({
       <View height={6} borderRadius={999} backgroundColor={colors.greige} overflow="hidden">
         <View width={`${String(share * 100)}%`} height="100%" backgroundColor={colors.accent} />
       </View>
+    </YStack>
+  );
+}
+
+/** One of the two headline shares: a big percentage, what it is, and the raw count. */
+export function ShareTile({
+  tally,
+  label,
+  explain,
+  testID,
+}: {
+  readonly tally: Tally;
+  readonly label: string;
+  readonly explain: string;
+  readonly testID: string;
+}): ReactNode {
+  const share = percentOf(tally);
+  return (
+    <YStack
+      flex={1}
+      backgroundColor={colors.row}
+      borderRadius={14}
+      paddingVertical={12}
+      paddingHorizontal={12}
+      gap={2}
+      testID={testID}
+    >
+      <Display fontSize={34} color={share === undefined ? textAlpha(0.3) : colors.accentOnCard}>
+        {share === undefined ? "—" : `${String(share)}%`}
+      </Display>
+      <Body fontSize={10} fontWeight="800" letterSpacing={1.2}>
+        {label}
+      </Body>
+      <Body fontSize={11} fontWeight="600" color={textAlpha(0.5)}>
+        {explain}
+      </Body>
+      <Body fontSize={11} fontWeight="700" color={textAlpha(0.4)}>
+        {tally.of === 0 ? "none yet" : `${String(tally.won)} of ${String(tally.of)}`}
+      </Body>
     </YStack>
   );
 }
