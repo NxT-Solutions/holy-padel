@@ -87,7 +87,7 @@ function LiveCard({
       overflow="hidden"
       position="relative"
     >
-      <FloodlightGlow color={sportColor(match.config.sport)} opacity={0.28} />
+      <FloodlightGlow color={colors.teamB} opacity={0.28} />
       <XStack alignItems="center" justifyContent="space-between">
         <XStack alignItems="center" gap={6}>
           <LiveDot size={7} />
