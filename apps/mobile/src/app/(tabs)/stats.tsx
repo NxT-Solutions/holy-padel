@@ -8,6 +8,7 @@ import { View, XStack, YStack } from "tamagui";
 import { ClutchCard } from "@/components/clutch-card.tsx";
 import { EffortCard, TrendCard, ZonesCard } from "@/components/effort-cards.tsx";
 import { PeopleCard } from "@/components/people-card.tsx";
+import { RalliesCard } from "@/components/rallies-card.tsx";
 import { Body, Card, Display } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import type { Sport } from "@/lib/insights.ts";
@@ -117,6 +118,7 @@ function StatsBody(): ReactNode {
         slips={insights.slips}
         sport={sport === "all" ? (sports.length === 1 ? sports[0] : undefined) : sport}
       />
+      <RalliesCard lengths={insights.rallies} />
       <PeopleCard partners={insights.partners} rivals={insights.rivals} />
       <EffortCard bands={insights.effort} trackedGames={insights.trackedGames} />
       <TrendCard points={insights.trend} />
@@ -135,7 +137,7 @@ function StatsBody(): ReactNode {
 
 /**
  * The Stats tab, ordered from what you can act on in a match to the long view:
- * big points, then the people you play with and against, then effort — how it
+ * big points and long rallies, then the people you play with and against, then effort — how it
  * relates to results, how it's trending, and where your heart rate sits.
  */
 export default function StatsScreen(): ReactNode {

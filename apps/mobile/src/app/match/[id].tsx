@@ -11,6 +11,7 @@ import { ConfirmSheet } from "@/components/confirm-sheet.tsx";
 import { ChevronLeft } from "@/components/icons.tsx";
 import { KeyMomentsCard } from "@/components/key-moments-card.tsx";
 import { MatchWorkoutSection } from "@/components/match-workout-section.tsx";
+import { MatchRalliesCard } from "@/components/rallies-card.tsx";
 import { Body, Card, Display, Overline, Pill } from "@/components/ui.tsx";
 import { useDbMutation, useDbQuery } from "@/db/provider.tsx";
 import { isHealthLogAvailable, logMatchWorkout } from "@/health/health-log.ts";
@@ -360,6 +361,8 @@ export default function MatchOverviewScreen(): ReactNode {
         </YStack>
 
         <KeyMomentsCard match={match} events={events} />
+
+        <MatchRalliesCard match={match} events={events} />
 
         <MatchWorkoutSection match={match} series={series} />
 

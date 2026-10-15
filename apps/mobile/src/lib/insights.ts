@@ -13,6 +13,8 @@ import type { EffortBand, GameEffort } from "@/lib/effort.ts";
 import { effortBands, estimatedMaxHr, timeInZones, ZONES } from "@/lib/effort.ts";
 import { activityIn, gameWindows, matchWindow } from "@/lib/game-activity.ts";
 import { computeGameSeries } from "@/lib/game-series.ts";
+import type { RallyLengths } from "@/lib/rallies.ts";
+import { addRallies, NO_RALLIES, rallyLengths } from "@/lib/rallies.ts";
 
 export type Sport = "padel" | "squash" | "pickleball";
 
@@ -70,6 +72,8 @@ export interface Insights {
   /** Sets won from two games (four points) down, and sets lost from that far up. */
   readonly comebacks: number;
   readonly slips: number;
+  /** Every timed rally, outliers already left out. */
+  readonly rallies: RallyLengths;
   readonly partners: readonly PersonRecord[];
   readonly rivals: readonly PersonRecord[];
   /** Win share by game heart rate; undefined until enough games were tracked. */
@@ -199,9 +203,11 @@ export function computeInsights(
   let clutch = EMPTY_CLUTCH;
   let comebacks = 0;
   let slips = 0;
+  let rallies = NO_RALLIES;
   for (const { match, events } of data) {
     const team = ownerTeam(match, ownerId);
     clutch = addClutch(clutch, matchClutch(match.config, events, team));
+    rallies = addRallies(rallies, rallyLengths(match.config, events, team));
     for (const turnaround of matchTurnarounds(match.config, events, team)) {
       if (turnaround.cameBack) {
         comebacks += 1;
@@ -217,6 +223,7 @@ export function computeInsights(
     clutch,
     comebacks,
     slips,
+    rallies,
     ...peopleRecords(data, ownerId),
     effort: effortBands(tracked.games),
     trackedGames: tracked.games.length,

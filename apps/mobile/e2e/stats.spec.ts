@@ -13,9 +13,15 @@ test.describe("stats tab", () => {
     await expect(page.getByText("UNDER PRESSURE")).toBeVisible();
   });
 
-  test("orders big points, then people, then effort", async ({ page }) => {
+  test("orders big points, then rallies, then people, then effort", async ({ page }) => {
     await gotoStats(page);
-    const titles = ["UNDER PRESSURE", "PARTNERS & RIVALS", "EFFORT VS RESULTS", "TRENDS"];
+    const titles = [
+      "UNDER PRESSURE",
+      "LONG OR SHORT RALLIES",
+      "PARTNERS & RIVALS",
+      "EFFORT VS RESULTS",
+      "TRENDS",
+    ];
     const tops: number[] = [];
     for (const title of titles) {
       const box = await page.getByText(title, { exact: true }).boundingBox();
@@ -25,6 +31,10 @@ test.describe("stats tab", () => {
     await expect(page.getByTestId("clutch-closing")).toContainText(/\d+%/u);
     await expect(page.getByTestId("clutch-saving")).toContainText("When they're a point away");
     await expect(page.getByTestId("clutch-card")).toContainText("of all points");
+    await expect(page.getByTestId("rallies-long")).toContainText(/Over \d+s/u);
+    await expect(page.getByTestId("rallies-card")).toContainText(
+      "Timed from one point to the next",
+    );
   });
 
   test("lists partners and rivals with their records", async ({ page }) => {
@@ -72,5 +82,14 @@ test.describe("match page insights", () => {
     await expect(page.getByTestId("key-moments")).toContainText("break points");
     await expect(page.getByTestId("effort-strip")).toContainText("HARDEST");
     await expect(page.getByTestId("match-zones")).toContainText("MOSTLY");
+  });
+
+  test("times the match's rallies and splits them long and short", async ({ page }) => {
+    await page.goto("/match/seed-01");
+    const rallies = page.getByTestId("match-rallies");
+    await expect(rallies).toBeVisible({ timeout: 90_000 });
+    await expect(rallies).toContainText("LONGEST");
+    await expect(rallies.getByTestId("rally-strip")).toBeVisible();
+    await expect(rallies.getByTestId("rallies-short")).toContainText(/\d+s or less/u);
   });
 });
